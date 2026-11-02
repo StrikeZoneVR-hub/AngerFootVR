@@ -34,6 +34,7 @@ public class Plugin : BaseUnityPlugin
         L = Logger;
         Instance = this;
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
+        Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 0.0.1 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
@@ -57,6 +58,8 @@ public class Plugin : BaseUnityPlugin
         XrManager.Update();
         VrControls.Update();
         UI.VrUi.Update();
+        Body.VrBody.Update();
+        Body.ViewModels.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -231,6 +234,27 @@ public class Plugin : BaseUnityPlugin
                     case "panelfill":
                         UI.VrUi.DevFill(arg != "off");
                         break;
+                    case "hands":
+                        Dev.DevPlay.Hands(arg);
+                        break;
+                    case "shoe":
+                    {
+                        // shoe <name part>: wear these shoes (dev runs keep their own save, so the player's is untouched)
+                        if (!Dev.DevSaves.Enabled) break;
+                        var shoe = System.Linq.Enumerable.FirstOrDefault(ShoeType.AllShoeTypes, x => x != null && x.name.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (shoe != null) GameState.CurrentSave.SetSelectedShoeType(shoe);
+                        L.LogInfo("dev shoe " + (shoe != null ? shoe.name : "none matches " + arg));
+                        break;
+                    }
+                    case "bodyik":
+                        Body.BodyPose.DevStage = int.Parse(arg);
+                        break;
+                    case "bodyshot":
+                        StartCoroutine(Dev.DevPlay.BodyShot(arg));
+                        break;
+                    case "body":
+                        L.LogInfo(Body.VrBody.Describe());
+                        break;
                     case "uipanel":
                         L.LogInfo(UI.VrUi.Describe());
                         break;
@@ -259,6 +283,21 @@ public class Plugin : BaseUnityPlugin
                         // the desktop window shows: "both" (both eyes whole), "left" (cropped), "none"
                         XRSettings.gameViewRenderMode = arg == "both" ? GameViewRenderMode.BothEyes : arg == "none" ? GameViewRenderMode.None : GameViewRenderMode.LeftEye;
                         L.LogInfo("mirror " + XRSettings.gameViewRenderMode);
+                        break;
+                    case "safe":
+                        Dev.DevPlay.Safe(arg != "off");
+                        break;
+                    case "levels":
+                        Dev.DevPlay.Levels("");
+                        break;
+                    case "load":
+                        Dev.DevPlay.Levels(arg);
+                        break;
+                    case "givegun":
+                        Dev.DevPlay.GiveGun(arg);
+                        break;
+                    case "hier":
+                        Dev.DevPlay.Hierarchy(arg);
                         break;
                     case "title":
                         GameState.LoadTitleScreen(LoadingTransition.FadeFromBlackOnly);

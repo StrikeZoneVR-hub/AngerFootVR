@@ -115,6 +115,7 @@ internal static class VrRig
         __instance.MainCamera.transform.localRotation = localRot;
         __instance.WeaponCamera.transform.localPosition = localPos;
         __instance.WeaponCamera.transform.localRotation = localRot;
+        Body.BodyPose.Pose();
     }
 
     /// <summary>The game's cameras take their pose from the rig, not from Unity's camera tracking.</summary>
