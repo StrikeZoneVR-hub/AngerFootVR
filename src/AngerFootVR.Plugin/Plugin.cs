@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.1")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.2")]
 public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
@@ -63,7 +63,7 @@ public class Plugin : BaseUnityPlugin
         VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 0.1.1 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 0.1.2 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
