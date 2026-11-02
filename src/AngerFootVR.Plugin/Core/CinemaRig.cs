@@ -24,6 +24,9 @@ internal static class CinemaRig
     /// <summary>The cinema's facing (degrees): turning there turns this.</summary>
     public static float Yaw;
 
+    /// <summary>The movie house's ambient light (the opening brings it up from the dark).</summary>
+    public static float AmbientScale = 1f;
+
     /// <summary>Dev: stay in the cinema even in play.</summary>
     public static bool DevForce;
 
@@ -135,6 +138,13 @@ internal static class CinemaRig
         Plugin.L.LogInfo("Cinema: in the movie house");
     }
 
+    /// <summary>Back to your spot facing the screen, centred on where you stand now.</summary>
+    public static void Recenter()
+    {
+        _centered = false;
+        _walk = Vector3.zero;
+    }
+
     private static void Leave()
     {
         Active = false;
@@ -192,7 +202,7 @@ internal static class CinemaRig
         _savedMode = RenderSettings.ambientMode;
         RenderSettings.fog = false;
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        RenderSettings.ambientLight = new Color(0.2f, 0.19f, 0.21f); // dim, near-neutral: the neon gives the colour
+        RenderSettings.ambientLight = new Color(0.2f, 0.19f, 0.21f) * AmbientScale; // dim, near-neutral: the neon gives the colour
     }
 
     private static void LightsOff(Camera cam)

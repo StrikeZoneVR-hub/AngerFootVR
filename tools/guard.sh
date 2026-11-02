@@ -5,9 +5,14 @@
 TOOLS="$(cd "$(dirname "$0")" && pwd)"
 LOG="$TOOLS/../analysis/guard.log"
 EXE="Anger Foot.exe"
+PIDFILE="$TOOLS/../analysis/dev-game.pid"
 echo "guard started $(date +%H:%M:%S)" > "$LOG"
 sleep 5
-while tasklist //FI "IMAGENAME eq $EXE" //FO CSV //NH 2>/dev/null | grep -qi "$EXE"; do
+# it guards its own run only: when that game is gone it tidies up only if no newer run has started since (an old guard
+# once switched a new run's loader off and used up its registry snapshot)
+mine="$(cat "$PIDFILE" 2>/dev/null)"
+[ -z "$mine" ] && exit 0
+while tasklist //FI "PID eq $mine" //FO CSV //NH 2>/dev/null | grep -qi "$EXE"; do
   out="$("$TOOLS/safe-check.sh" during)"
   rc=$?
   echo "$(date +%H:%M:%S) $out" >> "$LOG"
@@ -19,4 +24,4 @@ while tasklist //FI "IMAGENAME eq $EXE" //FO CSV //NH 2>/dev/null | grep -qi "$E
   sleep 5
 done
 echo "guard: game ended $(date +%H:%M:%S)" >> "$LOG"
-"$TOOLS/game.sh" finish >> "$LOG" 2>&1
+[ "$(cat "$PIDFILE" 2>/dev/null)" = "$mine" ] && "$TOOLS/game.sh" finish >> "$LOG" 2>&1

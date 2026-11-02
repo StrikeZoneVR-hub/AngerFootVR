@@ -112,6 +112,7 @@ internal static class Laser
         var up = gaze
             ? VrControls.UpEither(VrButton.Primary) || VrControls.UpEither(VrButton.Grip) || VrControls.UpEither(VrButton.Trigger)
             : VrControls.Up(_hand, VrButton.Trigger) || VrControls.Up(_hand, VrButton.Grip);
+        if (Opening.Playing) down = up = false;
         if (down && target != null)
         {
             _pressed = ExecuteEvents.ExecuteHierarchy(target, _pointer, ExecuteEvents.pointerDownHandler) ?? ExecuteEvents.GetEventHandler<IPointerClickHandler>(target);

@@ -109,7 +109,8 @@ internal static class MovieHouse
         Box(neonPink, new Vector3(6.98f, 5.6f, 5f), new Vector3(0.03f, 0.05f, 21.5f));
         for (var i = 0; i < 4; i++)
         {
-            Box(neonYellow, new Vector3(-6.95f, 3.2f, -1f + i * 4.5f), new Vector3(0.05f, 0.5f, 0.18f));
+            // (the left wall's second and third would touch the ANGER FOOT VR sign: they stand clear of it)
+            Box(neonYellow, new Vector3(-6.95f, 3.2f, i == 1 ? 1.9f : i == 2 ? 8.7f : -1f + i * 4.5f), new Vector3(0.05f, 0.5f, 0.18f));
             Box(neonYellow, new Vector3(6.95f, 3.2f, -1f + i * 4.5f), new Vector3(0.05f, 0.5f, 0.18f));
         }
 

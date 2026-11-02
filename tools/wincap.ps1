@@ -7,9 +7,11 @@ using System.Runtime.InteropServices;
 public static class W {
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern bool GetClientRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
 }
 "@
+[W]::SetProcessDPIAware() | Out-Null # (else a scaled display reports the window smaller than it is, and only part is captured)
 $p = Get-Process | Where-Object { $_.ProcessName -eq $Name -and $_.MainWindowHandle -ne 0 } | Select-Object -First 1
 if (-not $p) { Write-Output "no game window"; exit 1 }
 $r = New-Object W+RECT

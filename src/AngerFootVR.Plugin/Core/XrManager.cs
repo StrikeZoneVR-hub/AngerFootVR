@@ -78,14 +78,10 @@ public static class XrManager
             if (OpenXRNative.HasExport("NativeConfig_GetRuntimeName") && OpenXRNative.GetRuntimeName(out var namePtr))
                 RuntimeName = System.Runtime.InteropServices.Marshal.PtrToStringAnsi(namePtr) ?? "";
             Plugin.L.LogInfo($"OpenXR initialized. Runtime: '{RuntimeName}', graphics {SystemInfo.graphicsDeviceType}");
-            if (RuntimeName.IndexOf("Mock", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                // the test runtime doesn't pace frames: without a cap the game spins at 1000+ fps for nothing
-                QualitySettings.vSyncCount = 0;
-                Application.targetFrameRate = 90;
-                Plugin.L.LogInfo("Test runtime: frame rate capped at 90");
-            }
             Current = State.WaitingForSession;
+            // (the test runtime doesn't pace frames: without a cap the game spins at 500+ fps for nothing)
+            Rendering.VrQuality.FramePacing();
+            Plugin.L.LogInfo($"Frame pacing: v-sync off, cap {Application.targetFrameRate}");
             if (!OpenXRNative.CreateSessionIfNeeded())
                 return Fail("session_CreateSessionIfNeeded failed: " + OpenXRNative.LastError());
             return true;

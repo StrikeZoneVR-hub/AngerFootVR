@@ -18,7 +18,7 @@ namespace AngerFootVR.Launcher
         private bool _checking;
         private double _uninstallArmed = -10;
 
-        private static readonly Rect Panel = new Rect(604, 92, 636, 548);
+        private static readonly Rect Panel = new Rect(604, 78, 636, 594);
 
         private sealed class Opt
         {
@@ -92,6 +92,19 @@ namespace AngerFootVR.Launcher
                         Label = "VR OPENING", Help = "The short opening when the game starts in VR (A, B or the menu button skips it).",
                         Value = () => Cfg("Opening", "Opening", "FirstLaunchOnly") == "On" ? "EVERY START" : Cfg("Opening", "Opening", "FirstLaunchOnly") == "Off" ? "OFF" : "FIRST START ONLY",
                         Step = by => Set("Opening", "Opening", Cycle(Cfg("Opening", "Opening", "FirstLaunchOnly"), openings, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
+                        Label = "MONITOR VIEW", Help = "What your monitor shows: STEADY is a level, smooth view for anyone watching or recording; EYE is your headset's view as it is.",
+                        Value = () => Cfg("Monitor", "MonitorView", "Steady").ToUpperInvariant(),
+                        Step = by => Set("Monitor", "MonitorView", Cycle(Cfg("Monitor", "MonitorView", "Steady"), new[] { "Steady", "Eye" }, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
+                        Label = "MONITOR FOV", Help = "How wide the STEADY view is (never wider than your headset shows).",
+                        Value = () => Int("Monitor", "MonitorFov", 90) + "°",
+                        Step = by => Set("Monitor", "MonitorFov", Math.Max(70, Math.Min(110, Int("Monitor", "MonitorFov", 90) + by * 5)).ToString(CultureInfo.InvariantCulture)),
+                        Enabled = () => Mod() && Cfg("Monitor", "MonitorView", "Steady") == "Steady",
                     },
                     new Opt { Header = true, Label = "LAUNCHER" },
                     new Opt
@@ -212,7 +225,7 @@ namespace AngerFootVR.Launcher
                 {
                     Text(dc, o.Label, BodyBold, 12.5, new SolidColorBrush(A(Cyan, 0.8)), r.Left + 36, y + 6);
                     dc.DrawLine(P(A(Cyan, 0.25), 1), new Point(r.Left + 36 + TextWidth(o.Label, BodyBold, 12.5) + 10, y + 15), new Point(r.Right - 36, y + 15));
-                    y += 27;
+                    y += 25;
                     continue;
                 }
 
@@ -222,34 +235,34 @@ namespace AngerFootVR.Launcher
                 if (selected)
                 {
                     current = o;
-                    dc.DrawRoundedRectangle(new SolidColorBrush(A(Pink, 0.16)), P(A(Pink, 0.55), 1.2), new Rect(r.Left + 22, y - 4, r.Width - 44, 31), 4, 4);
+                    dc.DrawRoundedRectangle(new SolidColorBrush(A(Pink, 0.16)), P(A(Pink, 0.55), 1.2), new Rect(r.Left + 22, y - 3, r.Width - 44, 29), 4, 4);
                 }
 
                 var labelBrush = !on ? Faint : selected ? White : Dim;
-                Text(dc, o.Label, BodyBold, 17, labelBrush, r.Left + 38, y + 4);
+                Text(dc, o.Label, BodyBold, 16, labelBrush, r.Left + 38, y + 3);
                 var value = on || _cfg != null ? o.Value() : "FIND THE GAME FIRST";
                 var vx = r.Right - 64;
                 var valueBrush = !on ? Faint : selected ? new SolidColorBrush(Yellow) : White;
-                Text(dc, value, Sign, 16, valueBrush, vx, y + 4, 1);
+                Text(dc, value, Sign, 15, valueBrush, vx, y + 3, 1);
                 if (on)
                 {
-                    var vw = TextWidth(value, Sign, 16);
+                    var vw = TextWidth(value, Sign, 15);
                     Text(dc, "‹", BodyBold, 22, selected ? new SolidColorBrush(Pink) : Faint, vx - vw - 16, y - 1, 1);
                     Text(dc, "›", BodyBold, 22, selected ? new SolidColorBrush(Pink) : Faint, r.Right - 40, y - 1, 1);
                     var row = i;
-                    Hit(new Rect(vx - vw - 34, y - 4, 22, 31), () =>
+                    Hit(new Rect(vx - vw - 34, y - 3, 22, 29), () =>
                     {
                         SelectPage(row);
                         Change(-1);
                     }, () => SelectPage(row));
-                    Hit(new Rect(r.Left + 22, y - 4, r.Width - 44, 31), () =>
+                    Hit(new Rect(r.Left + 22, y - 3, r.Width - 44, 29), () =>
                     {
                         SelectPage(row);
                         Change(1);
                     }, () => SelectPage(row));
                 }
 
-                y += 34;
+                y += 31;
             }
 
             var help = current?.Help ?? "Pick with the arrows or the mouse: ‹ › or click changes it. The VR ones apply next time you play (or straight away if the game is running).";
@@ -267,7 +280,7 @@ namespace AngerFootVR.Launcher
                 ("Y", "shoe power", "B", "jump"),
                 (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
                 (left ? "GRIP" : "", left ? "throw your gun" : "", left ? "" : "GRIP", left ? "" : "throw your gun"),
-                ("MENU", "pause", "", ""),
+                ("MENU", "pause", "HOLD STICK", "recenter"),
             };
             var colL = r.Left + 36;
             var colR = r.Left + r.Width / 2 + 10;
@@ -296,7 +309,7 @@ namespace AngerFootVR.Launcher
             y += 16;
             Text(dc, "YOUR BODY", BodyBold, 13, new SolidColorBrush(A(Cyan, 0.85)), colL, y);
             Text(dc, "Full body: look down and it's you, in the shoes you've picked. Your hand aims your gun.", Body, 15, Dim, colL, y + 22, 0, r.Width - 72);
-            y += 64;
+            y += 74;
             Text(dc, "MENUS AND THE MOVIE HOUSE", BodyBold, 13, new SolidColorBrush(A(Cyan, 0.85)), colL, y);
             Text(dc, "Point at the big screen with either hand and pull the trigger (or look at it and press A/X). The sticks and A work too; B goes back. Walk around the movie house with the left stick.", Body, 15, Dim, colL, y + 22, 0, r.Width - 72);
             Text(dc, $"Your gun is in your {gunSide.ToLowerInvariant()} hand: OPTIONS > GUN HAND swaps it.", Body, 13.5, Faint, colL, r.Bottom - 42);

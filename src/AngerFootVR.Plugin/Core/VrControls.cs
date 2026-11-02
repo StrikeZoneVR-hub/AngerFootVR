@@ -32,6 +32,9 @@ internal static class VrControls
     public static Vector2 DevMove;
     private static float _devUntil;
 
+    /// <summary>Dev: the test runtime's (absent) controllers count as there for a few seconds.</summary>
+    public static void DevPresent() => _devUntil = Time.unscaledTime + 3f;
+
     private static readonly bool[] Now = new bool[Buttons * 2], Before = new bool[Buttons * 2];
     private static readonly Vector2[] Sticks = new Vector2[2];
     private static int _frame = -1;

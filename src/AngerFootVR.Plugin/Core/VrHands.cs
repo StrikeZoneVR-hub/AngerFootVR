@@ -15,6 +15,9 @@ internal static class VrHands
         public bool Tracked;
         public Vector3 Position;
         public Quaternion Rotation;
+
+        /// <summary>How fast the hand moves in your play space (m/s, turned with it; walking doesn't count).</summary>
+        public Vector3 Velocity;
     }
 
     public static Pose Left, Right;
@@ -45,6 +48,21 @@ internal static class VrHands
     }
 
     private static Vector3 _head;
+    private static readonly Vector3[] Last = new Vector3[2], Vel = new Vector3[2];
+    private static readonly int[] LastFrame = { -1, -1 };
+
+    /// <summary>The hand's speed in tracking space, from where it was last frame (smoothed a little).</summary>
+    private static Vector3 Speed(XRNode node, Vector3 p)
+    {
+        var i = node == XRNode.LeftHand ? 0 : 1;
+        if (LastFrame[i] == Time.frameCount) return Vel[i];
+        var dt = Time.unscaledDeltaTime;
+        if (LastFrame[i] == Time.frameCount - 1 && dt > 1e-4f) Vel[i] = Vector3.Lerp(Vel[i], (p - Last[i]) / dt, 0.6f);
+        else Vel[i] = Vector3.zero;
+        Last[i] = p;
+        LastFrame[i] = Time.frameCount;
+        return Vel[i];
+    }
 
     private static Pose Read(XRNode node, Vector3 headTracked, Quaternion yaw, Quaternion headYaw, (Vector3 pos, Vector3 euler)? dev)
     {
@@ -53,12 +71,13 @@ internal static class VrHands
             {
                 Tracked = true,
                 Position = _head + headYaw * dev.Value.pos,
-                Rotation = headYaw * Quaternion.Euler(dev.Value.euler)
+                Rotation = headYaw * Quaternion.Euler(dev.Value.euler),
+                Velocity = headYaw * Speed(node, dev.Value.pos),
             };
 
         var device = InputDevices.GetDeviceAtXRNode(node);
         if (!device.isValid || !device.TryGetFeatureValue(CommonUsages.devicePosition, out var p) || !device.TryGetFeatureValue(CommonUsages.deviceRotation, out var r))
             return new Pose { Tracked = false };
-        return new Pose { Tracked = true, Position = _head + yaw * (p - headTracked), Rotation = yaw * r };
+        return new Pose { Tracked = true, Position = _head + yaw * (p - headTracked), Rotation = yaw * r, Velocity = yaw * Speed(node, p) };
     }
 }

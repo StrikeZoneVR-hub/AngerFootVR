@@ -30,7 +30,7 @@ internal class VrInputProvider : IInputProvider
     // play
     public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger);
     public bool WasShootReleased() => VrControls.Up(GunHand, VrButton.Trigger);
-    public bool IsThrowPressed() => VrControls.Held(GunHand, VrButton.Grip);
+    public bool IsThrowPressed() => VrControls.Held(GunHand, VrButton.Grip) || MotionThrow.Held;
     public bool IsKickPressed() => VrControls.HeldEither(VrButton.Primary);
     public bool WasKickPressed() => VrControls.DownEither(VrButton.Primary);
     public bool WasKickReleased() => VrControls.UpEither(VrButton.Primary);
@@ -40,7 +40,7 @@ internal class VrInputProvider : IInputProvider
     public bool IsShoePowerPressed() => VrControls.Held(PowerHand, VrButton.Secondary);
     public bool WasShoePowerReleased() => VrControls.Up(PowerHand, VrButton.Secondary);
     public bool WasInteractPressed() => VrControls.Down(OffHand, VrButton.Grip);
-    public bool WasPausePressed() => VrControls.DownEither(VrButton.Menu);
+    public bool WasPausePressed() => Live && VrControls.DownEither(VrButton.Menu);
     public bool WasRestartLevelPressed() => false; // the pause menu has RESTART
     public bool WasRespawnPressed() => AnyFaceOrTrigger();
 
@@ -54,19 +54,20 @@ internal class VrInputProvider : IInputProvider
     public bool IsDeceleratePressed() => VrControls.Held(XRNode.LeftHand, VrButton.Trigger);
 
     // menus
-    public bool WasMenuAcceptPressed() => VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger);
-    public bool WasMenuCancelPressed() => VrControls.DownEither(VrButton.Secondary);
-    public bool WasMenuNextTabPressed() => VrControls.Down(XRNode.RightHand, VrButton.Grip);
-    public bool WasMenuPreviousTabPressed() => VrControls.Down(XRNode.LeftHand, VrButton.Grip);
+    public bool WasMenuAcceptPressed() => Live && (VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger));
+    public bool WasMenuCancelPressed() => Live && VrControls.DownEither(VrButton.Secondary);
+    public bool WasMenuNextTabPressed() => Live && VrControls.Down(XRNode.RightHand, VrButton.Grip);
+    public bool WasMenuPreviousTabPressed() => Live && VrControls.Down(XRNode.LeftHand, VrButton.Grip);
     public bool WasMenuCancelInputRemappingPressed() => VrControls.DownEither(VrButton.Menu);
-    public bool WasSkipCinematicPressed() => VrControls.DownEither(VrButton.Secondary) || VrControls.DownEither(VrButton.Menu);
-    public bool WasAdvanceConversationPressed() => AnyFaceOrTrigger();
+    public bool WasSkipCinematicPressed() => Live && (VrControls.DownEither(VrButton.Secondary) || VrControls.DownEither(VrButton.Menu));
+    public bool WasAdvanceConversationPressed() => Live && AnyFaceOrTrigger();
     public bool WasCancelConversationPressed() => VrControls.DownEither(VrButton.Menu);
 
     public Vector2 GetMovementDelta() => Deadzone(VrControls.Stick(XRNode.LeftHand), StickDeadzone);
 
     public Vector2 GetMenuDelta()
     {
+        if (!Live) return Vector2.zero;
         // in the movie house the left stick walks: the menu goes by the right stick (and the laser)
         if (CinemaRig.Active) return Deadzone(VrControls.Stick(XRNode.RightHand), MenuDeadzone);
         var left = VrControls.Stick(XRNode.LeftHand);
@@ -87,6 +88,9 @@ internal class VrInputProvider : IInputProvider
         VrControls.Rumble(XRNode.LeftHand, 0f, 0.01f);
         VrControls.Rumble(XRNode.RightHand, 0f, 0.01f);
     }
+
+    /// <summary>The VR opening keeps the game's menus from taking the buttons that skip it.</summary>
+    private static bool Live => !UI.Opening.Playing;
 
     private static bool AnyFaceOrTrigger() =>
         VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Secondary) || VrControls.DownEither(VrButton.Trigger);

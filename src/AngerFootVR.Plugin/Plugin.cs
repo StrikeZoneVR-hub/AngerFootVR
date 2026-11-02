@@ -60,10 +60,15 @@ public class Plugin : BaseUnityPlugin
         XrManager.Update();
         VrControls.Update();
         CinemaRig.Update();
+        UI.Opening.Update();
         UI.VrUi.Update();
         Body.VrBody.Update();
         Body.ViewModels.Update();
         UI.LauncherArt.Update();
+        Rendering.SpectatorView.Update();
+        Recentering();
+        Input.MotionThrow.Update();
+        VrSettings.Poll();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -105,6 +110,30 @@ public class Plugin : BaseUnityPlugin
             return GetProcessMemoryInfo(p.Handle, out var c, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(MemoryCounters)))
                 ? (long)c.PrivateUsage.ToUInt64() / (1024 * 1024)
                 : -1;
+    }
+
+    private float _recenterHeld;
+
+    /// <summary>Holding the right stick in recentres you (in play: on where you stand, at your height; in the movie
+    /// house: back to your spot facing the screen).</summary>
+    private void Recentering()
+    {
+        if (!XrManager.IsRunning) return;
+        if (!VrControls.Held(XRNode.RightHand, VrButton.StickClick))
+        {
+            _recenterHeld = 0f;
+            return;
+        }
+
+        if (_recenterHeld < 0f) return;
+        _recenterHeld += Time.unscaledDeltaTime;
+        if (_recenterHeld < 0.8f) return;
+        _recenterHeld = -1f; // once a hold
+        if (CinemaRig.Active) CinemaRig.Recenter();
+        else VrRig.Recenter();
+        VrControls.Rumble(XRNode.LeftHand, 0.5f, 0.08f);
+        VrControls.Rumble(XRNode.RightHand, 0.5f, 0.08f);
+        L.LogInfo("Recentred");
     }
 
     private void LateUpdate()
@@ -307,6 +336,83 @@ public class Plugin : BaseUnityPlugin
 
                         break;
                     }
+                    case "gfx":
+                    {
+                        var b = new System.Text.StringBuilder($"GFX shadows={QualitySettings.shadows} res={QualitySettings.shadowResolution} dist={QualitySettings.shadowDistance} cascades={QualitySettings.shadowCascades} msaa={QualitySettings.antiAliasing} pixelLights={QualitySettings.pixelLightCount} lodBias={QualitySettings.lodBias} aniso={QualitySettings.anisotropicFiltering} texLimit={QualitySettings.masterTextureLimit} softParticles={QualitySettings.softParticles}");
+                        foreach (var c in Camera.allCameras)
+                        {
+                            var ppl = c.GetComponent<UnityEngine.Rendering.PostProcessing.PostProcessLayer>();
+                            b.Append($" | cam '{c.name}' hdr={c.allowHDR} msaa={c.allowMSAA} path={c.actualRenderingPath} depth={c.depthTextureMode} far={c.farClipPlane}{(ppl != null ? $" ppl aa={ppl.antialiasingMode} enabled={ppl.enabled}" : "")}");
+                        }
+
+                        foreach (var v in UnityEngine.Object.FindObjectsOfType<UnityEngine.Rendering.PostProcessing.PostProcessVolume>())
+                            if (v.sharedProfile != null)
+                                b.Append($" | volume '{v.name}' w={v.weight} global={v.isGlobal}: " + string.Join(",", v.sharedProfile.settings.Where(x => x.active && x.enabled.value).Select(x => x.GetType().Name).ToArray()));
+                        foreach (var mb in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>())
+                            if (mb.enabled && mb.GetType().Name.IndexOf("Occlusion", StringComparison.Ordinal) >= 0 || mb.GetType().Name.IndexOf("Fog", StringComparison.Ordinal) >= 0 || mb.GetType().Name.IndexOf("Volumetric", StringComparison.Ordinal) >= 0)
+                                b.Append($" | {mb.GetType().Name} on '{mb.name}' enabled={mb.enabled}");
+                        L.LogInfo(b.ToString());
+                        break;
+                    }
+                    case "perf":
+                    {
+                        // perf <ppl on|off> | <aa none|fxaa|smaa|taa> | <shadowdist m> | <shadows on|off> | <effect Name on|off>: dev experiments for the cost of each
+                        var a = arg.Split(' ');
+                        var layers = UnityEngine.Object.FindObjectsOfType<UnityEngine.Rendering.PostProcessing.PostProcessLayer>();
+                        switch (a[0])
+                        {
+                            case "ppl":
+                                foreach (var l in layers) l.enabled = a[1] == "on";
+                                break;
+                            case "aa":
+                                foreach (var l in layers)
+                                    l.antialiasingMode = a[1] == "fxaa" ? UnityEngine.Rendering.PostProcessing.PostProcessLayer.Antialiasing.FastApproximateAntialiasing
+                                        : a[1] == "smaa" ? UnityEngine.Rendering.PostProcessing.PostProcessLayer.Antialiasing.SubpixelMorphologicalAntialiasing
+                                        : a[1] == "taa" ? UnityEngine.Rendering.PostProcessing.PostProcessLayer.Antialiasing.TemporalAntialiasing
+                                        : UnityEngine.Rendering.PostProcessing.PostProcessLayer.Antialiasing.None;
+                                break;
+                            case "tex":
+                                QualitySettings.masterTextureLimit = int.Parse(a[1]);
+                                break;
+                            case "shadowdist":
+                                QualitySettings.shadowDistance = float.Parse(a[1], System.Globalization.CultureInfo.InvariantCulture);
+                                break;
+                            case "shadows":
+                                QualitySettings.shadows = a[1] == "on" ? ShadowQuality.All : ShadowQuality.Disable;
+                                break;
+                            case "effect":
+                                foreach (var v in UnityEngine.Object.FindObjectsOfType<UnityEngine.Rendering.PostProcessing.PostProcessVolume>())
+                                    if (v.sharedProfile != null)
+                                        foreach (var x in v.sharedProfile.settings)
+                                            if (x.GetType().Name == a[1])
+                                                x.active = a[2] == "on";
+                                break;
+                        }
+
+                        L.LogInfo("perf " + arg);
+                        break;
+                    }
+                    case "cap":
+                        // cap <fps|-1>: dev frame cap (the test runtime's 90 by default), to measure headroom
+                        Application.targetFrameRate = int.Parse(arg);
+                        L.LogInfo("frame cap " + Application.targetFrameRate);
+                        break;
+                    case "eyescale":
+                        // eyescale <scale>: render the eyes bigger (a real headset's resolution) to measure the cost
+                        XRSettings.eyeTextureResolutionScale = float.Parse(arg, System.Globalization.CultureInfo.InvariantCulture);
+                        L.LogInfo($"eye scale {XRSettings.eyeTextureResolutionScale} -> {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}");
+                        break;
+                    case "flick":
+                        Input.MotionThrow.DevFlick();
+                        break;
+                    case "opening":
+                        UI.Opening.DevReplay();
+                        break;
+                    case "monitor":
+                        if (arg == "dump") L.LogInfo("monitor eye picture: " + Rendering.SpectatorView.Dump(Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots/monitor_eye.png"))));
+                        if (arg == "eye" || arg == "steady") VrSettings.Monitor.Value = arg == "eye" ? VrSettings.MonitorView.Eye : VrSettings.MonitorView.Steady;
+                        L.LogInfo($"{Rendering.SpectatorView.State} | running={XrManager.IsRunning} setting={VrSettings.Monitor.Value} mode={XRSettings.gameViewRenderMode}");
+                        break;
                     case "mirror":
                         // the desktop window shows: "both" (both eyes whole), "left" (cropped), "none"
                         XRSettings.gameViewRenderMode = arg == "both" ? GameViewRenderMode.BothEyes : arg == "none" ? GameViewRenderMode.None : GameViewRenderMode.LeftEye;

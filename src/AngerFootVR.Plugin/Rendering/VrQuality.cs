@@ -11,7 +11,9 @@ namespace AngerFootVR.Rendering;
 /// of the game's settings are turned down while VR runs, applied over the game's own each time it applies them and
 /// never written to its Settings.json (the player's flat-screen settings stay as they are).
 /// - Ambient occlusion (Amplify Occlusion) off: the heaviest effect, twice over in VR.
-/// - Textures one step down on GPUs with 6 GB of video memory or less.
+/// - Textures one step down on GPUs with 6 GB of video memory or less (tried in full on a 6 GB laptop card: a level's
+///   load took free video memory down to 1.5 GB with the eyes and Windows' share, too close with a headset's streamer
+///   also on the card).
 /// - Chromatic aberration off (it smears at the lens edges in a headset).
 /// </summary>
 [HarmonyPatch]
@@ -40,7 +42,21 @@ internal static class VrQuality
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(GameSettings), nameof(GameSettings.Apply))]
-    private static void AfterSettingsApply() => ApplyTextures();
+    private static void AfterSettingsApply()
+    {
+        ApplyTextures();
+        FramePacing();
+    }
+
+    /// <summary>In VR the headset paces the frames: the game's own frame cap and v-sync (its settings, for the monitor)
+    /// are set aside while it runs (never saved). The test runtime doesn't pace, so it gets a 90 fps cap instead.</summary>
+    public static void FramePacing()
+    {
+        if (!Core.XrManager.IsRunning && Core.XrManager.Current != Core.XrManager.State.WaitingForSession) return;
+        var mock = Core.XrManager.RuntimeName.IndexOf("Mock", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        QualitySettings.vSyncCount = 0;
+        Application.targetFrameRate = mock ? 90 : -1;
+    }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(PlayerCamera), "Update")]
