@@ -1,0 +1,7 @@
+analysis/
+dist/
+bin/
+obj/
+*.user
+tools/local.sh
+vendor/
