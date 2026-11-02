@@ -55,6 +55,7 @@ public class Plugin : BaseUnityPlugin
         }
 
         XrManager.Update();
+        VrControls.Update();
         UI.VrUi.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
@@ -112,7 +113,7 @@ public class Plugin : BaseUnityPlugin
         var cam = Camera.main;
         var avg = _frames > 0 ? _frameTime / _frames * 1000f : 0f;
         var mb = MemoryMb();
-        L.LogInfo($"VRPERF frame {avg:F2} ms avg ({(avg > 0 ? 1000f / avg : 0):F1} fps), worst {_worst * 1000f:F1} ms, memory {mb} MB | xr {XrManager.Current} running={XrManager.IsRunning} XRSettings.enabled={XRSettings.enabled} eye {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight} | camera {(cam != null ? $"'{cam.name}' stereo={cam.stereoEnabled} target={cam.stereoTargetEye} fov={cam.fieldOfView:F0}" : "none")}");
+        L.LogInfo($"VRPERF controllers={VrControls.Present} frame {avg:F2} ms avg ({(avg > 0 ? 1000f / avg : 0):F1} fps), worst {_worst * 1000f:F1} ms, memory {mb} MB | xr {XrManager.Current} running={XrManager.IsRunning} XRSettings.enabled={XRSettings.enabled} eye {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight} | camera {(cam != null ? $"'{cam.name}' stereo={cam.stereoEnabled} target={cam.stereoTargetEye} fov={cam.fieldOfView:F0}" : "none")}");
         _frames = 0;
         _frameTime = 0;
         _worst = 0;
@@ -179,6 +180,21 @@ public class Plugin : BaseUnityPlugin
                         var a = arg.Split(' ');
                         Core.VrRig.DevHeadEuler = a[0] == "off" ? (Vector3?)null : new Vector3(float.Parse(a[0]), float.Parse(a[1]), a.Length > 2 ? float.Parse(a[2]) : 0f);
                         L.LogInfo("dev head " + (Core.VrRig.DevHeadEuler?.ToString() ?? "off"));
+                        break;
+                    }
+                    case "press":
+                    {
+                        // press <left|right> <trigger|grip|primary|secondary|stickclick|menu> [frames]: hold a button
+                        var a = arg.Split(' ');
+                        var hand = a[0] == "left" ? XRNode.LeftHand : XRNode.RightHand;
+                        var b = (Core.VrButton)Enum.Parse(typeof(Core.VrButton), a[1], true);
+                        Core.VrControls.DevPress(hand, b, a.Length > 2 ? int.Parse(a[2]) : 6);
+                        break;
+                    }
+                    case "move":
+                    {
+                        var a = arg.Split(' ');
+                        Core.VrControls.DevMove = a[0] == "off" ? Vector2.zero : new Vector2(float.Parse(a[0]), float.Parse(a[1]));
                         break;
                     }
                     case "turn":
