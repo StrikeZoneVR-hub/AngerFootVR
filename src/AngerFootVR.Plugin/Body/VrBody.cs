@@ -20,6 +20,16 @@ internal static class VrBody
     private static GameObject _socks;
     private static ShoeType _wearing;
     private static float _nextShoeCheck;
+    private static UnityEngine.Rendering.LightProbeUsage _probes = (UnityEngine.Rendering.LightProbeUsage)(-1);
+
+    // the mirror twin: the same body with its head, posed as yours every frame, seen only by mirrors (the skin is
+    // worked out once a frame, so a head hidden for your eyes can't be shown again for a mirror's)
+    private static GameObject _twin;
+    private static Transform[] _bodyBones, _twinBones;
+    private static GameObject[] _bodyParts, _twinParts;
+
+    /// <summary>The layer only mirrors (and dev pictures) draw: the twin's.</summary>
+    public const int MirrorLayer = 7;
 
     public static Transform Root => _body != null ? _body.transform : null;
     public static Animator Animator => _animator;
@@ -27,15 +37,25 @@ internal static class VrBody
 
     public static void Update()
     {
-        var inPlay = XrManager.IsRunning && SingletonBehaviour<Player>.HasInstance;
+        var inPlay = XrManager.IsRunning && (SingletonBehaviour<Player>.HasInstance || CinemaRig.Active);
         if (!inPlay)
         {
             if (_body != null) _body.SetActive(false);
+            if (_twin != null) _twin.SetActive(false);
             return;
         }
 
         if (_body == null && !Spawn()) return;
         if (!_body.activeSelf) _body.SetActive(true);
+        if (_twin != null && !_twin.activeSelf) _twin.SetActive(true);
+        // in the movie house the game scene's light probes (made for a level far away) don't light him: the room does
+        var probes = CinemaRig.Active ? UnityEngine.Rendering.LightProbeUsage.Off : UnityEngine.Rendering.LightProbeUsage.BlendProbes;
+        if (_probes != probes)
+        {
+            _probes = probes;
+            foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.lightProbeUsage = probes;
+            if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.lightProbeUsage = probes;
+        }
         if (Time.unscaledTime >= _nextShoeCheck)
         {
             _nextShoeCheck = Time.unscaledTime + 0.5f;
@@ -58,6 +78,19 @@ internal static class VrBody
         FindShoes();
         _body.SetActive(true);
         BodyPose.Attach(_body.transform, _animator);
+
+        _twin = Object.Instantiate(HeroModel.Template);
+        _twin.name = "AngerFootVR Body (mirror twin)";
+        Object.DontDestroyOnLoad(_twin);
+        foreach (var t in _twin.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = MirrorLayer;
+        foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // your body casts the shadow
+        foreach (var s in _twin.GetComponentsInChildren<SkinnedMeshRenderer>(true)) s.updateWhenOffscreen = true;
+        _twin.GetComponent<Animator>().enabled = false;
+        _twin.SetActive(true);
+        _bodyBones = _body.GetComponentsInChildren<Transform>(true);
+        _twinBones = _twin.GetComponentsInChildren<Transform>(true);
+        _bodyParts = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(_body.GetComponentsInChildren<Renderer>(true), r => r.gameObject));
+        _twinParts = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(_twin.GetComponentsInChildren<Renderer>(true), r => r.gameObject));
         Plugin.L.LogInfo($"VR body spawned: {Shoes.Count} shoe meshes, socks {(_socks != null ? "found" : "none")}, head bone {(_head != null ? _head.name : "none")}");
         return true;
     }
@@ -144,6 +177,25 @@ internal static class VrBody
             if (char.IsLetterOrDigit(c))
                 b.Append(c);
         return b.ToString();
+    }
+
+    /// <summary>Called after the body is posed: the twin takes the same pose, and its head stays.</summary>
+    public static void PoseTwin(Transform neck, Transform head)
+    {
+        if (_twin == null || _bodyBones == null || _bodyBones.Length != _twinBones.Length) return;
+        for (var i = 0; i < _bodyBones.Length; i++)
+        {
+            var a = _bodyBones[i];
+            var b = _twinBones[i];
+            b.localPosition = a.localPosition;
+            b.localRotation = a.localRotation;
+            b.localScale = a == neck || a == head ? Vector3.one : a.localScale;
+        }
+
+        if (_bodyParts.Length == _twinParts.Length)
+            for (var i = 0; i < _bodyParts.Length; i++)
+                if (_twinParts[i].activeSelf != _bodyParts[i].activeSelf)
+                    _twinParts[i].SetActive(_bodyParts[i].activeSelf);
     }
 
     private static void SyncShoes()

@@ -46,7 +46,10 @@ internal static class VrUi
             CaptureCanvases();
         }
 
-        PlacePanel();
+        // in the movie house the UI plays on its big screen instead of the floating panel
+        _panel.SetActive(!CinemaRig.Active);
+        if (MovieHouse.Screen != null && MovieHouse.Screen.sharedMaterial.mainTexture != _texture) MovieHouse.Screen.sharedMaterial.mainTexture = _texture;
+        if (!CinemaRig.Active) PlacePanel();
     }
 
     private static void EnsureObjects()

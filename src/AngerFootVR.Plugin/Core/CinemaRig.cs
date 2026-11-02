@@ -1,0 +1,205 @@
+using System.Collections.Generic;
+using Framework;
+using UnityEngine;
+using UnityEngine.XR;
+
+namespace AngerFootVR.Core;
+
+/// <summary>
+/// The cinematic area's view. Whenever you're not playing (the title, menus, loading, a paused game) you stand in the
+/// movie house as your own body: the game's cameras stop drawing to the headset (they draw into a tiny texture, which
+/// spares the GPU), the cinema camera shows the movie house from your tracked head, and the game's UI plays on its
+/// big screen. The movie house's own light and air (no fog, a dark ambient) are swapped in only while its camera draws.
+/// </summary>
+internal static class CinemaRig
+{
+    public static bool Active { get; private set; }
+    public static Camera Camera { get; private set; }
+
+    /// <summary>Your head in the movie house this frame.</summary>
+    public static Vector3 HeadPosition { get; private set; }
+
+    public static Quaternion HeadRotation { get; private set; } = Quaternion.identity;
+
+    /// <summary>The cinema's facing (degrees): turning there turns this.</summary>
+    public static float Yaw;
+
+    /// <summary>Dev: stay in the cinema even in play.</summary>
+    public static bool DevForce;
+
+    private static readonly Dictionary<Camera, (StereoTargetEyeMask eye, RenderTexture target)> Parked = new Dictionary<Camera, (StereoTargetEyeMask, RenderTexture)>();
+    private static RenderTexture _sink;
+    private static float _nextScan;
+    private static Vector3 _center;
+    private static bool _centered;
+    private static Vector3 _walk; // how far you've walked from your spot (world metres)
+
+    /// <summary>Walking speed in the movie house (metres a second at full stick).</summary>
+    public const float WalkSpeed = 2.0f;
+
+    /// <summary>
+    /// The movie house's open floor, relative to its origin: inside the walls, off the stage, not through the seat blocks
+    /// (the centre aisle and the side aisles are open), and round the lobby mirror.
+    /// </summary>
+    private static bool Walkable(Vector3 p)
+    {
+        const float r = 0.25f; // your body's radius
+        if (p.x < -6.9f + r || p.x > 6.9f - r || p.z < -5.9f + r || p.z > 14.3f - r) return false;
+        if (p.z > 2.9f - r && p.z < 12.4f + r && Mathf.Abs(p.x) > 0.75f - r && Mathf.Abs(p.x) < 5.95f + r) return false;
+        var m = new Vector2(p.x + 2.15f, p.z - (UI.MovieHouse.Standing.z - UI.MovieHouse.Origin.z));
+        return !(Mathf.Abs(m.x) < 0.35f + r && Mathf.Abs(m.y) < 0.65f + r);
+    }
+    private static bool _savedFog;
+    private static Color _savedAmbient;
+    private static UnityEngine.Rendering.AmbientMode _savedMode;
+
+    private static bool Wanted =>
+        XrManager.IsRunning && (DevForce || !SingletonBehaviour<Player>.HasInstance || GameState.IsGamePausedOrNotFocused);
+
+    public static void Update()
+    {
+        var want = Wanted;
+        if (want && !Active) Enter();
+        else if (!want && Active) Leave();
+        if (!Active) return;
+        if (Time.unscaledTime >= _nextScan)
+        {
+            _nextScan = Time.unscaledTime + 0.25f;
+            ParkGameCameras();
+        }
+    }
+
+    /// <summary>After the game's own updates: the head, hands and body for this frame.</summary>
+    public static void LateUpdate()
+    {
+        if (!Active || Camera == null) return;
+        VrRig.TryGetTrackedHead(out var tracked, out var rot);
+        if (!_centered)
+        {
+            _center = new Vector3(tracked.x, 0f, tracked.z);
+            _centered = true;
+        }
+
+        // (the right stick works the menu here; you turn yourself)
+        var yawRot = Quaternion.Euler(0f, Yaw, 0f);
+        var height = tracked.y > 0.5f ? tracked.y : 1.62f; // the test runtime's head sits on the floor
+        var local = new Vector3(tracked.x - _center.x, height, tracked.z - _center.z);
+
+        // walking: the left stick, the way you look, on the open floor (the aisles, the lobby; not through the seats)
+        var stick = VrControls.DevMove != Vector2.zero ? VrControls.DevMove : VrControls.Stick(XRNode.LeftHand);
+        if (stick.magnitude > 0.2f)
+        {
+            var look = Vector3.ProjectOnPlane(yawRot * rot * Vector3.forward, Vector3.up).normalized;
+            var right = Vector3.Cross(Vector3.up, look);
+            var step = (look * stick.y + right * stick.x) * (WalkSpeed * Mathf.Clamp01(stick.magnitude) * Time.unscaledDeltaTime);
+            var feet = UI.MovieHouse.Standing + _walk + yawRot * new Vector3(local.x, 0f, local.z) - UI.MovieHouse.Origin;
+            if (Walkable(feet + new Vector3(step.x, 0f, 0f))) _walk.x += step.x;
+            if (Walkable(feet + new Vector3(0f, 0f, step.z))) _walk.z += step.z;
+        }
+
+        HeadPosition = UI.MovieHouse.Standing + _walk + yawRot * local;
+        HeadRotation = yawRot * rot;
+        Camera.transform.SetPositionAndRotation(HeadPosition, HeadRotation);
+        VrHands.UpdateAt(HeadPosition, tracked, Yaw);
+        Body.BodyPose.PoseAt(HeadPosition, HeadRotation, new Vector3(HeadPosition.x, UI.MovieHouse.Standing.y, HeadPosition.z), height);
+    }
+
+    private static void Enter()
+    {
+        if (!UI.MovieHouse.Build(UI.VrUi.Layer)) return;
+        if (Camera == null)
+        {
+            var go = new GameObject("AngerFootVR Cinema Camera");
+            Object.DontDestroyOnLoad(go);
+            Camera = go.AddComponent<Camera>();
+            Camera.stereoTargetEye = StereoTargetEyeMask.Both;
+            Camera.clearFlags = CameraClearFlags.SolidColor;
+            Camera.backgroundColor = Color.black;
+            Camera.cullingMask = 1 << UI.VrUi.Layer;
+            Camera.nearClipPlane = 0.12f; // the jacket's collar stands close round your eyes
+            Camera.farClipPlane = 60f;
+            Camera.depth = 1000;
+            Camera.allowHDR = false;
+            Camera.allowMSAA = true;
+            XRDevice.DisableAutoXRCameraTracking(Camera, true);
+            UI.Mirror.Viewer = Camera;
+            UnityEngine.Camera.onPreCull += LightsOn;
+            UnityEngine.Camera.onPostRender += LightsOff;
+        }
+
+        Camera.gameObject.SetActive(true);
+        _centered = false;
+        _walk = Vector3.zero; // back to your spot facing the screen
+        Active = true;
+        ParkGameCameras();
+        Plugin.L.LogInfo("Cinema: in the movie house");
+    }
+
+    private static void Leave()
+    {
+        Active = false;
+        if (Camera != null) Camera.gameObject.SetActive(false);
+        foreach (var kv in Parked)
+        {
+            if (kv.Key == null) continue;
+            kv.Key.targetTexture = kv.Value.target;
+            kv.Key.stereoTargetEye = kv.Value.eye;
+        }
+
+        Parked.Clear();
+        Plugin.L.LogInfo("Cinema: back to the game");
+    }
+
+    /// <summary>The projector feed: what the game's cameras draw while you're here (shown on the big screen).</summary>
+    public static RenderTexture Feed => _sink;
+
+    /// <summary>
+    /// The game's cameras (new ones too) stop drawing to the headset while you're here and draw the game's own picture
+    /// (the title's animated scene, a paused level) into the projector feed instead, in their usual order, so the
+    /// screen shows exactly what the flat game would; the menu plays over it.
+    /// </summary>
+    private static void ParkGameCameras()
+    {
+        if (_sink == null)
+        {
+            _sink = new RenderTexture(1600, 900, 24, RenderTextureFormat.ARGB32) { name = "AngerFootVR projector feed", antiAliasing = 2 };
+            _sink.Create();
+            Object.DontDestroyOnLoad(_sink);
+            UI.MovieHouse.ShowFeed(_sink);
+        }
+
+        foreach (var cam in UnityEngine.Camera.allCameras)
+        {
+            if (cam == null || cam == Camera || Parked.ContainsKey(cam) || cam.targetTexture != null) continue;
+            if (cam.name.StartsWith("AngerFootVR")) continue;
+            Parked[cam] = (cam.stereoTargetEye, cam.targetTexture);
+            cam.stereoTargetEye = StereoTargetEyeMask.None;
+            cam.targetTexture = _sink;
+        }
+
+        var dead = new List<Camera>();
+        foreach (var c in Parked.Keys)
+            if (c == null)
+                dead.Add(c);
+        foreach (var c in dead) Parked.Remove(c);
+    }
+
+    private static void LightsOn(Camera cam)
+    {
+        if (cam != Camera && cam.name != "AngerFootVR MirrorCamera") return;
+        _savedFog = RenderSettings.fog;
+        _savedAmbient = RenderSettings.ambientLight;
+        _savedMode = RenderSettings.ambientMode;
+        RenderSettings.fog = false;
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.2f, 0.19f, 0.21f); // dim, near-neutral: the neon gives the colour
+    }
+
+    private static void LightsOff(Camera cam)
+    {
+        if (cam != Camera && cam.name != "AngerFootVR MirrorCamera") return;
+        RenderSettings.fog = _savedFog;
+        RenderSettings.ambientMode = _savedMode;
+        RenderSettings.ambientLight = _savedAmbient;
+    }
+}

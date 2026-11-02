@@ -67,6 +67,8 @@ internal class VrInputProvider : IInputProvider
 
     public Vector2 GetMenuDelta()
     {
+        // in the movie house the left stick walks: the menu goes by the right stick (and the laser)
+        if (CinemaRig.Active) return Deadzone(VrControls.Stick(XRNode.RightHand), MenuDeadzone);
         var left = VrControls.Stick(XRNode.LeftHand);
         var right = VrControls.Stick(XRNode.RightHand);
         return Deadzone(left.sqrMagnitude > right.sqrMagnitude ? left : right, MenuDeadzone);

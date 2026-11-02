@@ -93,7 +93,7 @@ internal static class DevPlay
         var cam = go.AddComponent<Camera>();
         cam.CopyFrom(main);
         cam.stereoTargetEye = StereoTargetEyeMask.None;
-        cam.cullingMask |= 1 << UI.VrUi.Layer;
+        cam.cullingMask |= (1 << UI.VrUi.Layer) | (1 << Body.VrBody.MirrorLayer);
         cam.fieldOfView = 50f;
         var size = root.lossyScale.y;
         var look = root.position + Vector3.up * (1.0f * size);
@@ -101,11 +101,9 @@ internal static class DevPlay
         go.transform.LookAt(look);
         var rt = new RenderTexture(1080, 1350, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
         cam.targetTexture = rt;
-        var head = Body.VrBody.Animator != null ? Body.VrBody.Animator.GetBoneTransform(HumanBodyBones.Head) : null;
-        var hs = head != null ? head.localScale : Vector3.one;
-        if (head != null) head.localScale = Vector3.one;
+        Body.BodyPose.SetHeadVisible(true);
         cam.Render();
-        if (head != null) head.localScale = hs;
+        Body.BodyPose.SetHeadVisible(false);
         var prev = RenderTexture.active;
         RenderTexture.active = rt;
         var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);

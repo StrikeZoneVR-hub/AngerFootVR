@@ -29,11 +29,19 @@ internal static class VrHands
     public static void Update()
     {
         VrRig.TryGetTrackedHead(out var headTracked, out _);
-        var yaw = Quaternion.Euler(0f, VrRig.PlayYaw, 0f);
-        var headYaw = Quaternion.Euler(0f, VrRig.HeadRotation.eulerAngles.y, 0f);
-        Left = Read(XRNode.LeftHand, headTracked, yaw, headYaw, DevLeft);
-        Right = Read(XRNode.RightHand, headTracked, yaw, headYaw, DevRight);
+        UpdateAt(VrRig.HeadPosition, headTracked, VrRig.PlayYaw);
     }
+
+    /// <summary>The hands around a head at this world point (tracked there as headTracked), the play space turned by yaw.</summary>
+    public static void UpdateAt(Vector3 headWorld, Vector3 headTracked, float yaw)
+    {
+        _head = headWorld;
+        var yawRot = Quaternion.Euler(0f, yaw, 0f);
+        Left = Read(XRNode.LeftHand, headTracked, yawRot, yawRot, DevLeft);
+        Right = Read(XRNode.RightHand, headTracked, yawRot, yawRot, DevRight);
+    }
+
+    private static Vector3 _head;
 
     private static Pose Read(XRNode node, Vector3 headTracked, Quaternion yaw, Quaternion headYaw, (Vector3 pos, Vector3 euler)? dev)
     {
@@ -41,13 +49,13 @@ internal static class VrHands
             return new Pose
             {
                 Tracked = true,
-                Position = VrRig.HeadPosition + headYaw * dev.Value.pos,
+                Position = _head + headYaw * dev.Value.pos,
                 Rotation = headYaw * Quaternion.Euler(dev.Value.euler)
             };
 
         var device = InputDevices.GetDeviceAtXRNode(node);
         if (!device.isValid || !device.TryGetFeatureValue(CommonUsages.devicePosition, out var p) || !device.TryGetFeatureValue(CommonUsages.deviceRotation, out var r))
             return new Pose { Tracked = false };
-        return new Pose { Tracked = true, Position = VrRig.HeadPosition + yaw * (p - headTracked), Rotation = yaw * r };
+        return new Pose { Tracked = true, Position = _head + yaw * (p - headTracked), Rotation = yaw * r };
     }
 }

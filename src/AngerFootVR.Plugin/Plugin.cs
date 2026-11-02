@@ -57,6 +57,7 @@ public class Plugin : BaseUnityPlugin
 
         XrManager.Update();
         VrControls.Update();
+        CinemaRig.Update();
         UI.VrUi.Update();
         Body.VrBody.Update();
         Body.ViewModels.Update();
@@ -101,6 +102,12 @@ public class Plugin : BaseUnityPlugin
             return GetProcessMemoryInfo(p.Handle, out var c, (uint)System.Runtime.InteropServices.Marshal.SizeOf(typeof(MemoryCounters)))
                 ? (long)c.PrivateUsage.ToUInt64() / (1024 * 1024)
                 : -1;
+    }
+
+    private void LateUpdate()
+    {
+        CinemaRig.LateUpdate();
+        UI.Laser.Update();
     }
 
     private static void Watchdog()
@@ -246,6 +253,21 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo("dev shoe " + (shoe != null ? shoe.name : "none matches " + arg));
                         break;
                     }
+                    case "assets":
+                    {
+                        foreach (var n in new[] { "Standard", "Unlit/Color", "Unlit/Texture", "Unlit/Transparent", "Sprites/Default", "UI/Default", "Legacy Shaders/Diffuse", "Mobile/Diffuse", "TextMeshPro/Distance Field", "TextMeshPro/Mobile/Distance Field", "Skybox/Procedural", "Particles/Standard Unlit", "Legacy Shaders/Particles/Additive" })
+                            L.LogInfo($"ASSET shader {n}: {(Shader.Find(n) != null ? "yes" : "no")}");
+                        var used = new System.Collections.Generic.HashSet<string>();
+                        foreach (var m in Resources.FindObjectsOfTypeAll<Material>()) if (m != null && m.shader != null) used.Add(m.shader.name);
+                        L.LogInfo("ASSET shaders in use: " + string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Take(used, 60))));
+                        L.LogInfo("ASSET fonts: " + string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(Resources.FindObjectsOfTypeAll<TMPro.TMP_FontAsset>(), f => f.name))));
+                        var tex = System.Linq.Enumerable.Where(Resources.FindObjectsOfTypeAll<Texture2D>(), t => t != null && System.Text.RegularExpressions.Regex.IsMatch(t.name, arg.Length > 0 ? arg : "(?i)poster|neon|sign|logo|brick|carpet|curtain|cinema|movie|title|key ?art"));
+                        L.LogInfo("ASSET textures: " + string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Take(System.Linq.Enumerable.Select(tex, t => $"{t.name}({t.width}x{t.height})"), 80))));
+                        break;
+                    }
+                    case "cinema":
+                        CinemaRig.DevForce = arg == "on";
+                        break;
                     case "bodyik":
                         Body.BodyPose.DevStage = int.Parse(arg);
                         break;

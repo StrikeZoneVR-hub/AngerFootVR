@@ -47,9 +47,9 @@ internal static class BodyPose
     private static int _kickLeg = 1;
 
     /// <summary>How far behind your eyes the body stands (metres, at the game's scale).</summary>
-    public const float BehindEyes = 0.12f;
+    public const float BehindEyes = 0.3f;
 
-    private const float FreeHeadTurn = 40f, StepTime = 0.18f, KickTime = 0.38f;
+    private const float FreeHeadTurn = 15f, StepTime = 0.18f, KickTime = 0.38f;
 
     private static int GroundMask => Physics.DefaultRaycastLayers & ~((1 << 10) | (1 << 11) | (1 << 13) | (1 << 14) | (1 << 15) | (1 << 17) | (1 << 18) | (1 << 22) | (1 << 5));
 
@@ -177,6 +177,9 @@ internal static class BodyPose
         foreach (var kv in dup)
             if (kv.Value.Count > 1)
                 Plugin.L.LogInfo($"SKIN duplicate '{kv.Key}' x{kv.Value.Count}: {string.Join(" | ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(kv.Value, t => (t.parent != null ? t.parent.name : "-") + (t == UpperArm[1] || t == UpperArm[0] || t == _hips ? "*" : ""))))}");
+        foreach (var smr in _root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            if (smr.name == "Jacket2" || smr.name == "AngerfootBody")
+                Plugin.L.LogInfo($"SKIN {smr.name} bones: {string.Join(",", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(smr.bones, b => b != null ? b.name : "-")))}");
         var hipsPath = new System.Text.StringBuilder();
         for (var t = _hips; t != null && t != _root; t = t.parent) hipsPath.Insert(0, "/" + t.name);
         Plugin.L.LogInfo($"SKIN hips path {hipsPath}; humanoid arm {UpperArm[1].name} parent {UpperArm[1].parent.name}");
@@ -219,18 +222,34 @@ internal static class BodyPose
     /// <summary>Dev: draw the head too (for pictures of the whole body).</summary>
     public static void ShowHead(bool show) => _showHead = show;
 
-    /// <summary>Called right after the VR rig placed the head this frame.</summary>
+    /// <summary>Called right after the VR rig placed the head this frame (in play).</summary>
     public static void Pose()
     {
-        if (_root == null || !VrBody.Active || !SingletonBehaviour<Player>.HasInstance) return;
+        if (_root == null || !VrBody.Active || !SingletonBehaviour<Player>.HasInstance || CinemaRig.Active) return;
         VrHands.Update();
-        var dt = Mathf.Max(Time.deltaTime, 1e-4f);
         var player = SingletonBehaviour<Player>.Instance;
         var feet = player.transform.position;
-        var gameEye = player.GetEyePosition(alive: true).y - feet.y;
+        PoseAt(VrRig.HeadPosition, VrRig.HeadRotation, feet, player.GetEyePosition(alive: true).y - feet.y);
+    }
+
+    /// <summary>Shows or hides the head right now (the mirror draws it; you never see it).</summary>
+    public static void SetHeadVisible(bool visible)
+    {
+        var show = visible || _showHead;
+        if (_neck != null && _neck != _head)
+        {
+            _neck.localScale = show ? Vector3.one : Vector3.one * 0.001f;
+            if (_head != null) _head.localScale = Vector3.one;
+        }
+        else if (_head != null) _head.localScale = show ? Vector3.one : Vector3.one * 0.001f;
+    }
+
+    /// <summary>Poses the body under a head (world), standing on feet, the eyes standing at eyeHeight over them.</summary>
+    public static void PoseAt(Vector3 headPos, Quaternion headRot, Vector3 feet, float gameEye)
+    {
+        if (_root == null || !VrBody.Active) return;
+        var dt = Mathf.Max(Time.unscaledDeltaTime, 1e-4f);
         var scale = Mathf.Clamp(gameEye / _modelEyeHeight, 0.25f, 4f);
-        var headPos = VrRig.HeadPosition;
-        var headRot = VrRig.HeadRotation;
 
         // body yaw: follows the head, which may turn 40 degrees on its own (all the way when walking)
         var headFwd = Vector3.ProjectOnPlane(headRot * Vector3.forward, Vector3.up);
@@ -266,7 +285,7 @@ internal static class BodyPose
         _hips.position = hp;
 
         // the torso leans towards your head: the neck goes to just below and behind your eyes
-        var neckTarget = headPos + headRot * (new Vector3(0f, -0.11f, -0.08f) * scale);
+        var neckTarget = headPos + (Vector3.down * 0.11f - fwd * 0.08f) * scale; // by the body's facing: turning your head doesn't swing the chest
         if (DevStage >= 1)
         {
             BodyIk.Lean(_spine, _neck.position, neckTarget, 0.55f);
@@ -277,7 +296,8 @@ internal static class BodyPose
         if (DevStage >= 3) Arms(bodyRot, scale);
 
         if (DevStage >= 2) FollowHelpers();
-        if (_head != null) _head.localScale = _showHead ? Vector3.one : Vector3.one * 0.001f; // you look out of it
+        SetHeadVisible(false); // you look out of it (the neck too: the jacket's collar stands round it)
+        VrBody.PoseTwin(_neck, _head);
         _lastRoot = feet;
     }
 

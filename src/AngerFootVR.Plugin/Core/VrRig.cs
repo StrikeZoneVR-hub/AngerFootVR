@@ -124,7 +124,10 @@ internal static class VrRig
         _rigged = pc;
         foreach (var cam in new[] { pc.MainCamera, pc.EffectsCamera, pc.WeaponCamera })
             if (cam != null)
+            {
                 XRDevice.DisableAutoXRCameraTracking(cam, true);
+                cam.nearClipPlane = Mathf.Max(cam.nearClipPlane, 0.08f); // the body's collar stands close round your eyes
+            }
         _calibrated = false;
         Plugin.L.LogInfo("VR rig on the player's cameras");
     }
