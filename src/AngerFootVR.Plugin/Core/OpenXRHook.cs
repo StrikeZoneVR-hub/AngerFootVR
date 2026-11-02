@@ -23,6 +23,12 @@ internal static class OpenXRHook
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
     private delegate int EnumerateExtensionsFn(IntPtr layerName, uint capacity, out uint count, IntPtr properties);
 
+    private const string Automation = "XR_EXT_conformance_automation";
+    private static IntPtr _automationName;
+
+    /// <summary>Dev: the test runtime's controller automation is on (see Dev/MockControllers.cs).</summary>
+    public static bool AutomationEnabled { get; private set; }
+
     // XrInstanceCreateInfo (x64): enabledExtensionCount at 312, enabledExtensionNames (const char* const*) at 320
     private const int ExtensionCountOffset = 312, ExtensionNamesOffset = 320;
 
@@ -189,8 +195,18 @@ internal static class OpenXRHook
             else dropped.Add(ext);
         }
 
-        if (dropped.Count == 0) return _realCreate(createInfo, instance);
-        Plugin.L.LogInfo($"OpenXR: the runtime lacks {string.Join(", ", dropped.ToArray())}; starting without it");
+        // dev runs on the test runtime: its controller automation (poses and buttons set from dev commands)
+        var added = false;
+        if (Plugin.DevRun && available.Contains(Automation))
+        {
+            if (_automationName == IntPtr.Zero) _automationName = Marshal.StringToHGlobalAnsi(Automation);
+            keep.Add(_automationName);
+            added = true;
+            AutomationEnabled = true;
+        }
+
+        if (dropped.Count == 0 && !added) return _realCreate(createInfo, instance);
+        if (dropped.Count > 0) Plugin.L.LogInfo($"OpenXR: the runtime lacks {string.Join(", ", dropped.ToArray())}; starting without it");
         var array = Marshal.AllocHGlobal(IntPtr.Size * Math.Max(1, keep.Count));
         try
         {

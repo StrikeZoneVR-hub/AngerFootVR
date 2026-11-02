@@ -96,7 +96,7 @@ internal static class VrRig
         if (!Active) return;
         if (_rigged != __instance) Rig(__instance);
         if (!PlaceCameras(__instance)) return;
-        Body.BodyPose.Pose();
+        Body.HeroBody.Pose();
     }
 
     /// <summary>The view cameras at your head: in LateUpdate (for the body and the game), and again just before the frame

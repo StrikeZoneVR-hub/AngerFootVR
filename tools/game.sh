@@ -24,6 +24,7 @@ REGSNAP="$TOOLS/../analysis/reg-before-run.reg"
 snapshot_reg() { rm -f "$REGSNAP"; reg export "$REGKEY" "$(cygpath -w "$REGSNAP")" //y >/dev/null 2>&1; }
 finish() {
   arm false
+  rm -f "$DATA/dev-run.token"
   if [ -f "$REGSNAP" ]; then
     reg import "$(cygpath -w "$REGSNAP")" >/dev/null 2>&1 && rm -f "$REGSNAP"
   fi
@@ -38,6 +39,9 @@ case "$1" in
     if [ "$AFVR_VANILLA" = 1 ]; then arm false; else arm true; fi
     # dev runs keep their own saves and settings (BepInEx/AngerFootVR/dev-saves); AFVR_REALSAVES=1 to use the player's
     [ "$AFVR_REALSAVES" = 1 ] || export AFVR_DEVSAVES=1
+    # the dev run's token: the mod treats a run as a dev run only while this file holds the token it was started with
+    # (a dev setting once leaked into Steam's environment, and the player's own runs came up on the test saves)
+    mkdir -p "$DATA"; export AFVR_DEVTOKEN="$RANDOM$RANDOM$RANDOM"; printf '%s' "$AFVR_DEVTOKEN" > "$DATA/dev-run.token"
     args=""; [ -n "$2" ] && args="-ArgumentList '$2'"
     mkdir -p "$(dirname "$PIDFILE")"
     powershell.exe -NoProfile -Command "(Start-Process -FilePath '$GAME/$EXE' -WorkingDirectory '$GAME' $args -PassThru).Id" | tr -d '\r' > "$PIDFILE"

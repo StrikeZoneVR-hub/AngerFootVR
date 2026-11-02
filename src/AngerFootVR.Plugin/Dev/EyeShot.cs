@@ -23,11 +23,14 @@ internal static class EyeShot
         _armedFrame = Time.frameCount + 1;
         Camera.onPostRender -= OnPostRender;
         Camera.onPostRender += OnPostRender;
+        Plugin.Instance.StartCoroutine(SaveAfterFrame());
     }
 
+    /// <summary>Each stereo camera that draws into the eyes in the armed frame copies them (the last one, the weapon
+    /// camera in play, leaves the whole picture, the gun included).</summary>
     private static void OnPostRender(Camera cam)
     {
-        if (_armedFrame < 0 || Time.frameCount < _armedFrame || !cam.stereoEnabled) return;
+        if (_armedFrame < 0 || Time.frameCount != _armedFrame || !cam.stereoEnabled || cam.targetTexture != null) return;
         var eye = cam.stereoActiveEye == Camera.MonoOrStereoscopicEye.Right ? 1 : 0;
         if (Copies[eye] == null)
             Copies[eye] = new RenderTexture(XRSettingsWidth(), XRSettingsHeight(), 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
@@ -35,12 +38,14 @@ internal static class EyeShot
         _copy.Clear();
         _copy.Blit(BuiltinRenderTextureType.CurrentActive, Copies[eye]);
         Graphics.ExecuteCommandBuffer(_copy);
-        if (Copies[0] != null && Copies[1] != null && eye == 1)
-        {
-            _armedFrame = -1;
-            Camera.onPostRender -= OnPostRender;
-            Plugin.Instance.StartCoroutine(Save());
-        }
+    }
+
+    private static System.Collections.IEnumerator SaveAfterFrame()
+    {
+        while (Time.frameCount <= _armedFrame) yield return new WaitForEndOfFrame();
+        _armedFrame = -1;
+        Camera.onPostRender -= OnPostRender;
+        if (Copies[0] != null && Copies[1] != null) yield return Save();
     }
 
     private static int XRSettingsWidth() => Math.Max(16, UnityEngine.XR.XRSettings.eyeTextureWidth);

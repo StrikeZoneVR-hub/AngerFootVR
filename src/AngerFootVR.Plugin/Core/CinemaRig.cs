@@ -105,10 +105,12 @@ internal static class CinemaRig
         Camera.transform.SetPositionAndRotation(HeadPosition, HeadRotation);
         _height = height;
         VrHands.UpdateAt(HeadPosition, tracked, Yaw);
-        Body.BodyPose.PoseAt(HeadPosition, HeadRotation, new Vector3(HeadPosition.x, UI.MovieHouse.Standing.y, HeadPosition.z), height);
+        // your standing eye height: the highest your head has been since you came in (or recentred)
+        if (tracked.y > 0.5f) _standingEye = Mathf.Max(_standingEye, tracked.y);
+        Body.HeroBody.PoseCinema(HeadPosition, HeadRotation, UI.MovieHouse.Standing.y, _standingEye > 0.5f ? _standingEye : height);
     }
 
-    private static float _height = 1.62f;
+    private static float _height = 1.62f, _standingEye;
 
     /// <summary>Just before the frame is drawn: the camera again, from the newest head pose (the one Unity draws the
     /// eyes with), as Unity's own tracked pose driver does.</summary>
@@ -161,6 +163,8 @@ internal static class CinemaRig
     {
         _centered = false;
         _walk = Vector3.zero;
+        _standingEye = 0f;
+        Body.HeroBody.Replant();
     }
 
     private static void Leave()

@@ -9,5 +9,5 @@ internal static class BodyPatches
     /// <summary>The game kicks (A/X): the body's leg swings out with it.</summary>
     [HarmonyPostfix]
     [HarmonyPatch(typeof(FootRig), nameof(FootRig.ReleaseAttack))]
-    private static void Kicked() => BodyPose.Kick();
+    private static void Kicked() => HeroBody.Kick();
 }

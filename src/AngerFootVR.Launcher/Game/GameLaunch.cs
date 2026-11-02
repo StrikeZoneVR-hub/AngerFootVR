@@ -45,6 +45,24 @@ namespace AngerFootVR.Launcher.Game
             if (vr && !string.IsNullOrEmpty(runtimeJson) && File.Exists(runtimeJson))
                 psi.EnvironmentVariables["XR_RUNTIME_JSON"] = runtimeJson;
 
+            // the same in a file the mod reads as it starts (an environment doesn't survive the game being restarted by
+            // Steam or Windows on its way up)
+            try
+            {
+                var dir = Path.Combine(game.BepInExDir, "AngerFootVR");
+                Directory.CreateDirectory(dir);
+                File.WriteAllLines(Path.Combine(dir, "launch.txt"), new[]
+                {
+                    "mode=" + (vr ? "vr" : "flat"),
+                    "runtime=" + (vr && !string.IsNullOrEmpty(runtimeJson) && File.Exists(runtimeJson) ? runtimeJson : ""),
+                    "at=" + DateTime.UtcNow.Ticks,
+                });
+            }
+            catch (Exception e)
+            {
+                LauncherLog.Write("couldn't write launch.txt: " + e.Message);
+            }
+
             LauncherLog.Write($"Launching {(vr ? "VR" : "flat")} runtime={(string.IsNullOrEmpty(runtimeJson) ? "(PC default)" : runtimeJson)}");
             status?.Invoke(vr ? "STARTING ANGER FOOT IN VR..." : "STARTING ANGER FOOT...");
             return Process.Start(psi);

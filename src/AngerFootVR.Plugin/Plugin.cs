@@ -20,7 +20,25 @@ public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
     /// (it sets AFVR_MODE): a player's run once came up as a dev run and played on the test saves.</summary>
-    internal static readonly bool DevRun = Environment.GetEnvironmentVariable("AFVR_DEVSAVES") == "1" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AFVR_MODE"));
+    internal static readonly bool DevRun = IsDevRun();
+
+    /// <summary>tools/game.sh starts a dev run with a token in BepInEx/AngerFootVR/dev-run.token and the same token in the
+    /// environment, and deletes the file when the run ends: a dev setting left in some other program's environment
+    /// (Steam's, once) can't make a player's run a dev run.</summary>
+    private static bool IsDevRun()
+    {
+        if (Environment.GetEnvironmentVariable("AFVR_DEVSAVES") != "1" || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AFVR_MODE"))) return false;
+        var token = Environment.GetEnvironmentVariable("AFVR_DEVTOKEN");
+        var file = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "dev-run.token"));
+        try
+        {
+            return !string.IsNullOrEmpty(token) && File.Exists(file) && File.ReadAllText(file).Trim() == token;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 
     internal static ManualLogSource L;
     internal static Plugin Instance;
@@ -53,8 +71,50 @@ public class Plugin : BaseUnityPlugin
         Directory.CreateDirectory(Path.GetDirectoryName(_cmdFile));
         File.WriteAllText(_cmdFile, "");
         // VR starts a few seconds in, once the game's first scene is up (AFVR_NOXR=1 leaves it off)
-        // (the launcher's PLAY FLAT starts the game with AFVR_MODE=flat: the mod stays out of the way)
-        if (Environment.GetEnvironmentVariable("AFVR_NOXR") != "1" && Environment.GetEnvironmentVariable("AFVR_MODE") != "flat") _startXrAt = 4f;
+        // the launcher's choices (PLAY FLAT: the mod stays out of the way; the VR runtime chosen in OPTIONS)
+        var launch = ReadLaunchFile();
+        var flat = Environment.GetEnvironmentVariable("AFVR_MODE") == "flat" || launch.mode == "flat";
+        if (!string.IsNullOrEmpty(launch.runtime) && File.Exists(launch.runtime))
+        {
+            Environment.SetEnvironmentVariable("XR_RUNTIME_JSON", launch.runtime); // (read by the OpenXR loader when VR starts)
+            L.LogInfo("VR runtime chosen in the launcher: " + launch.runtime);
+        }
+
+        if (Environment.GetEnvironmentVariable("AFVR_NOXR") != "1" && !flat) _startXrAt = 4f;
+        else L.LogInfo("Started flat from the launcher: VR stays off");
+    }
+
+    /// <summary>BepInEx/AngerFootVR/launch.txt, written by the launcher just before it starts the game (read once, then
+    /// deleted; a stale one, from a launch that never came up, is ignored).</summary>
+    private static (string mode, string runtime) ReadLaunchFile()
+    {
+        var file = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "launch.txt"));
+        try
+        {
+            if (!File.Exists(file)) return (null, null);
+            string mode = null, runtime = null;
+            long at = 0;
+            foreach (var line in File.ReadAllLines(file))
+            {
+                var i = line.IndexOf('=');
+                if (i < 0) continue;
+                var k = line.Substring(0, i);
+                var v = line.Substring(i + 1).Trim();
+                if (k == "mode") mode = v;
+                else if (k == "runtime") runtime = v;
+                else if (k == "at") long.TryParse(v, out at);
+            }
+
+            File.Delete(file);
+            if (at > 0 && (DateTime.UtcNow - new DateTime(at, DateTimeKind.Utc)).TotalMinutes > 3) return (null, null);
+            L.LogInfo($"Started from the launcher: {mode}");
+            return (mode, runtime);
+        }
+        catch (Exception e)
+        {
+            L.LogWarning("launch.txt: " + e.Message);
+            return (null, null);
+        }
     }
 
     private void Update()
@@ -316,7 +376,7 @@ public class Plugin : BaseUnityPlugin
                         CinemaRig.DevForce = arg == "on";
                         break;
                     case "bodyik":
-                        Body.BodyPose.DevStage = int.Parse(arg);
+                        L.LogInfo("BODYPOSE " + Body.HeroBody.Describe());
                         break;
                     case "bodyshot":
                         StartCoroutine(Dev.DevPlay.BodyShot(arg));
@@ -437,6 +497,25 @@ public class Plugin : BaseUnityPlugin
                         var hd = InputDevices.GetDeviceAtXRNode(XRNode.CenterEye);
                         if (hd.TryGetFeatureValue(CommonUsages.devicePosition, out var headTracked)) b.Append($" | tracked head {headTracked:F3}");
                         L.LogInfo(b.ToString());
+                        break;
+                    }
+                    case "ctl":
+                    {
+                        var a = arg.Split(' ');
+                        Dev.MockControllers.Place(a[0], new Vector3(Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2]), Dev.MockControllers.F(a[3])),
+                            a.Length >= 7 ? new Vector3(Dev.MockControllers.F(a[4]), Dev.MockControllers.F(a[5]), Dev.MockControllers.F(a[6])) : Vector3.zero);
+                        break;
+                    }
+                    case "ctlbtn":
+                    {
+                        var a = arg.Split(' ');
+                        Dev.MockControllers.Button(a[0], a[1], Dev.MockControllers.F(a[2]));
+                        break;
+                    }
+                    case "ctlstick":
+                    {
+                        var a = arg.Split(' ');
+                        Dev.MockControllers.Stick(a[0], Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2]));
                         break;
                     }
                     case "mockhead":

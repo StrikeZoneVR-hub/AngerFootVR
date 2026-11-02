@@ -96,14 +96,20 @@ internal static class DevPlay
         cam.cullingMask |= (1 << UI.VrUi.Layer) | (1 << Body.VrBody.MirrorLayer);
         cam.fieldOfView = 50f;
         var size = root.lossyScale.y;
-        var look = root.position + Vector3.up * (1.0f * size);
-        go.transform.position = root.position + root.rotation * new Vector3(0.6f, 1.3f, 2.4f) * size;
+        var feet = new Vector3(root.position.x, root.position.y - 0.95f * size, root.position.z); // (the root is at the hips)
+        var look = feet + Vector3.up * (0.85f * size);
+        // from the front by default; a name with "side", "back" or "top" in it shoots from there
+        var from = name != null && name.Contains("side") ? new Vector3(3.0f, 1.0f, 0.4f)
+            : name != null && name.Contains("back") ? new Vector3(-0.7f, 1.3f, -3.0f)
+            : name != null && name.Contains("top") ? new Vector3(0.4f, 2.9f, 1.2f)
+            : new Vector3(0.7f, 1.1f, 3.0f);
+        go.transform.position = feet + root.rotation * from * size;
         go.transform.LookAt(look);
         var rt = new RenderTexture(1080, 1350, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
         cam.targetTexture = rt;
-        Body.BodyPose.SetHeadVisible(true);
+        Body.HeroBody.ShowHead(true);
         cam.Render();
-        Body.BodyPose.SetHeadVisible(false);
+        Body.HeroBody.ShowHead(false);
         var prev = RenderTexture.active;
         RenderTexture.active = rt;
         var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);

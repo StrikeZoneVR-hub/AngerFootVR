@@ -9,8 +9,9 @@ namespace AngerFootVR.Input;
 /// <summary>
 /// Guns in your hand (an early look at the motion controls). The game animates its guns on its first-person rig (sway,
 /// recoil, reloading), with the gun hanging off the rig's right wrist and the barrel along the rig's forward. In VR that
-/// whole rig (its arms hidden: your body's arms are yours) is placed every frame, after the game's own sway, so its
-/// wrist is at your controller and the barrel along your aim: the game's own gun, animations and all, in your hand.
+/// whole rig (its arms hidden: your body's arms are yours) is placed every frame, after the game's own sway, so its hand
+/// is on your body's hand (wrist on wrist, fingers along fingers: the gun sits in your grip as the game's own hand holds
+/// it), turned about the wrist so the barrel runs along your aim: the game's own gun, animations and all, in your hand.
 /// Shots leave its muzzle along your aim; the crosshair in the middle of your view goes (you aim with your hand).
 /// </summary>
 [HarmonyPatch]
@@ -19,8 +20,8 @@ internal static class GunHold
     /// <summary>The hand the guns are in.</summary>
     public static XRNode Hand => VrInputProvider.GunHand;
 
-    private const string WristName = "FPSHands_03_Rig:Wrist_R";
-    private static Transform _wrist;
+    private const string WristName = "FPSHands_03_Rig:Wrist_R", MiddleName = "FPSHands_03_Rig:MiddleFinger1_R", ThumbName = "FPSHands_03_Rig:ThumbFinger1_R";
+    private static Transform _wrist, _middle, _thumb;
     private static HandRig _rig;
 
     /// <summary>Whether a gun is in your hand this frame.</summary>
@@ -46,23 +47,41 @@ internal static class GunHold
         if (_rig != __instance || _wrist == null)
         {
             _rig = __instance;
-            _wrist = null;
+            _wrist = _middle = _thumb = null;
             foreach (var t in __instance.GetComponentsInChildren<Transform>(true))
-                if (t.name == WristName)
-                {
-                    _wrist = t;
-                    break;
-                }
+            {
+                if (t.name == WristName) _wrist = t;
+                else if (t.name == MiddleName) _middle = t;
+                else if (t.name == ThumbName) _thumb = t;
+            }
 
             if (_wrist == null) return;
         }
 
-        // the rig turned to your aim, moved so its wrist sits just behind your grip
         var rig = __instance.transform;
         var aim = Aim(pose);
+        // your hand (the body's): InkVR's grip-to-hand frame, z along the fingers, y out of the back of the hand
+        var s = Hand == XRNode.LeftHand ? -1f : 1f;
+        var local = Quaternion.LookRotation(Vector3.down, new Vector3(s, 0, 0));
+        var handRot = pose.Rotation * local;
+        var handPos = pose.Position + pose.Rotation * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f));
+
+        // the game's own first-person hand, in the same kind of frame (it holds the gun as the game animates it)
         var wristInRig = rig.InverseTransformPoint(_wrist.position);
-        var grip = pose.Position - aim * new Vector3(0f, 0.02f, 0.06f);
-        rig.SetPositionAndRotation(grip - aim * Vector3.Scale(wristInRig, rig.lossyScale), aim);
+        Quaternion rigRot;
+        if (_middle != null && _thumb != null)
+        {
+            var along = _middle.position - _wrist.position;
+            var thumb = Vector3.ProjectOnPlane(_thumb.position - _wrist.position, along.normalized);
+            var back = s > 0 ? Vector3.Cross(thumb, along) : Vector3.Cross(along, thumb);
+            var fpsFrame = Quaternion.Inverse(rig.rotation) * Quaternion.LookRotation(along, back);
+            // its hand onto yours, then turned about the wrist just enough that the barrel runs along your aim
+            rigRot = handRot * Quaternion.Inverse(fpsFrame);
+            rigRot = Quaternion.FromToRotation(rigRot * Vector3.forward, aim * Vector3.forward) * rigRot;
+        }
+        else rigRot = aim;
+
+        rig.SetPositionAndRotation(handPos - rigRot * Vector3.Scale(wristInRig, rig.lossyScale), rigRot);
         Holding = true;
     }
 

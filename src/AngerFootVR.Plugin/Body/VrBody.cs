@@ -9,7 +9,7 @@ namespace AngerFootVR.Body;
 /// Your body in VR: Anger Foot's own model (HeroModel), standing where the player is, scaled so his eyes are at the
 /// game's eye height, wearing the shoes you have on (the game's own shoe meshes, switched the way the game switches its
 /// kicking leg's: by each shoe's rig name, socks when the shoe shows them) and updating as soon as you change them. His
-/// head is never drawn for you (you look out of it). Posed from your head and hands by BodyPose.
+/// head is never drawn for you (you look out of it). Posed from your head and hands by HeroBody (InkVR's posing).
 /// </summary>
 internal static class VrBody
 {
@@ -77,7 +77,6 @@ internal static class VrBody
         _head = _animator.GetBoneTransform(HumanBodyBones.Head);
         FindShoes();
         _body.SetActive(true);
-        BodyPose.Attach(_body.transform, _animator);
 
         _twin = Object.Instantiate(HeroModel.Template);
         _twin.name = "AngerFootVR Body (mirror twin)";
@@ -91,6 +90,7 @@ internal static class VrBody
         _twinBones = _twin.GetComponentsInChildren<Transform>(true);
         _bodyParts = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(_body.GetComponentsInChildren<Renderer>(true), r => r.gameObject));
         _twinParts = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(_twin.GetComponentsInChildren<Renderer>(true), r => r.gameObject));
+        HeroBody.Attach(_body.transform, _animator, _twin.transform);
         Plugin.L.LogInfo($"VR body spawned: {Shoes.Count} shoe meshes, socks {(_socks != null ? "found" : "none")}, head bone {(_head != null ? _head.name : "none")}");
         return true;
     }
@@ -179,19 +179,21 @@ internal static class VrBody
         return b.ToString();
     }
 
-    /// <summary>Called after the body is posed: the twin takes the same pose, and its head stays.</summary>
-    public static void PoseTwin(Transform neck, Transform head)
-    {
-        if (_twin == null || _bodyBones == null || _bodyBones.Length != _twinBones.Length) return;
-        for (var i = 0; i < _bodyBones.Length; i++)
-        {
-            var a = _bodyBones[i];
-            var b = _twinBones[i];
-            b.localPosition = a.localPosition;
-            b.localRotation = a.localRotation;
-            b.localScale = a == neck || a == head ? Vector3.one : a.localScale;
-        }
+    private static bool _shown = true;
 
+    /// <summary>The body steps aside while your head is down near the floor (no body can stand under it).</summary>
+    public static void SetShown(bool shown)
+    {
+        if (_shown == shown || _body == null) return;
+        _shown = shown;
+        foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
+        if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
+    }
+
+    /// <summary>After posing: the twin wears what the body wears (the shoes, the socks).</summary>
+    public static void SyncTwinParts()
+    {
+        if (_twin == null || _bodyParts == null || _twinParts == null) return;
         if (_bodyParts.Length == _twinParts.Length)
             for (var i = 0; i < _bodyParts.Length; i++)
                 if (_twinParts[i].activeSelf != _bodyParts[i].activeSelf)
