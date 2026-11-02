@@ -8,8 +8,21 @@ The bar: a clear step up from InkVR, Dark Revival VR and Mirror's Edge VR in eve
 body, hands, feel and performance. It's built on what those mods proved, and nothing official is shipped: art, music and
 sound are read from your own copy of the game.
 
-Status: **plan, waiting for the user's OK** (user's pick, 2026-11-02). Fallen Aces VR comes after Anger Foot VR is
-released.
+Status: **phase 0 done: GO** (user's OK 2026-11-02, "go ahead, A/X kicks are good"). Phase 1 under way. Fallen Aces
+VR comes after Anger Foot VR is released.
+
+Phase 0 found:
+- **VR route 1 works:** Unity's OpenXR provider, pre-1.0 (0.1.2-preview.2), is the one whose start-up runs on Unity
+  2019.4 (1.x crashes in UnityPluginLoad). It needs the old entry points, the package's own init order, and a hook on
+  xrGetInstanceProcAddr that drops extensions a runtime doesn't offer.
+- Both eyes render the title and the first level through the built-in pipeline, with post-processing (PPv2).
+- **No stripping:** the game ships full .NET and Unity libraries, so BepInEx 5 works out of the box.
+- **Cameras:** Main, Effects and Weapon cameras plus a mono Decal Prepass camera, all under PlayerCamera.
+- **VR graphics profile:** first level at 14 ms on the test runtime and 1.9 GB of video memory, down from 4.9 GB with
+  the game's High settings. The profile turns ambient occlusion off, textures one step down on GPUs with 6 GB or less,
+  and chromatic aberration off. It's applied in memory only, never saved.
+- **Saves:** dev runs keep their own saves and settings (BepInEx/AngerFootVR/dev-saves). The player's real save is
+  never touched.
 
 ## What the game is made of (from the user's 2024 Player.log; to confirm once it's installed)
 

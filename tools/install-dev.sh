@@ -7,7 +7,7 @@ cd "$(dirname "$0")/.."
 [ -f tools/local.sh ] && . tools/local.sh
 GAME="${AFVR_GAME_DIR:-C:/Users/cgors/OneDrive/Desktop/steam/steamapps/common/Anger Foot}"
 DATA="$GAME/Anger Foot_Data"
-XR="${OPENXR_PKG:-C:/Users/cgors/InkVR/vendor/openxr/package}"
+XR="${OPENXR_PKG:-$(pwd)/vendor/openxr-0.1.2/package}" # the pre-1.0 provider: the one that starts on Unity 2019.4
 if tools/game.sh busy; then echo "NOT INSTALLING: the player's game is running"; exit 1; fi
 tools/game.sh stop >/dev/null
 

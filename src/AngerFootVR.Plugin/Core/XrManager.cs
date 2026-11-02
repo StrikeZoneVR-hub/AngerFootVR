@@ -147,6 +147,7 @@ public static class XrManager
         if (Display.running && Input.running)
         {
             Current = State.Running;
+            Rendering.VrQuality.OnVrStarted();
             Plugin.L.LogInfo($"OpenXR session running. Origin={Input.GetTrackingOriginMode()} passes={Display.GetRenderPassCount()} XRSettings.enabled={XRSettings.enabled} device='{XRSettings.loadedDeviceName}' eye={XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}");
         }
         else Fail($"Subsystems failed to start (display={Display.running}, input={Input.running})");

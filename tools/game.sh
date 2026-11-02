@@ -28,7 +28,10 @@ case "$1" in
     [ "$AFVR_REALSAVES" = 1 ] || export AFVR_DEVSAVES=1
     args=""; [ -n "$2" ] && args="-ArgumentList '$2'"
     mkdir -p "$(dirname "$PIDFILE")"
-    powershell.exe -NoProfile -Command "(Start-Process -FilePath '$GAME/$EXE' -WorkingDirectory '$GAME' $args -PassThru).Id" | tr -d '\r' > "$PIDFILE" ;;
+    powershell.exe -NoProfile -Command "(Start-Process -FilePath '$GAME/$EXE' -WorkingDirectory '$GAME' $args -PassThru).Id" | tr -d '\r' > "$PIDFILE"
+    # the background guard stops the game at the first memory warning, for the whole run
+    nohup "$TOOLS/guard.sh" >/dev/null 2>&1 &
+    ;;
   stop)
     pids="$(running_pids)"
     [ -z "$pids" ] && { arm false; echo stopped; exit 0; }

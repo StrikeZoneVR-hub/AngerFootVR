@@ -27,7 +27,7 @@ public class Plugin : BaseUnityPlugin
 
     /// <summary>The game quits itself past this much private memory (MB): a dev-run safety net, after a test loop of
     /// another mod once exhausted the laptop's memory.</summary>
-    private static readonly long MaxMemoryMb = long.TryParse(Environment.GetEnvironmentVariable("AFVR_MAX_MB"), out var mb) ? mb : 7000;
+    private static readonly long MaxMemoryMb = long.TryParse(Environment.GetEnvironmentVariable("AFVR_MAX_MB"), out var mb) ? mb : 9000;
 
     private void Awake()
     {
@@ -168,6 +168,9 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "eyeshot":
                         Dev.EyeShot.Arm(arg.Length > 0 ? arg : "eye");
+                        break;
+                    case "level":
+                        GameState.LoadFirstLevel(LoadingTransition.FadeToAndFromBlack);
                         break;
                     case "title":
                         GameState.LoadTitleScreen(LoadingTransition.FadeFromBlackOnly);
