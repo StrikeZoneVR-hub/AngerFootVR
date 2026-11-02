@@ -19,3 +19,4 @@ while tasklist //FI "IMAGENAME eq $EXE" //FO CSV //NH 2>/dev/null | grep -qi "$E
   sleep 5
 done
 echo "guard: game ended $(date +%H:%M:%S)" >> "$LOG"
+"$TOOLS/game.sh" finish >> "$LOG" 2>&1

@@ -55,6 +55,7 @@ public class Plugin : BaseUnityPlugin
         }
 
         XrManager.Update();
+        UI.VrUi.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -171,6 +172,77 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "level":
                         GameState.LoadFirstLevel(LoadingTransition.FadeToAndFromBlack);
+                        break;
+                    case "head":
+                    {
+                        // head <pitch> <yaw> [roll] | head off: fake the head's rotation (the test runtime's head is still)
+                        var a = arg.Split(' ');
+                        Core.VrRig.DevHeadEuler = a[0] == "off" ? (Vector3?)null : new Vector3(float.Parse(a[0]), float.Parse(a[1]), a.Length > 2 ? float.Parse(a[2]) : 0f);
+                        L.LogInfo("dev head " + (Core.VrRig.DevHeadEuler?.ToString() ?? "off"));
+                        break;
+                    }
+                    case "turn":
+                        Core.VrControls.DevTurn = arg == "off" ? (float?)null : float.Parse(arg);
+                        break;
+                    case "recenter":
+                        Core.VrRig.Recenter();
+                        break;
+                    case "rig":
+                        L.LogInfo($"RIG playYaw={Core.VrRig.PlayYaw:F1} head={Core.VrRig.HeadPosition} rot={Core.VrRig.HeadRotation.eulerAngles} camFwd={Player.CameraForward} tracked={(Core.VrRig.TryGetTrackedHead(out var hp, out var hr) ? hp + " " + hr.eulerAngles : "none")}");
+                        break;
+                    case "canvases":
+                    {
+                        foreach (var c in Resources.FindObjectsOfTypeAll<Canvas>())
+                        {
+                            if (c == null || !c.isRootCanvas || !c.gameObject.scene.IsValid()) continue;
+                            L.LogInfo($"CANVAS '{c.name}' active={c.isActiveAndEnabled} mode={c.renderMode} order={c.sortingOrder} layer={c.gameObject.layer} cam={(c.worldCamera != null ? c.worldCamera.name : "-")} scaler={(c.GetComponent<UnityEngine.UI.CanvasScaler>()?.uiScaleMode.ToString() ?? "-")} scene={c.gameObject.scene.name}");
+                        }
+
+                        var used = 0;
+                        foreach (var cam in Camera.allCameras) used |= cam.cullingMask;
+                        var names = new System.Text.StringBuilder();
+                        for (var i = 0; i < 32; i++) names.Append($"{i}:{LayerMask.LayerToName(i)}{((used & (1 << i)) != 0 ? "*" : "")} ");
+                        L.LogInfo("LAYERS (* = some camera draws it) " + names);
+                        break;
+                    }
+                    case "panel":
+                    {
+                        var a = arg.Split(' ');
+                        UI.VrUi.DevWidth = a[0] == "off" ? (float?)null : float.Parse(a[0]);
+                        UI.VrUi.DevDistance = a.Length > 1 ? float.Parse(a[1]) : (float?)null;
+                        break;
+                    }
+                    case "panelfill":
+                        UI.VrUi.DevFill(arg != "off");
+                        break;
+                    case "uipanel":
+                        L.LogInfo(UI.VrUi.Describe());
+                        break;
+                    case "testcube":
+                    {
+                        // a bright cube 2 m along each enabled camera's forward (dev: where does a camera really look?)
+                        foreach (var c in Camera.allCameras)
+                        {
+                            if (c.targetTexture != null) continue;
+                            var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                            cube.name = "AngerFootVR test cube " + c.name;
+                            Destroy(cube.GetComponent<Collider>());
+                            cube.layer = UI.VrUi.Layer;
+                            cube.transform.position = c.transform.position + c.transform.forward * 2f;
+                            cube.transform.localScale = Vector3.one * 0.25f;
+                            var m = new Material(Shader.Find("UI/Default")) { color = c.name.Contains("UI") ? Color.cyan : Color.yellow };
+                            m.renderQueue = 4000;
+                            m.SetInt("unity_GUIZTestMode", (int)UnityEngine.Rendering.CompareFunction.Always);
+                            cube.GetComponent<MeshRenderer>().sharedMaterial = m;
+                            L.LogInfo($"test cube for '{c.name}' at {cube.transform.position} (camera {c.transform.position} fwd {c.transform.forward})");
+                        }
+
+                        break;
+                    }
+                    case "mirror":
+                        // the desktop window shows: "both" (both eyes whole), "left" (cropped), "none"
+                        XRSettings.gameViewRenderMode = arg == "both" ? GameViewRenderMode.BothEyes : arg == "none" ? GameViewRenderMode.None : GameViewRenderMode.LeftEye;
+                        L.LogInfo("mirror " + XRSettings.gameViewRenderMode);
                         break;
                     case "title":
                         GameState.LoadTitleScreen(LoadingTransition.FadeFromBlackOnly);

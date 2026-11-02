@@ -33,6 +33,16 @@ internal static class DevSaves
         var mine = Path.Combine(Root, "Settings.json");
         var theirs = Path.Combine(UnityEngine.Application.persistentDataPath, "Settings.json");
         if (!File.Exists(mine) && File.Exists(theirs)) File.Copy(theirs, mine);
+        // dev runs play in a 1280x720 window (the test copy only): an exclusive-fullscreen game can't be captured, and
+        // a window is gentler on the desktop
+        if (File.Exists(mine))
+        {
+            var text = File.ReadAllText(mine);
+            var windowed = System.Text.RegularExpressions.Regex.Replace(text, "\"FullScreenMode\" : \"[^\"]*\"", "\"FullScreenMode\" : \"Windowed,3\"");
+            windowed = System.Text.RegularExpressions.Regex.Replace(windowed, @"""_width"" : \d+", "\"_width\" : 1280");
+            windowed = System.Text.RegularExpressions.Regex.Replace(windowed, @"""_height"" : \d+", "\"_height\" : 720");
+            if (windowed != text) File.WriteAllText(mine, windowed);
+        }
         Plugin.L.LogInfo("Dev run: saves and settings kept in " + Root);
     }
 }
