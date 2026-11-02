@@ -14,7 +14,7 @@ namespace AngerFootVR.Dev;
 [HarmonyPatch(typeof(FileSystem), nameof(FileSystem.GetAbsolutePath))]
 internal static class DevSaves
 {
-    public static readonly bool Enabled = Environment.GetEnvironmentVariable("AFVR_DEVSAVES") == "1";
+    public static readonly bool Enabled = Plugin.DevRun;
     public static readonly string Root = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "dev-saves"));
     private static bool _ready;
 

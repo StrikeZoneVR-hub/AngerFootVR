@@ -18,6 +18,10 @@ namespace AngerFootVR;
 [BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.0")]
 public class Plugin : BaseUnityPlugin
 {
+    /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
+    /// (it sets AFVR_MODE): a player's run once came up as a dev run and played on the test saves.</summary>
+    internal static readonly bool DevRun = Environment.GetEnvironmentVariable("AFVR_DEVSAVES") == "1" && string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AFVR_MODE"));
+
     internal static ManualLogSource L;
     internal static Plugin Instance;
     private float _startXrAt = -1f, _nextReport, _nextCmd, _nextWatch;
@@ -33,6 +37,11 @@ public class Plugin : BaseUnityPlugin
     {
         L = Logger;
         Instance = this;
+        Application.onBeforeRender += () =>
+        {
+            CinemaRig.BeforeRender();
+            VrRig.BeforeRender();
+        };
         VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
@@ -58,6 +67,7 @@ public class Plugin : BaseUnityPlugin
         }
 
         XrManager.Update();
+        XrActions.Update();
         VrControls.Update();
         CinemaRig.Update();
         UI.Opening.Update();
@@ -69,6 +79,7 @@ public class Plugin : BaseUnityPlugin
         Recentering();
         Input.MotionThrow.Update();
         VrSettings.Poll();
+        Rendering.VrQuality.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -155,7 +166,11 @@ public class Plugin : BaseUnityPlugin
         var cam = Camera.main;
         var avg = _frames > 0 ? _frameTime / _frames * 1000f : 0f;
         var mb = MemoryMb();
-        L.LogInfo($"VRPERF controllers={VrControls.Present} frame {avg:F2} ms avg ({(avg > 0 ? 1000f / avg : 0):F1} fps), worst {_worst * 1000f:F1} ms, memory {mb} MB | xr {XrManager.Current} running={XrManager.IsRunning} XRSettings.enabled={XRSettings.enabled} eye {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight} | camera {(cam != null ? $"'{cam.name}' stereo={cam.stereoEnabled} target={cam.stereoTargetEye} fov={cam.fieldOfView:F0}" : "none")}");
+        var (waitMs, waits) = OpenXRHook.TakeWaitStats();
+        var period = OpenXRHook.PredictedDisplayPeriod / 1e6;
+        var headOk = VrRig.TryGetTrackedHead(out var headNow, out var headRotNow);
+        L.LogInfo($"VRHEAD tracked={headOk} at {headNow:F2} facing {headRotNow.eulerAngles.y:F0} | {HeadTiming.Take()} | {OpenXRHook.LastViews}");
+        L.LogInfo($"VRPERF controllers={VrControls.Present} ({(XrActions.Ready ? XrActions.Profile : "no actions")}) headset {(period > 0 ? 1000.0 / period : 0):F0} Hz, xrWaitFrame {waitMs:F1} ms x{waits} | frame {avg:F2} ms avg ({(avg > 0 ? 1000f / avg : 0):F1} fps), worst {_worst * 1000f:F1} ms, memory {mb} MB | xr {XrManager.Current} running={XrManager.IsRunning} XRSettings.enabled={XRSettings.enabled} eye {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight} | camera {(cam != null ? $"'{cam.name}' stereo={cam.stereoEnabled} target={cam.stereoTargetEye} fov={cam.fieldOfView:F0}" : "none")}");
         _frames = 0;
         _frameTime = 0;
         _worst = 0;
@@ -394,6 +409,7 @@ public class Plugin : BaseUnityPlugin
                     }
                     case "cap":
                         // cap <fps|-1>: dev frame cap (the test runtime's 90 by default), to measure headroom
+                        Rendering.VrQuality.DevCap = int.Parse(arg);
                         Application.targetFrameRate = int.Parse(arg);
                         L.LogInfo("frame cap " + Application.targetFrameRate);
                         break;
@@ -404,6 +420,42 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "flick":
                         Input.MotionThrow.DevFlick();
+                        break;
+                    case "eyes":
+                    {
+                        // where each stereo camera is, and where its eyes are drawn from (the view matrices)
+                        var b = new System.Text.StringBuilder("EYES");
+                        foreach (var c in Camera.allCameras)
+                        {
+                            if (!c.stereoEnabled) continue;
+                            var l = c.GetStereoViewMatrix(Camera.StereoscopicEye.Left).inverse.GetColumn(3);
+                            var r = c.GetStereoViewMatrix(Camera.StereoscopicEye.Right).inverse.GetColumn(3);
+                            b.Append($" | '{c.name}' cam {c.transform.position:F3} eyes L {(Vector3)l:F3} R {(Vector3)r:F3} fwd {c.GetStereoViewMatrix(Camera.StereoscopicEye.Left).inverse.MultiplyVector(Vector3.back):F2} camfwd {c.transform.forward:F2}");
+                        }
+
+                        b.Append(" | " + OpenXRHook.LastViews + " | spaces " + string.Join(",", OpenXRHook.SpaceTypes.Select(kv => kv.Key + ":" + kv.Value).ToArray()) + " app " + XrManager.AppSpace);
+                        var hd = InputDevices.GetDeviceAtXRNode(XRNode.CenterEye);
+                        if (hd.TryGetFeatureValue(CommonUsages.devicePosition, out var headTracked)) b.Append($" | tracked head {headTracked:F3}");
+                        L.LogInfo(b.ToString());
+                        break;
+                    }
+                    case "mockhead":
+                    {
+                        // mockhead <height m> [pitch down] [yaw]: the test runtime's head where a real one is
+                        var a = arg.Split(' ');
+                        var inv = System.Globalization.CultureInfo.InvariantCulture;
+                        Dev.MockHead.Place(float.Parse(a[0], inv), a.Length > 1 ? float.Parse(a[1], inv) : 0f, a.Length > 2 ? float.Parse(a[2], inv) : 0f);
+                        break;
+                    }
+                    case "headspin":
+                    {
+                        var a = arg.Split(' ');
+                        var inv = System.Globalization.CultureInfo.InvariantCulture;
+                        Dev.MockHead.Spin(float.Parse(a[0], inv), a.Length > 1 ? float.Parse(a[1], inv) : 3f);
+                        break;
+                    }
+                    case "controllers":
+                        L.LogInfo(XrActions.Describe());
                         break;
                     case "opening":
                         UI.Opening.DevReplay();

@@ -50,12 +50,22 @@ internal static class VrControls
         if (_frame == Time.frameCount) return;
         _frame = Time.frameCount;
         System.Array.Copy(Now, Before, Now.Length);
-        var left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
-        var right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
         if (DevHeld.Count > 0 || DevMove != Vector2.zero) _devUntil = Time.unscaledTime + 3f; // dev input stays "present" a moment (its releases count)
-        Present = left.isValid || right.isValid || Time.unscaledTime < _devUntil;
-        Read(left, 0);
-        Read(right, 1);
+        if (XrActions.Ready)
+        {
+            // the mod's own controller actions (the provider shows no controllers on its own)
+            Present = XrActions.Left.Active || XrActions.Right.Active || Time.unscaledTime < _devUntil;
+            Read(XrActions.Left, 0);
+            Read(XrActions.Right, 1);
+        }
+        else
+        {
+            var left = InputDevices.GetDeviceAtXRNode(XRNode.LeftHand);
+            var right = InputDevices.GetDeviceAtXRNode(XRNode.RightHand);
+            Present = left.isValid || right.isValid || Time.unscaledTime < _devUntil;
+            Read(left, 0);
+            Read(right, 1);
+        }
         foreach (var key in new List<(XRNode, VrButton)>(DevHeld.Keys))
         {
             Now[Index(key.Item1, key.Item2)] = true;
@@ -84,6 +94,18 @@ internal static class VrControls
         Sticks[hand] = device.TryGetFeatureValue(CommonUsages.primary2DAxis, out var s) ? s : Vector2.zero;
     }
 
+    private static void Read(XrActions.Hand h, int hand)
+    {
+        var o = hand * Buttons;
+        Now[o + (int)VrButton.Trigger] = h.Trigger > (Now[o] ? 0.35f : 0.55f);
+        Now[o + (int)VrButton.Grip] = h.Grip > (Now[o + 1] ? 0.4f : 0.6f);
+        Now[o + (int)VrButton.Primary] = h.Primary;
+        Now[o + (int)VrButton.Secondary] = h.Secondary;
+        Now[o + (int)VrButton.StickClick] = h.StickClick;
+        Now[o + (int)VrButton.Menu] = h.Menu;
+        Sticks[hand] = h.Stick;
+    }
+
     private static bool Flag(InputDevice device, InputFeatureUsage<bool> usage) => device.TryGetFeatureValue(usage, out var v) && v;
 
     private static int Index(XRNode hand, VrButton b) => (hand == XRNode.LeftHand ? 0 : Buttons) + (int)b;
@@ -108,6 +130,12 @@ internal static class VrControls
     /// <summary>Rumble on one controller (amount 0..1, seconds).</summary>
     public static void Rumble(XRNode hand, float amount, float seconds)
     {
+        if (XrActions.Ready)
+        {
+            XrActions.Haptic(hand == XRNode.LeftHand, amount, seconds);
+            return;
+        }
+
         var device = InputDevices.GetDeviceAtXRNode(hand);
         if (device.isValid && device.TryGetHapticCapabilities(out var caps) && caps.supportsImpulse)
             device.SendHapticImpulse(0, Mathf.Clamp01(amount), seconds);

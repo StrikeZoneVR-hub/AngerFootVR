@@ -16,6 +16,9 @@ internal static class VrHands
         public Vector3 Position;
         public Quaternion Rotation;
 
+        /// <summary>Where the controller points (its aim pose: the laser and the gun barrel go this way).</summary>
+        public Quaternion Aim;
+
         /// <summary>How fast the hand moves in your play space (m/s, turned with it; walking doesn't count).</summary>
         public Vector3 Velocity;
     }
@@ -41,6 +44,7 @@ internal static class VrHands
     /// <summary>The hands around a head at this world point (tracked there as headTracked), the play space turned by yaw.</summary>
     public static void UpdateAt(Vector3 headWorld, Vector3 headTracked, float yaw)
     {
+        XrActions.LocatePoses(); // (as late as can be)
         _head = headWorld;
         var yawRot = Quaternion.Euler(0f, yaw, 0f);
         Left = Read(XRNode.LeftHand, headTracked, yawRot, yawRot, DevLeft);
@@ -72,12 +76,25 @@ internal static class VrHands
                 Tracked = true,
                 Position = _head + headYaw * dev.Value.pos,
                 Rotation = headYaw * Quaternion.Euler(dev.Value.euler),
+                Aim = headYaw * Quaternion.Euler(dev.Value.euler) * Quaternion.Euler(AimPitch, 0f, 0f),
                 Velocity = headYaw * Speed(node, dev.Value.pos),
             };
+
+        // the mod's own controller actions (the provider shows no controllers on its own)
+        if (XrActions.Ready)
+        {
+            var h = node == XRNode.LeftHand ? XrActions.Left : XrActions.Right;
+            if (!h.PoseValid) return new Pose { Tracked = false };
+            return new Pose
+            {
+                Tracked = true, Position = _head + yaw * (h.GripPosition - headTracked), Rotation = yaw * h.GripRotation,
+                Aim = yaw * h.AimRotation, Velocity = yaw * Speed(node, h.GripPosition),
+            };
+        }
 
         var device = InputDevices.GetDeviceAtXRNode(node);
         if (!device.isValid || !device.TryGetFeatureValue(CommonUsages.devicePosition, out var p) || !device.TryGetFeatureValue(CommonUsages.deviceRotation, out var r))
             return new Pose { Tracked = false };
-        return new Pose { Tracked = true, Position = _head + yaw * (p - headTracked), Rotation = yaw * r, Velocity = yaw * Speed(node, p) };
+        return new Pose { Tracked = true, Position = _head + yaw * (p - headTracked), Rotation = yaw * r, Aim = yaw * r * Quaternion.Euler(AimPitch, 0f, 0f), Velocity = yaw * Speed(node, p) };
     }
 }

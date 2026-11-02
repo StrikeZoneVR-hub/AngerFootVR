@@ -95,9 +95,17 @@ internal static class VrRig
     {
         if (!Active) return;
         if (_rigged != __instance) Rig(__instance);
-        if (!TryGetTrackedHead(out var pos, out var tracked)) return;
+        if (!PlaceCameras(__instance)) return;
+        Body.BodyPose.Pose();
+    }
 
-        var holder = __instance.transform;
+    /// <summary>The view cameras at your head: in LateUpdate (for the body and the game), and again just before the frame
+    /// is drawn, from the head pose Unity draws the eyes with (as Unity's own tracked pose driver does): placed from an
+    /// earlier reading, every head movement in between showed as a wobble of the whole view (the first test's jitter).</summary>
+    private static bool PlaceCameras(PlayerCamera pc)
+    {
+        if (!TryGetTrackedHead(out var pos, out var tracked)) return false;
+        var holder = pc.transform;
         var yaw = Quaternion.Euler(0f, PlayYaw, 0f);
         var offset = pos - _center;
         offset.y = Mathf.Clamp(pos.y - _standingEyeHeight, -0.9f, 0.25f);
@@ -111,11 +119,19 @@ internal static class VrRig
         var inverse = Quaternion.Inverse(holder.rotation);
         var localPos = inverse * (HeadPosition - holder.position);
         var localRot = inverse * HeadRotation;
-        __instance.MainCamera.transform.localPosition = localPos;
-        __instance.MainCamera.transform.localRotation = localRot;
-        __instance.WeaponCamera.transform.localPosition = localPos;
-        __instance.WeaponCamera.transform.localRotation = localRot;
-        Body.BodyPose.Pose();
+        pc.MainCamera.transform.localPosition = localPos;
+        pc.MainCamera.transform.localRotation = localRot;
+        pc.WeaponCamera.transform.localPosition = localPos;
+        pc.WeaponCamera.transform.localRotation = localRot;
+        return true;
+    }
+
+    /// <summary>Just before the frame is drawn: the cameras again, from the newest head pose (Unity's own for this frame).</summary>
+    public static void BeforeRender()
+    {
+        if (!Active || _rigged == null || !_calibrated) return;
+        var before = HeadRotation;
+        if (PlaceCameras(_rigged)) HeadTiming.Note(before, HeadRotation);
     }
 
     /// <summary>The game's cameras take their pose from the rig, not from Unity's camera tracking.</summary>

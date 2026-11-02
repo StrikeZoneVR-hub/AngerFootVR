@@ -32,8 +32,8 @@ internal static class GunHold
         return XrManager.IsRunning && !CinemaRig.Active && pose.Tracked;
     }
 
-    /// <summary>Where the barrel points: the controller's aim (tilted up from its grip).</summary>
-    public static Quaternion Aim(VrHands.Pose pose) => pose.Rotation * Quaternion.Euler(VrHands.AimPitch, 0f, 0f);
+    /// <summary>Where the barrel points: the controller's aim pose.</summary>
+    public static Quaternion Aim(VrHands.Pose pose) => pose.Aim;
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HandRig), "LateUpdate")]

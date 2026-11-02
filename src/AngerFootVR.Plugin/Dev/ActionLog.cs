@@ -6,7 +6,7 @@ namespace AngerFootVR.Dev;
 [HarmonyPatch]
 internal static class ActionLog
 {
-    public static bool Enabled = System.Environment.GetEnvironmentVariable("AFVR_DEVSAVES") == "1";
+    public static bool Enabled = Plugin.DevRun;
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(FootRig), nameof(FootRig.ReleaseAttack))]

@@ -103,8 +103,26 @@ internal static class CinemaRig
         HeadPosition = UI.MovieHouse.Standing + _walk + yawRot * local;
         HeadRotation = yawRot * rot;
         Camera.transform.SetPositionAndRotation(HeadPosition, HeadRotation);
+        _height = height;
         VrHands.UpdateAt(HeadPosition, tracked, Yaw);
         Body.BodyPose.PoseAt(HeadPosition, HeadRotation, new Vector3(HeadPosition.x, UI.MovieHouse.Standing.y, HeadPosition.z), height);
+    }
+
+    private static float _height = 1.62f;
+
+    /// <summary>Just before the frame is drawn: the camera again, from the newest head pose (the one Unity draws the
+    /// eyes with), as Unity's own tracked pose driver does.</summary>
+    public static void BeforeRender()
+    {
+        if (!Active || Camera == null || !_centered) return;
+        if (!VrRig.TryGetTrackedHead(out var tracked, out var rot)) return;
+        var yawRot = Quaternion.Euler(0f, Yaw, 0f);
+        var local = new Vector3(tracked.x - _center.x, tracked.y > 0.5f ? tracked.y : _height, tracked.z - _center.z);
+        var before = HeadRotation;
+        HeadPosition = UI.MovieHouse.Standing + _walk + yawRot * local;
+        HeadRotation = yawRot * rot;
+        Camera.transform.SetPositionAndRotation(HeadPosition, HeadRotation);
+        HeadTiming.Note(before, HeadRotation);
     }
 
     private static void Enter()

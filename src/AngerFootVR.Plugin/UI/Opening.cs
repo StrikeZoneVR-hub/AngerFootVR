@@ -56,7 +56,7 @@ internal static class Opening
         if (_done || !CinemaRig.Active || MovieHouse.Root == null) return;
         if (_t0 < 0f)
         {
-            var dev = Environment.GetEnvironmentVariable("AFVR_DEVSAVES") == "1";
+            var dev = Plugin.DevRun;
             var mode = VrSettings.Opening.Value;
             var play = _force || (dev
                 ? Environment.GetEnvironmentVariable("AFVR_OPENING") == "1"

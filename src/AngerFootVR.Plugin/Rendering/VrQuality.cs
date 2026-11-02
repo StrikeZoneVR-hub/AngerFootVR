@@ -54,8 +54,32 @@ internal static class VrQuality
     {
         if (!Core.XrManager.IsRunning && Core.XrManager.Current != Core.XrManager.State.WaitingForSession) return;
         var mock = Core.XrManager.RuntimeName.IndexOf("Mock", System.StringComparison.OrdinalIgnoreCase) >= 0;
-        QualitySettings.vSyncCount = 0;
-        Application.targetFrameRate = mock ? 90 : -1;
+        if (QualitySettings.vSyncCount != 0) QualitySettings.vSyncCount = 0;
+        var cap = DevCap ?? (mock ? 90 : -1);
+        if (Application.targetFrameRate != cap) Application.targetFrameRate = cap;
+    }
+
+    /// <summary>Dev: a frame cap of its own (the `cap` command), kept over the game's.</summary>
+    public static int? DevCap;
+
+    private static float _nextPacing;
+    private static readonly System.Diagnostics.Stopwatch Frame = System.Diagnostics.Stopwatch.StartNew();
+
+    /// <summary>Once a second while VR runs: the pacing again (the game's own frame limiter sets the cap when it likes).
+    /// On the test runtime, which doesn't pace frames and whose frames Unity won't cap in VR, each frame is held to
+    /// 90 fps here (dev runs only: a headset's runtime paces them itself).</summary>
+    public static void Update()
+    {
+        if (InVr && Core.XrManager.RuntimeName.IndexOf("Mock", System.StringComparison.OrdinalIgnoreCase) >= 0 && DevCap != -1)
+        {
+            var left = 1000.0 / (DevCap ?? 90) - Frame.Elapsed.TotalMilliseconds;
+            if (left > 1) System.Threading.Thread.Sleep((int)left);
+            Frame.Restart();
+        }
+
+        if (!InVr || Time.unscaledTime < _nextPacing) return;
+        _nextPacing = Time.unscaledTime + 1f;
+        FramePacing();
     }
 
     [HarmonyPostfix]

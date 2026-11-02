@@ -38,6 +38,9 @@ namespace AngerFootVR.Launcher.Game
 
             var psi = new ProcessStartInfo(game.Exe) { WorkingDirectory = game.Dir, UseShellExecute = false };
             psi.EnvironmentVariables["AFVR_MODE"] = vr ? "vr" : "flat";
+            // never a dev run's settings in a player's game
+            foreach (var dev in new[] { "AFVR_DEVSAVES", "AFVR_REALSAVES", "AFVR_OPENING", "AFVR_NOXR", "AFVR_AO", "AFVR_TEXLIMIT", "AFVR_MAX_MB" })
+                psi.EnvironmentVariables.Remove(dev);
             psi.EnvironmentVariables.Remove("XR_RUNTIME_JSON");
             if (vr && !string.IsNullOrEmpty(runtimeJson) && File.Exists(runtimeJson))
                 psi.EnvironmentVariables["XR_RUNTIME_JSON"] = runtimeJson;

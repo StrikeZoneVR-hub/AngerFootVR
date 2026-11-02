@@ -30,6 +30,13 @@ public static class XrManager
     public static XRDisplaySubsystem Display { get; private set; }
     public static XRInputSubsystem Input { get; private set; }
     public static OpenXRNative.NativeEvent SessionState { get; private set; }
+    /// <summary>The provider's OpenXR instance, session and play space (from its events), for the mod's own calls.</summary>
+    public static ulong Instance { get; private set; }
+
+    public static ulong Session { get; private set; }
+
+    public static ulong AppSpace { get; private set; }
+
     public static bool IsRunning => Current == State.Running && Display != null && Display.running;
 
     private static readonly Queue<(OpenXRNative.NativeEvent e, ulong payload)> Events = new();
@@ -121,6 +128,15 @@ public static class XrManager
             Plugin.L.LogInfo($"OpenXR event {e} 0x{payload:X}");
         switch (e)
         {
+            case OpenXRNative.NativeEvent.XrInstanceChanged:
+                Instance = payload;
+                break;
+            case OpenXRNative.NativeEvent.XrSessionChanged:
+                Session = payload;
+                break;
+            case OpenXRNative.NativeEvent.XrChangedSpaceApp:
+                AppSpace = payload;
+                break;
             case OpenXRNative.NativeEvent.XrReady:
                 Begin();
                 break;
