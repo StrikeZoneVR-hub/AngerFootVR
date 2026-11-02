@@ -147,9 +147,23 @@ internal static class VrRig
         Plugin.L.LogInfo($"VR rig calibrated: eye height {_standingEyeHeight:F2} m, facing {camera.eulerAngles.y:F0} deg");
     }
 
+    private static bool _snapHeld;
+
     private static void Turn(float stick)
     {
-        if (Mathf.Abs(stick) < 0.15f) return;
-        PlayYaw += stick * SmoothTurnSpeed * Time.unscaledDeltaTime;
+        if (VrSettings.Turn == null || VrSettings.Turn.Value == VrSettings.TurnStyle.Smooth)
+        {
+            if (Mathf.Abs(stick) < 0.15f) return;
+            PlayYaw += stick * (VrSettings.SmoothSpeed?.Value ?? SmoothTurnSpeed) * Time.unscaledDeltaTime;
+            return;
+        }
+
+        // snap: one jump a push (the stick goes back to the middle before the next)
+        if (Mathf.Abs(stick) < 0.35f) _snapHeld = false;
+        else if (!_snapHeld && Mathf.Abs(stick) > 0.7f)
+        {
+            _snapHeld = true;
+            PlayYaw += Mathf.Sign(stick) * VrSettings.SnapAngle.Value;
+        }
     }
 }

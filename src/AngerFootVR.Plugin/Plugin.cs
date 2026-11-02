@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.0.1")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.0")]
 public class Plugin : BaseUnityPlugin
 {
     internal static ManualLogSource L;
@@ -33,9 +33,10 @@ public class Plugin : BaseUnityPlugin
     {
         L = Logger;
         Instance = this;
+        VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 0.0.1 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 0.1.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
@@ -43,7 +44,8 @@ public class Plugin : BaseUnityPlugin
         Directory.CreateDirectory(Path.GetDirectoryName(_cmdFile));
         File.WriteAllText(_cmdFile, "");
         // VR starts a few seconds in, once the game's first scene is up (AFVR_NOXR=1 leaves it off)
-        if (Environment.GetEnvironmentVariable("AFVR_NOXR") != "1") _startXrAt = 4f;
+        // (the launcher's PLAY FLAT starts the game with AFVR_MODE=flat: the mod stays out of the way)
+        if (Environment.GetEnvironmentVariable("AFVR_NOXR") != "1" && Environment.GetEnvironmentVariable("AFVR_MODE") != "flat") _startXrAt = 4f;
     }
 
     private void Update()

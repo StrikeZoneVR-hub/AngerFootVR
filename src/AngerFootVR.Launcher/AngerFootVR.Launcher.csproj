@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- .NET Framework 4.8 ships with Windows 10/11: the launcher is one small .exe with nothing to install. -->
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>Anger Foot VR</AssemblyName>
+    <RootNamespace>AngerFootVR.Launcher</RootNamespace>
+    <ApplicationIcon>Assets\angerfootvr.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
+    <Company>StrikeZoneVR</Company>
+    <Product>Anger Foot VR</Product>
+    <Description>Anger Foot VR - launcher for the Anger Foot VR mod</Description>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Management" />
+    <Resource Include="Assets\Fonts\Bungee-Regular.ttf" />
+    <Resource Include="Assets\Fonts\Neonderthaw-Regular.ttf" />
+    <Resource Include="Assets\angerfootvr.png" />
+  </ItemGroup>
+</Project>
