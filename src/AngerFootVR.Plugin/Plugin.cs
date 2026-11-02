@@ -61,6 +61,7 @@ public class Plugin : BaseUnityPlugin
         UI.VrUi.Update();
         Body.VrBody.Update();
         Body.ViewModels.Update();
+        UI.LauncherArt.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
