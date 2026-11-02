@@ -274,6 +274,9 @@ public class Plugin : BaseUnityPlugin
                     case "bodyshot":
                         StartCoroutine(Dev.DevPlay.BodyShot(arg));
                         break;
+                    case "gun":
+                        L.LogInfo(Input.GunHold.Describe());
+                        break;
                     case "body":
                         L.LogInfo(Body.VrBody.Describe());
                         break;
@@ -318,6 +321,17 @@ public class Plugin : BaseUnityPlugin
                     case "givegun":
                         Dev.DevPlay.GiveGun(arg);
                         break;
+                    case "bones":
+                    {
+                        // bones <object name part>|<bone name part>: the matching transforms under it
+                        var a = arg.Split('|');
+                        var rootT = System.Linq.Enumerable.FirstOrDefault(Resources.FindObjectsOfTypeAll<Transform>(), x => x != null && x.gameObject.scene.IsValid() && x.name.IndexOf(a[0], StringComparison.OrdinalIgnoreCase) >= 0);
+                        if (rootT == null) break;
+                        foreach (var t in rootT.GetComponentsInChildren<Transform>(true))
+                            if (a.Length < 2 || t.name.IndexOf(a[1], StringComparison.OrdinalIgnoreCase) >= 0)
+                                L.LogInfo($"BONE {t.name} parent {(t.parent != null ? t.parent.name : "-")} local {t.localPosition} {t.localEulerAngles} rootrel {rootT.InverseTransformPoint(t.position)}");
+                        break;
+                    }
                     case "hier":
                         Dev.DevPlay.Hierarchy(arg);
                         break;

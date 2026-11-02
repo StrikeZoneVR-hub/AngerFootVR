@@ -51,7 +51,7 @@ internal static class Laser
         else
         {
             origin = pose.Position;
-            dir = pose.Rotation * Quaternion.Euler(-35f, 0f, 0f) * Vector3.forward; // the controller's pointing way, up from its grip
+            dir = pose.Rotation * Quaternion.Euler(VrHands.AimPitch, 0f, 0f) * Vector3.forward; // the controller's pointing way, up from its grip
         }
 
         // where it meets the screen (a quad facing the room)

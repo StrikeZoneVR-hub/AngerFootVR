@@ -19,6 +19,9 @@ internal static class VrHands
 
     public static Pose Left, Right;
 
+    /// <summary>How far the pointing way (laser, gun barrel) is tilted up from the controller's grip (degrees, negative = up).</summary>
+    public static float AimPitch = -35f;
+
     /// <summary>Dev: hand poses relative to the head (metres in head-yaw space; rotation as pitch, yaw, roll), for the
     /// test runtime, which has no controllers. Null = off.</summary>
     public static (Vector3 pos, Vector3 euler)? DevLeft, DevRight;

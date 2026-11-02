@@ -205,11 +205,34 @@ internal static class BodyPose
         return Mathf.Min(ta != null ? ta.position.y : 0f, tb != null ? tb.position.y : 0f);
     }
 
+    private static int[] _rightFingers, _leftFingers;
+
     private static void Neutral()
     {
         _neutral.bodyPosition = new Vector3(0f, _neutral.bodyPosition.y, 0f);
         _neutral.bodyRotation = Quaternion.identity;
+        if (_rightFingers == null) FindFingerMuscles();
+        // the gun hand closes round the grip (the index finger a little less: it's on the trigger)
+        var holding = Input.GunHold.Holding;
+        foreach (var i in _rightFingers)
+            _neutral.muscles[i] = holding ? (HumanTrait.MuscleName[i].Contains("Index") ? -0.35f : HumanTrait.MuscleName[i].Contains("Thumb") ? -0.3f : -0.85f) : 0f;
         _pose.SetHumanPose(ref _neutral);
+    }
+
+    private static void FindFingerMuscles()
+    {
+        var r = new System.Collections.Generic.List<int>();
+        var l = new System.Collections.Generic.List<int>();
+        for (var i = 0; i < HumanTrait.MuscleCount; i++)
+        {
+            var n = HumanTrait.MuscleName[i];
+            if (!n.Contains("Stretched")) continue;
+            if (n.StartsWith("Right")) r.Add(i);
+            else if (n.StartsWith("Left") && (n.Contains("Thumb") || n.Contains("Index") || n.Contains("Middle") || n.Contains("Ring") || n.Contains("Little"))) l.Add(i);
+        }
+
+        _rightFingers = r.FindAll(i => System.Text.RegularExpressions.Regex.IsMatch(HumanTrait.MuscleName[i], "Thumb|Index|Middle|Ring|Little")).ToArray();
+        _leftFingers = l.ToArray();
     }
 
     /// <summary>The game kicked: swing a leg out (the right one, unless it is mid-step).</summary>
