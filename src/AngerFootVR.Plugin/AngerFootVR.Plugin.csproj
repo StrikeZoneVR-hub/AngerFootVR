@@ -7,7 +7,7 @@
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Optimize>true</Optimize>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
