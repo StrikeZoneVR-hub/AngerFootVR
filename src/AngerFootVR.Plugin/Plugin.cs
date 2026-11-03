@@ -173,6 +173,7 @@ public class Plugin : BaseUnityPlugin
         UI.LauncherArt.Update();
         Rendering.SpectatorView.Update();
         Recentering();
+        Input.MotionThrow.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
         UI.Surprises.HallOfFame();
@@ -814,6 +815,10 @@ public class Plugin : BaseUnityPlugin
                     }
                     case "legrec":
                         Dev.LegRecorder.Start(arg.Length > 0 ? int.Parse(arg) : 60);
+                        break;
+                    case "throw":
+                        // throw [m/s]: a throw from the gun hand (along its aim; with a speed, as hard as that)
+                        Input.MotionThrow.DevThrow(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0f);
                         break;
                     case "laserscroll":
                         // laserscroll <-1..1|off>: push the right stick for the laser's list scrolling

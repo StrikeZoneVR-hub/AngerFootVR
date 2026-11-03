@@ -30,7 +30,7 @@ internal class VrInputProvider : IInputProvider
     // (dual pistols: either trigger, each fires its own pistol: Arsenal)
     public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger) || Arsenal.Dual && VrControls.HeldEither(VrButton.Trigger);
     public bool WasShootReleased() => Arsenal.Dual ? VrControls.UpEither(VrButton.Trigger) && !VrControls.HeldEither(VrButton.Trigger) : VrControls.Up(GunHand, VrButton.Trigger);
-    public bool IsThrowPressed() => MotionThrow.Held;
+    public bool IsThrowPressed() => MotionThrow.Held; // (on letting go of the gun hand's grip)
     // (the player's choice: B kicks and A jumps; X kicks too, so either hand can)
     public bool IsKickPressed() => KickHeld;
     public bool WasKickPressed() => KickDown;

@@ -21,12 +21,14 @@ internal static class DevSaves
     private static bool Prefix(string localPath, ref string __result)
     {
         if (!Enabled) return true;
-        if (!_ready) Prepare();
+        if (!_ready) SetUp();
         __result = Path.Combine(Root, localPath).Replace('\\', '/');
         return false;
     }
 
-    private static void Prepare()
+    // (not "Prepare": Harmony calls a patch class's Prepare() while it patches, every run, so this ran and logged
+    // "Dev run" in players' games too, though their saves stayed their own)
+    private static void SetUp()
     {
         _ready = true;
         Directory.CreateDirectory(Path.Combine(Root, "Saves"));

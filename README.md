@@ -13,7 +13,7 @@ A fan-made VR mod for **Anger Foot** (Free Lives / Devolver Digital): the whole 
   - **Dual pistols:** one in each hand, each trigger fires its own.
   - **The sniper rifle** gets a working scope: put your eye to it.
   - **An ammo count** on the back of every gun, which flashes EMPTY when it's time to throw it.
-- **Throw it.** The gun hand's grip throws your gun from your hand, where it points, with a gentle aim assist.
+- **Throw for real.** Hold the gun hand's grip and let go: the gun flies the way your hand was going, as hard as you threw it, spinning off your wrist (let go without a swing and it goes where it points). A gentle aim assist helps; waving your hands about never throws.
 - **Your hand picks things up.** Reach for (or point at) a bottle, a drink, a door or a button with your free hand and squeeze its grip; looking at it works too.
 - **Drink for real.** Grab a beer, an energy drink or that lizard and bring it to your mouth.
 - **Haptics** for shots, kicks, doors, hits, throws and shoe powers.
@@ -43,7 +43,7 @@ A fan-made VR mod for **Anger Foot** (Free Lives / Devolver Digital): the whole 
 | X / B | KICK | KICK |
 | Y / A | shoe power | jump |
 | Trigger | (second pistol) | shoot |
-| Grip | interact (doors, pick-ups, drinks); hold the front of a two-handed gun | throw your gun |
+| Grip | interact (doors, pick-ups, drinks); hold the front of a two-handed gun | hold and let go: throw your gun |
 | Menu | pause | |
 
 **Menus:**

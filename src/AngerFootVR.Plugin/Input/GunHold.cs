@@ -43,6 +43,36 @@ internal static class GunHold
     private static float _barrelOff, _heldSince;
     private static Vector3 _palmRest, _muzzleRest, _axisRest;
     private static Quaternion? _fpsFrame;
+    private static HoldableObjectType _layered;
+    private static float _layerUntil;
+    private static int _nextLayer;
+
+    /// <summary>
+    /// What you hold is drawn with your body, by the game's own camera: the game draws it with its weapon camera, on top
+    /// of everything (so a flat screen's gun never goes into a wall), which in VR put the gun in front of the fingers
+    /// holding it, as if see-through. Only its pictures move (nothing that collides), for a moment each time the thing
+    /// in your hand changes (its parts come on over a few frames).
+    /// </summary>
+    private static void WithTheBody(HandRig rig, HoldableObjectType type)
+    {
+        if (type != _layered)
+        {
+            _layered = type;
+            _layerUntil = Time.unscaledTime + 1.5f;
+        }
+
+        if (Time.unscaledTime > _layerUntil || Time.frameCount < _nextLayer) return;
+        _nextLayer = Time.frameCount + 5;
+        var pc = SingletonBehaviour<PlayerCamera>.HasInstance ? SingletonBehaviour<PlayerCamera>.Instance : null;
+        if (pc == null || pc.WeaponCamera == null || pc.MainCamera == null) return;
+        var weapon = pc.WeaponCamera.cullingMask & ~pc.MainCamera.cullingMask;
+        foreach (var r in rig.GetComponentsInChildren<Renderer>(true))
+        {
+            var go = r.gameObject;
+            if ((weapon & (1 << go.layer)) == 0 || go.GetComponent<Collider>() != null) continue;
+            go.layer = UI.VrUi.Layer;
+        }
+    }
     private static Vector3 _palmNow;
 
     /// <summary>Where the gun hand is drawn while it holds a gun (null: where the controller is).</summary>
@@ -294,6 +324,7 @@ internal static class GunHold
         rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
         _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;
+        WithTheBody(__instance, type);
 
         // a gun: your hand round its grip, as the game's own first-person hand holds it, recoil and reloads included
         // (the gun goes where your controller aims; the hand had stayed at the controller's grip angle, beside the gun

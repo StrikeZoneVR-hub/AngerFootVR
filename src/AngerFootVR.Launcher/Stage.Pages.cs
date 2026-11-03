@@ -335,7 +335,7 @@ namespace AngerFootVR.Launcher
                 ("X", "KICK", "B", "KICK"),
                 ("Y", "shoe power", "A", "jump"),
                 (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
-                (left ? "GRIP" : "", left ? "throw your gun" : "", left ? "" : "GRIP", left ? "" : "throw your gun"),
+                (left ? "GRIP" : "", left ? "hold + let go: throw" : "", left ? "" : "GRIP", left ? "" : "hold + let go: throw"),
                 ("MENU", "pause", "CLICK STICK", "the middle finger"),
                 ("HOLD STICK", "recenter", "", ""),
             };

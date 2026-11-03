@@ -283,7 +283,17 @@ internal sealed class Skeleton
                         break;
                 }
 
-                ankleTarget = Vector3.Lerp(ankleTarget, kickAt, w);
+                if (_kickStyle[i] == KickStyle.High && t < 0.3f)
+                {
+                    // a front kick: the knee comes up first (the foot tucked under it), then the leg snaps out
+                    var chamber = hip + ft * (ThighLen * 0.8f * k) + tu * (0.05f * k) - ft * (0.05f * k);
+                    var c = Smooth(Mathf.Clamp01(t / 0.16f));
+                    var snap = Smooth(Mathf.Clamp01((t - 0.14f) / 0.16f));
+                    ankleTarget = Vector3.Lerp(Vector3.Lerp(ankleTarget, chamber, c), kickAt, snap);
+                    w = c;
+                }
+                else ankleTarget = Vector3.Lerp(ankleTarget, kickAt, w);
+
                 var soleWay = _kickStyle[i] == KickStyle.Stomp ? ft : Vector3.Slerp(dir, tu, 0.65f);
                 sole = Quaternion.Slerp(sole, Quaternion.LookRotation(soleWay, _kickStyle[i] == KickStyle.Stomp ? up : -dir), w);
                 footFwd = Vector3.Slerp(footFwd, dir, w);
