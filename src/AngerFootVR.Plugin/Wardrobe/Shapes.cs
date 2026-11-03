@@ -34,7 +34,7 @@ internal static class Shapes
         for (var j = 0; j < m; j++)
         {
             int a0 = i * (m + 1) + j, a1 = a0 + 1, b0 = (i + 1) * (m + 1) + j, b1 = b0 + 1;
-            t.AddRange(new[] { a0, a1, b0, b0, a1, b1 });
+            t.AddRange(new[] { a0, b0, a1, b0, b1, a1 }); // (clockwise seen from outside: Unity's front)
         }
 
         _torus = new Mesh { name = "AngerFootVR torus" };

@@ -13,10 +13,10 @@ namespace AngerFootVR.UI;
 /// minigun automatic, the minigun spinning up first, the crossbow's bolt sticking where it lands, the launcher's
 /// grenade going off, the flamethrower's stream, the plunger sticking). Three lanes of paper goons on carriers (the
 /// bench's buttons send them out to 20 m and back; holes stay in the paper, head or body called out), steel plates
-/// that ring and swing, bottles to burst and red barrels at the far end. DRILL: goons (and a granny: don't) pop up all
-/// down the range for 30 seconds. Put a gun down, and a while later it's back on the table.
+/// that ring and swing, bottles to burst and red barrels at the far end. TRAINING: seven courses with medals to win
+/// (GunRange.Courses.cs). Put a gun down, and a while later it's back on the table.
 /// </summary>
-internal static class GunRange
+internal static partial class GunRange
 {
     private static Transform _root;
     private static bool _built;
@@ -42,6 +42,7 @@ internal static class GunRange
         public AudioSource Loop;
         public ParticleSystem Flame;
         public float FlyFrom = -1f;
+        public int Shots; // (fired in the throwing course since it was last on the table)
         public Vector3 FlyStart;
         public Quaternion FlyStartRot;
     }
@@ -141,6 +142,9 @@ internal static class GunRange
         grab.OnTriggerHeld = (x, hand) => Pull(gun, hand, false);
         grab.OnGrabbed = (x, hand) => GameSounds.Play(info.Name + " Pickup", x.transform.position, 0.7f);
         grab.OnReleased = (x, hand) => StopLoops(gun);
+        go.AddComponent<ThrowHit>().Gun = gun;
+        var gripKey = "range/" + info.Name;
+        grab.Adjust = () => Input.GripAdjust.PoseOf(gripKey);
         return gun;
     }
 
@@ -166,6 +170,7 @@ internal static class GunRange
         if (!down && !g.Info.Auto) return;
         if (now < g.NextShot) return;
         g.NextShot = now + Mathf.Max(0.05f, g.Info.Cooldown);
+        if (Empty(g)) return;
         Fire(g, hand);
     }
 
@@ -213,6 +218,7 @@ internal static class GunRange
     private static void Impact(RaycastHit hit, Vector3 dir, float force)
     {
         var c = hit.collider;
+        if (ShotGrenade(c)) return;
         if (c.GetComponentInParent<Paper>() is { } paper)
         {
             Fx.Hole(hit.point, hit.normal, paper.transform, 0.03f);
@@ -379,7 +385,7 @@ internal static class GunRange
             if (c.GetComponentInParent<Bottle>() is { } b) b.Burst((c.transform.position - at).normalized * 6f);
             else if (c.GetComponentInParent<Plate>() is { } p) p.Hit(c.transform.position, (c.transform.position - at).normalized, 3f);
             else if (c.GetComponentInParent<Paper>() is { } paper) paper.Hit(c.transform.position);
-            else if (c.GetComponentInParent<Popper>() is { } pop) pop.Hit(pop.transform.position + Vector3.up);
+            else if (c.GetComponentInParent<Popper>() is { } pop) pop.Hit(pop.transform.position + Vector3.up, "blast");
             if (c.attachedRigidbody != null && !c.attachedRigidbody.isKinematic) c.attachedRigidbody.AddExplosionForce(12f, at, radius, 0.5f, ForceMode.VelocityChange);
         }
     }
@@ -405,7 +411,7 @@ internal static class GunRange
         if (!FunWorld.Raycast(muzzle, dir, 6f, out var hit)) return;
         if (hit.collider.GetComponentInParent<Paper>() is { } paper) paper.Burn(hit.point);
         else if (hit.collider.GetComponentInParent<Bottle>() is { } b) b.Burst(dir * 2f);
-        else if (hit.collider.GetComponentInParent<Popper>() is { } pop) pop.Hit(hit.point);
+        else if (hit.collider.GetComponentInParent<Popper>() is { } pop) pop.Hit(hit.point, "flame");
         if (Random.value < 0.3f) Fx.Smoke(hit.point, 0.6f, 0.5f);
     }
 
@@ -502,7 +508,7 @@ internal static class GunRange
 
         FunWorld.Soon("range plates", Plates_);
         FunWorld.Soon("range bottles", Shelf);
-        FunWorld.Soon("range drill", Drill);
+        FunWorld.Soon("range courses", CoursePanel);
     }
 
     private static void MakeLane(int k)
@@ -539,7 +545,7 @@ internal static class GunRange
 
             // the bench's buttons: nearer, further, back (clean paper)
             var panel = new Vector3(x, 1.0f, MovieHouse.GunRangeLine + 0.1f);
-            lane.Board = MovieHouse.SignFacing("", panel + new Vector3(0f, 0.32f, 0.1f), 0.11f, new Color(1f, 0.85f, 0.25f), Vector3.back, _root);
+            lane.Board = MovieHouse.SignFacing("", panel + new Vector3(0f, 0.4f, 0.1f), 0.11f, new Color(1f, 0.85f, 0.25f), Vector3.back, _root);
             foreach (var (dx, label, act) in new (float, string, System.Action)[]
                      {
                          (-0.4f, "-", () => Move(lane, -2.5f)), (0.4f, "+", () => Move(lane, 2.5f)), (0f, "NEW", () => Fresh(lane)),
@@ -642,124 +648,7 @@ internal static class GunRange
 
     // ================================================================================== DRILL: pop-up goons
 
-    private sealed class Popper : MonoBehaviour
-    {
-        public bool Granny;
-        public float UpAt = -1f, HitAt = -1f;
-
-        public void Hit(Vector3 at)
-        {
-            if (UpAt < 0f || HitAt > 0f) return;
-            HitAt = Time.unscaledTime;
-            if (_drillEnds < 0f) return;
-            var head = transform.InverseTransformPoint(at).y > 1.45f * 0.8f;
-            var pts = Granny ? -200 : head ? 200 : 100;
-            _drillScore += pts;
-            GameSounds.PlayOr(Granny ? "Voice female 2" : "Body impacts", "thud", at, 0.8f);
-            Pop(at, Granny ? "NOT GRANNY!" : head ? $"HEADSHOT +{pts}" : $"+{pts}", Granny ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
-        }
-    }
-
     private static readonly List<Popper> Poppers = new List<Popper>();
-    private static float _drillEnds = -1f, _nextPop;
-    private static int _drillScore, _drillBest;
-    private static TextMeshPro _drillBoard;
-
-    private static void Drill()
-    {
-        var lo = MovieHouse.RangeMin;
-        var hi = MovieHouse.RangeMax;
-        var rnd = new System.Random(8);
-        for (var k = 0; k < 8; k++)
-        {
-            var granny = k == 3 || k == 6;
-            var at = new Vector3(Mathf.Lerp(lo.x + 0.6f, hi.x - 0.6f, (float)rnd.NextDouble()), 0f, MovieHouse.GunRangeLine + 4f + k * 1.3f);
-            var go = FunWorld.Picture(granny ? "cutout_granny" : k % 2 == 0 ? "cutout_goon" : "cutout_goon2", _root, at, Quaternion.Euler(-90f, 180f, 0f));
-            if (go == null) continue;
-            go.transform.localScale = Vector3.one * 0.8f;
-            go.layer = FunWorld.PhysLayer;
-            var box = go.AddComponent<BoxCollider>();
-            box.center = new Vector3(0f, 0.9f, 0f);
-            box.size = new Vector3(0.62f, 1.8f, 0.04f);
-            var vis = new GameObject("Visual") { layer = VrUi.Layer };
-            vis.transform.SetParent(go.transform, false);
-            vis.AddComponent<MeshFilter>().sharedMesh = go.GetComponent<MeshFilter>().sharedMesh;
-            vis.AddComponent<MeshRenderer>().sharedMaterials = go.GetComponent<MeshRenderer>().sharedMaterials;
-            Object.Destroy(go.GetComponent<MeshRenderer>());
-            Object.Destroy(go.GetComponent<MeshFilter>());
-            go.AddComponent<Rigidbody>().isKinematic = true;
-            var p = go.AddComponent<Popper>();
-            p.Granny = granny;
-            Poppers.Add(p);
-        }
-
-        var panel = new Vector3((lo.x + hi.x) / 2 - 1.05f, 1.0f, MovieHouse.GunRangeLine + 0.1f);
-        _drillBoard = MovieHouse.SignFacing("", new Vector3((lo.x + hi.x) / 2, 2.6f, MovieHouse.GunRangeLine + 0.6f), 0.15f, new Color(1f, 0.16f, 0.62f), Vector3.back, _root);
-        var b = new GameObject("Drill button") { layer = FunWorld.PhysLayer };
-        b.transform.SetParent(_root, false);
-        b.transform.localPosition = panel;
-        b.AddComponent<BoxCollider>().size = new Vector3(0.14f, 0.06f, 0.14f);
-        FunWorld.Picture("rage_button_cap", _root, panel - new Vector3(0f, 0.03f, 0f), Quaternion.identity).transform.localScale = Vector3.one * 0.7f;
-        MovieHouse.SignFacing("DRILL", panel + new Vector3(0f, 0.12f, 0.05f), 0.1f, new Color(1f, 0.16f, 0.62f), Vector3.back, _root);
-        FunWorld.MakePress(b, h => StartDrill(), 0.09f);
-        ShowDrill();
-    }
-
-    private static void StartDrill()
-    {
-        if (_drillEnds > 0f) return;
-        _drillEnds = Time.unscaledTime + 30f;
-        _drillScore = 0;
-        _nextPop = Time.unscaledTime + 1f;
-        GameSounds.PlayOr("World Map Start Level", "door_bang", CinemaRig.HeadPosition, 0.8f);
-    }
-
-    private static void ShowDrill()
-    {
-        if (_drillBoard == null) return;
-        _drillBoard.text = _drillEnds > 0f ? $"DRILL  TIME {Mathf.CeilToInt(_drillEnds - Time.unscaledTime)}  SCORE {_drillScore}" : $"DRILL: GOONS POP UP, 30 SECONDS (BEST {_drillBest})";
-    }
-
-    private static void Drilling()
-    {
-        var now = Time.unscaledTime;
-        if (_drillEnds > 0f && now >= _drillEnds)
-        {
-            _drillEnds = -1f;
-            _drillBest = Mathf.Max(_drillBest, _drillScore);
-            Pop(CinemaRig.HeadPosition + CinemaRig.HeadRotation * Vector3.forward * 2f, $"DRILL {_drillScore}", new Color(0.15f, 0.95f, 1f));
-            foreach (var p in Poppers) p.UpAt = -1f;
-        }
-
-        if (_drillEnds > 0f && now >= _nextPop)
-        {
-            _nextPop = now + Random.Range(0.6f, 1.3f);
-            var down = Poppers.FindAll(p => p.UpAt < 0f);
-            if (down.Count > 0)
-            {
-                var p = down[Random.Range(0, down.Count)];
-                p.UpAt = now;
-                p.HitAt = -1f;
-                GameSounds.Play("Door Impacts", p.transform.position, 0.4f);
-            }
-        }
-
-        foreach (var p in Poppers)
-        {
-            var up = 0f;
-            if (p.UpAt > 0f)
-            {
-                var age = now - p.UpAt;
-                up = p.HitAt > 0f ? 1f - Mathf.Clamp01((now - p.HitAt) * 6f) : Mathf.Clamp01(age * 6f);
-                if (p.HitAt < 0f && age > 1.8f) p.HitAt = now;
-                if (p.HitAt > 0f && now - p.HitAt > 0.3f) p.UpAt = -1f;
-            }
-
-            p.transform.localRotation = Quaternion.Euler(-90f * (1f - up), 180f, 0f);
-        }
-
-        if (_drillEnds > 0f || Time.frameCount % 20 == 0) ShowDrill();
-    }
 
     private static void Pop(Vector3 world, string text, Color c)
     {
@@ -794,7 +683,11 @@ internal static class GunRange
             var e = t * t * (3f - 2f * t);
             g.Grab.Body.MovePosition(FunWorld.World(Vector3.Lerp(g.FlyStart, g.Home.position, e)));
             g.Grab.Body.MoveRotation(_root.rotation * Quaternion.Slerp(g.FlyStartRot, g.Home.rotation, e));
-            if (t >= 1f) g.FlyFrom = -1f;
+            if (t >= 1f)
+            {
+                g.FlyFrom = -1f;
+                g.Shots = 0; // (back on the table: loaded again)
+            }
         }
     }
 
@@ -805,6 +698,7 @@ internal static class GunRange
         foreach (var g in Guns)
         {
             if (g.Grab == null) continue;
+            if (g.Grab.Busy) Input.GripAdjust.Holding("range/" + g.Info.Name, g.Info.Name.ToUpperInvariant(), g.Grab.Holder.Value, g.Grab.GripWorld, g.Grab.GripWorld + Vector3.up * 0.2f);
             // the flamethrower's stream stops when the trigger's let go; the minigun spins down
             if (g.Flame != null && (!g.Grab.Busy || now - g.SpinUp > 0.08f)) StopLoops(g);
             if (g.Info.Name.ToLowerInvariant().Contains("minigun") && g.Grab.Busy && !VrControls.Held(g.Grab.Holder.Value, VrButton.Trigger))
@@ -833,10 +727,25 @@ internal static class GunRange
             b.gameObject.SetActive(true);
         }
 
-        Drilling();
+        CourseTick();
     }
 
     private static void Plog(string s) => Plugin.L.LogInfo(s);
+
+    /// <summary>Dev: this gun (by name) into the right hand, or "drop" to let go of it.</summary>
+    public static string DevHold(string name)
+    {
+        if (name == "drop")
+        {
+            FunWorld.Release(UnityEngine.XR.XRNode.RightHand, false);
+            return "dropped";
+        }
+
+        var g = Guns.Find(x => x.Info.Name.ToLowerInvariant().Contains(name.ToLowerInvariant()));
+        if (g == null) return "no gun like " + name;
+        FunWorld.Grab(UnityEngine.XR.XRNode.RightHand, g.Grab, false);
+        return "holding " + g.Info.Name;
+    }
 
     public static void Clear()
     {
@@ -850,8 +759,7 @@ internal static class GunRange
         Poppers.Clear();
         Darts.Clear();
         Grenades.Clear();
-        _drillEnds = -1f;
-        _drillBoard = null;
+        ClearCourses();
         _root = null;
     }
 
@@ -859,6 +767,6 @@ internal static class GunRange
     {
         var names = new List<string>();
         foreach (var g in Guns) names.Add($"{g.Info.Name}({g.Info.Fires}{(g.Info.Auto ? " auto" : "")} x{g.Info.Projectiles} {g.Info.Cooldown:F2}s {(g.Grab.ForeLocal.HasValue ? "2h" : "1h")} '{g.Info.FireBank}' muzzle {g.Muzzle:F2} barrel {g.Barrel:F1} grip {g.Grab.GripLocal:F2}{(Plugin.DevRun ? " " + g.Dev : "")})");
-        return $"RANGE built {_built} guns {Guns.Count}: {string.Join(", ", names)} | lanes {Lanes.Count} plates {Plates.Count} bottles {Bottles.Count} drill {(_drillEnds > 0f ? "on" : "off")} best {_drillBest}";
+        return $"RANGE built {_built} guns {Guns.Count}: {string.Join(", ", names)} | lanes {Lanes.Count} plates {Plates.Count} bottles {Bottles.Count} course {Courses[_course].Name} {(_running ? "on" : "off")}";
     }
 }

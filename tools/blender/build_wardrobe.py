@@ -9,6 +9,11 @@ run time:
 - kb_palm: from the wrist, fingers up +z, back of the hand +y; kb_foot: from the ankle, toes +y.
 Materials: endo_chrome (polished), endo_dark (the joints' cores, hydraulic bodies, panel lines), endo_teeth, endo_eye
 (the red glow).
+
+THE SKELETON's parts the same way, in bone (bone, bone_dark for the hollows, bone_socket for the eye sockets):
+- sk_bone: a long bone one unit up +z (shaft, flared ends), round a 0.05 m radius, for limbs and fingers;
+- sk_skull, sk_ribcage: as the killbot's but bone (sockets, a nose hole, teeth; ribs and sternum);
+- sk_palm: the hand's bones from the wrist (fingers up +z, back +y); sk_foot: from the ankle, toes +y.
 """
 import math
 import bpy
@@ -17,6 +22,7 @@ import afvr as A
 from build_rage import at
 
 CHROME, DARK, TEETH, EYE = "endo_chrome", "endo_dark", "endo_teeth", "endo_eye"
+BONE, HOLLOW, SOCKET = "bone", "bone_dark", "bone_socket"
 
 
 def rbox(name, size, loc, material, round_=0.008, rot=(0, 0, 0)):
@@ -78,17 +84,27 @@ def vertebra():
     return A.join("kb_vertebra", p)
 
 
-def skull():
+def skull(name="kb_skull", bone=False):
+    CHROME, DARK = (BONE, HOLLOW) if bone else ("endo_chrome", "endo_dark")
     p = [ball("k_cranium", 0.1, (0, -0.005, 0.02), CHROME, (0.82, 0.95, 1.0), 28, 16)]
     p.append(rbox("k_brow", (0.15, 0.04, 0.03), (0, 0.078, 0.02), CHROME, 0.012))
     for s in (-1, 1):
-        # the eye sockets, deep, and the red eyes in them
-        p.append(ball("k_socket", 0.029, (s * 0.038, 0.078, -0.008), DARK))
-        p.append(ball("k_eye", 0.015, (s * 0.038, 0.098, -0.008), EYE))
+        if bone:
+            # big round empty sockets
+            p.append(ball("k_socket", 0.031, (s * 0.038, 0.08, -0.01), SOCKET, (1, 0.7, 1)))
+        else:
+            # the eye sockets, deep, and the red eyes in them
+            p.append(ball("k_socket", 0.029, (s * 0.038, 0.078, -0.008), DARK))
+            p.append(ball("k_eye", 0.015, (s * 0.038, 0.098, -0.008), EYE))
+            p.append(cyl("k_temple", 0.009, 0.075, (s * 0.074, 0.018, -0.078), DARK))
         p.append(rbox("k_cheek", (0.032, 0.055, 0.026), (s * 0.062, 0.055, -0.046), CHROME, 0.01, (0, 0, s * 12)))
-        p.append(cyl("k_temple", 0.009, 0.075, (s * 0.074, 0.018, -0.078), DARK))
     p.append(rbox("k_maxilla", (0.1, 0.055, 0.03), (0, 0.068, -0.072), CHROME, 0.01))
-    p.append(rbox("k_nose", (0.022, 0.012, 0.03), (0, 0.098, -0.034), DARK, 0.004))
+    if bone:
+        # the nose: an upside-down heart of a hole
+        for s in (-1, 1):
+            p.append(ball("k_nose", 0.011, (s * 0.007, 0.097, -0.03), SOCKET, (1, 0.6, 1.5)))
+    else:
+        p.append(rbox("k_nose", (0.022, 0.012, 0.03), (0, 0.098, -0.034), DARK, 0.004))
     # the jaw: a U round the front, its hinges at the back
     jaw = [(-0.066, 0.0, -0.085), (-0.062, 0.05, -0.112), (-0.038, 0.085, -0.128), (0.0, 0.094, -0.132), (0.038, 0.085, -0.128), (0.062, 0.05, -0.112), (0.066, 0.0, -0.085)]
     p.append(A.tube_along("k_jaw", jaw, 0.014, CHROME, sides=10))
@@ -96,12 +112,13 @@ def skull():
     for row, z, y in (("up", -0.09, 0.094), ("down", -0.112, 0.09)):
         for k in range(8):
             x = -0.035 + k * 0.01
-            p.append(rbox("k_tooth_" + row, (0.0085, 0.008, 0.016), (x, y - abs(x) * 0.25, z), TEETH, 0.0015))
-    return A.join("kb_skull", p)
+            p.append(rbox("k_tooth_" + row, (0.0085, 0.008, 0.016), (x, y - abs(x) * 0.25, z), BONE if bone else TEETH, 0.0015))
+    return A.join(name, p)
 
 
-def ribcage():
-    p = [rbox("r_spineplate", (0.05, 0.03, 0.3), (0, -0.1, 0), DARK, 0.01)]
+def ribcage(name="kb_ribcage", bone=False):
+    CHROME, DARK = (BONE, HOLLOW) if bone else ("endo_chrome", "endo_dark")
+    p = [] if bone else [rbox("r_spineplate", (0.05, 0.03, 0.3), (0, -0.1, 0), DARK, 0.01)]
     for k in range(5):
         z = 0.12 - k * 0.058
         w = 0.12 + math.sin((k + 0.6) / 5.0 * math.pi) * 0.035
@@ -114,8 +131,9 @@ def ribcage():
     p.append(rbox("r_sternum", (0.036, 0.022, 0.23), (0, 0.105, -0.01), CHROME, 0.008))
     for s in (-1, 1):
         p.append(A.tube_along("r_clavicle", [(0, 0.1, 0.125), (s * 0.08, 0.07, 0.135), (s * 0.15, 0.015, 0.13)], 0.012, CHROME, sides=8))
-    p.append(cyl("r_core", 0.022, 0.03, (0, 0.118, 0.045), DARK, 'Y'))
-    return A.join("kb_ribcage", p)
+    if not bone:
+        p.append(cyl("r_core", 0.022, 0.03, (0, 0.118, 0.045), DARK, 'Y'))
+    return A.join(name, p)
 
 
 def pelvis():
@@ -153,6 +171,44 @@ def neck():
     return A.join("kb_neck", p)
 
 
+def sk_bone():
+    # a long bone: a slim shaft, its ends flared into rounded knuckles (radius 0.05 at most, one unit long)
+    prof = [(0.0, 0.0), (0.028, 0.004), (0.044, 0.022), (0.05, 0.05), (0.042, 0.085), (0.028, 0.15), (0.022, 0.3), (0.021, 0.5),
+            (0.022, 0.7), (0.028, 0.85), (0.042, 0.915), (0.05, 0.95), (0.044, 0.978), (0.028, 0.996), (0.0, 1.0)]
+    return A.join("sk_bone", [A.lathe("b_shaft", prof, 18, (0, 0, 0), BONE)])
+
+
+def rod(name, p0, p1, r, material):
+    """A round rod from one point to another (a cylinder turned onto the line)."""
+    p0, p1 = Vector(p0), Vector(p1)
+    d = (p1 - p0)
+    ob = cyl(name, r, d.length, (0, 0, 0), material, segments=10)
+    d.normalize()
+    return at(ob, tuple((p0 + p1) / 2), (math.degrees(-math.asin(d.y)), math.degrees(math.atan2(d.x, d.z)), 0))
+
+
+def sk_palm():
+    # four metacarpals fanning from the wrist's little bones to the knuckles
+    p = [ball("hp_carpal", 0.017, (s * 0.018, 0, 0.012), BONE) for s in (-1, 1)]
+    for k in range(4):
+        x = -0.03 + k * 0.02
+        p.append(rod("hp_meta", (x * 0.4, 0, 0.018), (x, 0.002, 0.085), 0.0065, BONE))
+        p.append(ball("hp_knuckle", 0.0095, (x, 0.002, 0.087), BONE))
+    return A.join("sk_palm", p)
+
+
+def sk_foot():
+    p = [ball("fp_ankle", 0.026, (0, 0, 0), BONE), ball("fp_heel", 0.028, (0, -0.035, -0.06), BONE, (0.9, 1.3, 1.0)),
+         ball("fp_arch", 0.026, (0, 0.04, -0.05), BONE, (1.3, 1.2, 0.8))]
+    for k in range(5):
+        x = -0.03 + k * 0.015
+        p.append(rod("fp_meta", (x * 0.5, 0.06, -0.055), (x, 0.17, -0.072), 0.0065, BONE))
+        p.append(rod("fp_toe", (x, 0.172, -0.073), (x * 1.05, 0.215, -0.078), 0.0055, BONE))
+    return A.join("sk_foot", p)
+
+
 def build(models, keep):
     for make in (upper, lower, joint, shoulder, vertebra, skull, ribcage, pelvis, palm, finger, foot, neck):
+        keep(A.smooth(make(), 40))
+    for make in (sk_bone, lambda: skull("sk_skull", True), lambda: ribcage("sk_ribcage", True), sk_palm, sk_foot):
         keep(A.smooth(make(), 40))

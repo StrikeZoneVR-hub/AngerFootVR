@@ -39,11 +39,11 @@ namespace AngerFootVR.Launcher
             {
                 if (_opts != null) return _opts;
                 bool Mod() => _cfg != null;
-                Opt Toggle(string section, string key, string label, string help) => new Opt
+                Opt Toggle(string section, string key, string label, string help, bool on = true) => new Opt
                 {
                     Label = label, Help = help,
-                    Value = () => Cfg(section, key, "true").ToLowerInvariant() == "false" ? "OFF" : "ON",
-                    Step = by => Set(section, key, Cfg(section, key, "true").ToLowerInvariant() == "false" ? "true" : "false"), Enabled = Mod,
+                    Value = () => Cfg(section, key, on ? "true" : "false").ToLowerInvariant() == "false" ? "OFF" : "ON",
+                    Step = by => Set(section, key, Cfg(section, key, on ? "true" : "false").ToLowerInvariant() == "false" ? "true" : "false"), Enabled = Mod,
                 };
                 string Cfg(string section, string key, string fallback) => _cfg?.Get(section, key) ?? fallback;
                 void Set(string section, string key, string value)
@@ -121,6 +121,7 @@ namespace AngerFootVR.Launcher
                     Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
                     Toggle("Controls", "HandSwat", "SWAT BACK", "A grenade coming at you: hit it with your hand, fast, and back it goes, as a kick sends it."),
+                    Toggle("Controls", "GunGripAdjust", "GUN GRIP ADJUST", "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Off when you're done (it borrows that stick).", false),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
                     Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
                     Toggle("Display", "WristWatch", "WRIST WATCH", "A watch on your free hand's wrist in a level: turn it to you for the time, your ammo and the star goals."),

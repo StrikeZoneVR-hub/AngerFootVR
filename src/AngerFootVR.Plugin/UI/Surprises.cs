@@ -85,8 +85,9 @@ internal static class Surprises
         _nextFame = Time.unscaledTime + 2f;
         if (_fame == null)
         {
-            MovieHouse.Sign("HALL OF FAME", new Vector3(-3.4f, 3.25f, -5.97f), 0.42f, new Color(1f, 0.25f, 0.6f));
-            _fame = MovieHouse.Sign("", new Vector3(-3.4f, 2.2f, -5.97f), 0.2f, new Color(1f, 0.85f, 0.3f), glow: false);
+            // (between the house lights and the rage room's doors: at x -3.4 it had run into the ARCADE sign)
+            MovieHouse.Sign("HALL OF FAME", new Vector3(-0.2f, 3.4f, -5.97f), 0.4f, new Color(1f, 0.25f, 0.6f));
+            _fame = MovieHouse.Sign("", new Vector3(-0.2f, 2.32f, -5.97f), 0.17f, new Color(1f, 0.85f, 0.3f), glow: false);
             _fame.enableWordWrapping = false;
             _fame.alignment = TextAlignmentOptions.Center;
             _fame.rectTransform.sizeDelta = new Vector2(4.2f, 1.8f);

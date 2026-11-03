@@ -447,7 +447,7 @@ internal static class Arcade
             }
 
             Marquee(at + new Vector3(-0.4f, 2.95f, 0f), Vector3.left, 0.3f, new Color(1f, 0.16f, 0.62f), "GOON GALLERY");
-            _board = Marquee(at + new Vector3(-0.45f, 2.45f, 0f), Vector3.left, 0.15f, new Color(1f, 0.85f, 0.25f));
+            _board = Marquee(at + new Vector3(-0.45f, 2.36f, 0f), Vector3.left, 0.15f, new Color(1f, 0.85f, 0.25f));
             var start = new GameObject("Gallery start") { layer = FunWorld.PhysLayer };
             start.transform.SetParent(_root, false);
             start.transform.localPosition = at + new Vector3(-0.32f, 1.08f, -1.2f);
@@ -743,8 +743,8 @@ internal static class Arcade
             MovieHouse.Block(at + Rot(new Vector3(0f, 0f, (len + 1f) / 2)), 0.55f, (len + 1.1f) / 2);
             foreach (var (x, z, r, p) in new[] { (0f, 0.75f, 0.16f, 10), (-0.26f, 1.15f, 0.11f, 30), (0.26f, 1.15f, 0.11f, 30), (0f, 1.5f, 0.09f, 50), (0f, 1.8f, 0.075f, 100) })
                 Holes.Add(new Hole { Centre = FunWorld.World(at + Rot(new Vector3(x, z, len + 0.88f))), Radius = r + 0.04f, Points = p });
-            Marquee(at + Rot(new Vector3(0f, 2.2f, len + 0.86f)), Vector3.forward, 0.3f, new Color(0.15f, 0.95f, 1f), "SHOE TOSS");
-            _board = Marquee(at + Rot(new Vector3(0f, 1.98f, len + 0.84f)), Vector3.forward, 0.13f, new Color(1f, 0.85f, 0.25f));
+            Marquee(at + Rot(new Vector3(0f, 2.26f, len + 0.86f)), Vector3.forward, 0.3f, new Color(0.15f, 0.95f, 1f), "SHOE TOSS");
+            _board = Marquee(at + Rot(new Vector3(0f, 1.92f, len + 0.84f)), Vector3.forward, 0.13f, new Color(1f, 0.85f, 0.25f));
             // the shoes in their tray by the near end
             var meshes = ShoeMeshes();
             for (var k = 0; k < 9; k++)

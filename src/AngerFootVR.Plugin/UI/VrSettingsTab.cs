@@ -28,7 +28,7 @@ internal static class VrSettingsTab
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, SwatBack, Watch;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, SwatBack, Watch, GripAdjust;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -82,6 +82,8 @@ internal static class VrSettingsTab
         },
         Toggle("TWO-HAND GUNS", nameof(TwoHandGuns), VrSettings.TwoHandAim,
             "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
+        Toggle("GUN GRIP ADJUST", nameof(GripAdjust), VrSettings.GripAdjust,
+            "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Turn it off when you're done (it borrows that stick)."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
             "Grab a beer, an energy drink or the lizard and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
         Toggle("SWAT BACK", nameof(SwatBack), VrSettings.HandSwat,

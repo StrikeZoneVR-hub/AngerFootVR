@@ -30,6 +30,12 @@ internal static class VrControls
     private static readonly Dictionary<(XRNode, VrButton), int> DevHeld = new Dictionary<(XRNode, VrButton), int>();
 
     public static Vector2 DevMove;
+
+    /// <summary>Dev: the right stick for the test runtime (its own stick doesn't come through).</summary>
+    public static Vector2? DevStickR;
+
+    /// <summary>A hand whose stick (and its click) something has for now: GUN GRIP ADJUST. Everything else sees it at rest.</summary>
+    public static XRNode? StickTaken;
     private static float _devUntil;
 
     /// <summary>Dev: the test runtime's (absent) controllers count as there for a few seconds.</summary>
@@ -73,6 +79,7 @@ internal static class VrControls
         }
 
         if (DevMove != Vector2.zero) Sticks[0] = DevMove;
+        if (DevStickR.HasValue) Sticks[1] = DevStickR.Value;
     }
 
     private static void Read(InputDevice device, int hand)
@@ -110,11 +117,16 @@ internal static class VrControls
 
     private static int Index(XRNode hand, VrButton b) => (hand == XRNode.LeftHand ? 0 : Buttons) + (int)b;
 
-    public static bool Held(XRNode hand, VrButton b) => Now[Index(hand, b)];
+    private static bool Taken(XRNode hand, VrButton b) => b == VrButton.StickClick && StickTaken == hand;
 
-    public static bool Down(XRNode hand, VrButton b) => Now[Index(hand, b)] && !Before[Index(hand, b)];
+    public static bool Held(XRNode hand, VrButton b) => Now[Index(hand, b)] && !Taken(hand, b);
 
-    public static bool Up(XRNode hand, VrButton b) => !Now[Index(hand, b)] && Before[Index(hand, b)];
+    public static bool Down(XRNode hand, VrButton b) => Now[Index(hand, b)] && !Before[Index(hand, b)] && !Taken(hand, b);
+
+    public static bool Up(XRNode hand, VrButton b) => !Now[Index(hand, b)] && Before[Index(hand, b)] && !Taken(hand, b);
+
+    /// <summary>The button as it is, taken or not (for what took it).</summary>
+    public static bool RawHeld(XRNode hand, VrButton b) => Now[Index(hand, b)];
 
     public static bool HeldEither(VrButton b) => Held(XRNode.LeftHand, b) || Held(XRNode.RightHand, b);
 
@@ -122,7 +134,10 @@ internal static class VrControls
 
     public static bool UpEither(VrButton b) => (Up(XRNode.LeftHand, b) || Up(XRNode.RightHand, b)) && !HeldEither(b);
 
-    public static Vector2 Stick(XRNode hand) => Sticks[hand == XRNode.LeftHand ? 0 : 1];
+    public static Vector2 Stick(XRNode hand) => StickTaken == hand ? Vector2.zero : Sticks[hand == XRNode.LeftHand ? 0 : 1];
+
+    /// <summary>The stick as it is, taken or not (for what took it).</summary>
+    public static Vector2 RawStick(XRNode hand) => Sticks[hand == XRNode.LeftHand ? 0 : 1];
 
     /// <summary>Dev: holds a button down for some frames.</summary>
     public static void DevPress(XRNode hand, VrButton b, int frames) => DevHeld[(hand, b)] = frames;

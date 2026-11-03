@@ -104,6 +104,7 @@ public class Plugin : BaseUnityPlugin
         UI.Arcade.Init();
         UI.GunRange.Init();
         Wardrobe.Wardrobe.Init();
+        UI.WardrobeBoard.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.2.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -172,6 +173,7 @@ public class Plugin : BaseUnityPlugin
         XrManager.Update();
         XrActions.Update();
         VrControls.Update();
+        Input.GripAdjust.Update();
         MapRig.Update();
         CinemaRig.Update();
         UI.Opening.Update();
@@ -404,6 +406,13 @@ public class Plugin : BaseUnityPlugin
                     {
                         var a = arg.Split(' ');
                         Core.VrControls.DevMove = a[0] == "off" ? Vector2.zero : new Vector2(float.Parse(a[0]), float.Parse(a[1]));
+                        break;
+                    }
+                    case "rstick":
+                    {
+                        // rstick x y | off: the right stick, for the test runtime
+                        var a = arg.Split(' ');
+                        Core.VrControls.DevStickR = a[0] == "off" ? (Vector2?)null : new Vector2(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]));
                         break;
                     }
                     case "turn":
@@ -844,7 +853,16 @@ public class Plugin : BaseUnityPlugin
                         var hips = Body.VrBody.TwinAnimator?.GetBoneTransform(HumanBodyBones.Hips);
                         if (head == null || hips == null) break;
                         var mid = (head.position + hips.position) * 0.5f;
+                        var close = 2.6f;
                         var fwd = Vector3.ProjectOnPlane(twin.forward, Vector3.up).normalized;
+                        if (a.Length > 1 && a[1] == "hands")
+                        {
+                            // (both hands, close: the gloves)
+                            var lh = Body.VrBody.TwinAnimator.GetBoneTransform(HumanBodyBones.LeftHand);
+                            var rh = Body.VrBody.TwinAnimator.GetBoneTransform(HumanBodyBones.RightHand);
+                            if (lh != null && rh != null) mid = (lh.position + rh.position) * 0.5f;
+                            close = 1.0f;
+                        }
                         if (a.Length > 1 && a[1] == "side") fwd = Vector3.Cross(Vector3.up, fwd);
                         if (a.Length > 1 && a[1] == "back") fwd = -fwd;
                         var go = new GameObject("AngerFootVR portrait");
@@ -856,7 +874,7 @@ public class Plugin : BaseUnityPlugin
                         cam.clearFlags = CameraClearFlags.SolidColor;
                         cam.backgroundColor = new Color(0.12f, 0.1f, 0.14f);
                         cam.cullingMask = 1 << twin.gameObject.layer;
-                        go.transform.position = mid + fwd * 2.6f + Vector3.up * 0.1f;
+                        go.transform.position = mid + fwd * close + Vector3.up * 0.1f;
                         go.transform.rotation = Quaternion.LookRotation(mid - go.transform.position);
                         var rt = new RenderTexture(900, 1200, 24);
                         cam.targetTexture = rt;
@@ -939,6 +957,22 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "poke":
                         L.LogInfo("poke: " + UI.FunWorld.DevPoke(arg));
+                        break;
+                    case "rangegun":
+                        L.LogInfo("rangegun: " + UI.GunRange.DevHold(arg));
+                        break;
+                    case "grip":
+                        // grip on|off: GUN GRIP ADJUST for now (dev: the cfg untouched); grip: how it stands
+                        if (arg == "on") Input.GripAdjust.DevOn = true;
+                        else if (arg == "off") Input.GripAdjust.DevOn = false;
+                        L.LogInfo(Input.GripAdjust.Describe());
+                        break;
+                    case "textcheck":
+                        L.LogInfo(Dev.TextCheck.Run());
+                        break;
+                    case "course":
+                        // course <1-7>|hit|swat: run a range training course, hit what's up, swat the grenades
+                        L.LogInfo(UI.GunRange.DevCourse(arg));
                         break;
                     case "swattest":
                         L.LogInfo("Swat test: " + Input.Swat.DevGrenade());

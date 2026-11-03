@@ -52,6 +52,10 @@
 - **Throw for real:** hold the gun hand's grip and let go. It flies the way your hand was going, as hard as you
   threw it, spinning off your wrist, with a gentle aim assist. Let go without a swing and it goes where it points.
   Waving your hands about never throws it.
+- **Set the grip yourself** (new in 1.2): turn on **GUN GRIP ADJUST** (VR tab, or the button on the gun range's bench),
+  hold a gun and set how it sits in your hand, live. The gun hand's stick tilts and turns it (click the stick for
+  height, then depth and roll; hold the click to put it back), or squeeze your other hand's grip on the gun and place
+  it by hand. Each gun keeps its own. Turn it off when you're done: it borrows that stick.
 
 <p align="center">
   <img src="docs/images/pistol.jpg" alt="A pistol firing down a hallway, the muzzle flash a star" width="49%">
@@ -81,8 +85,10 @@
   - bullet wounds spurt and stay on the goon, going down with them;
   - bodies leave smears where they slam into walls and floors, and pools of blood stain the bodies lying in them;
   - explosions spray blood all round;
-  - **blood on you**: a bloody kick leaves it on your shoe, a close kill on your gun hand, and it dries off after a
-    while.
+  - **holes** (new in 1.2): shoot a goon and the bullet goes right through, a cartoon hole you can see through, bigger
+    for bigger guns (a shotgun up close blows a big one). Explosions take a bite out of them;
+  - **blood on you** (more of it in 1.2): kills close by spatter your chest, arms, hands and legs (a bloody kick your
+    shoe), on whatever you're wearing, drying off and gone after 15 seconds.
 - **BLOOD COLOUR:** the game's own pink, or red.
 - **GORE: GAME** is the game's own blood as it is, **OFF** turns blood off. The game's own **Show Blood** setting still
   decides whether there's any.
@@ -97,6 +103,14 @@
 - A neon picture palace built for the mod, where the game's menus and cutscenes play on the big screen. Point a laser
   from either hand to click them and to scroll lists (or hold the trigger and drag).
 - Walk the aisle and check the **Hall of Fame** on the back wall: your levels, stars and best time.
+- **The WARDROBE**, beside the lobby mirror: point at its arrows to change what you wear and see it on you at once.
+  All of it's yours from the start:
+  - **14 body styles:** the classic hero, **cartoon shaded**, **the hitman** (a black or white suit), the **tracksuit
+    goon** (three colours), **the killbot** (a chrome or gold endoskeleton with red eyes), **the skeleton**, a gold,
+    marble or bronze **statue** and a black **silhouette**;
+  - **16 pairs of gloves:** bare knuckles, driving gloves, boxing gloves, dish gloves, cartoon gloves, taped knuckles,
+    brass knuckles, robot hands, punk gloves, oven mitts and gold gloves, some in a second colour.
+  - What you wear shows in the mirror, your shadow and the BEHIND YOU view, and you see your own hands and body in it.
 - **The lobby:**
   - **Concessions:** popcorn and sodas to grab, fill and eat or drink, and a popcorn cart to kick over.
   - **Take a seat:** squeeze your grip in the aisle by a row, and push the stick to get up again.
@@ -125,8 +139,11 @@
   - **SHOE TOSS:** throw shoes into the rings.
   - **GOON BOWLING:** kick (or throw) the ball at ten goon pins, five frames.
 - **The GUN RANGE**, every gun in the game on the table: paper targets on lanes you can move (and see where you hit),
-  steel plates that ring and swing, bottles and red barrels to burst. Then the **DRILL**: goons pop up for 30 seconds
-  (a granny or two too: don't).
+  steel plates that ring and swing, bottles and red barrels to burst.
+  - **TRAINING** (new in 1.2): seven courses that get you ready for the levels, each with a **bronze, silver and
+    gold** to win: FIRST SHOTS, HEADS UP (headshots only), ON THE MOVE (runners), NOT GRANNY, EMPTY? THROW IT (three
+    shots a gun, then throw it), SWAT BACK (goons lob grenades at you) and THE GAUNTLET (all of it). Pick one with the
+    arrows on the bench and press START. Your medals go up on the wall.
 - A short VR opening where the lights bang on (first start only, or turn it off).
 
 <p align="center">

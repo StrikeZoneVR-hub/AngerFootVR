@@ -413,6 +413,7 @@ internal static class FunWorld
         public float Kick; // (a gun's recoil: it jumps up and back in the hand, settling)
         public Action<Grabbable, XRNode> OnGrabbed, OnReleased, OnTrigger, OnTriggerHeld;
         public Func<bool> CanGrab;
+        public Func<Pose> Adjust; // (GUN GRIP ADJUST: where it sits in your hand, moved from its grip)
         public bool Busy => Holder.HasValue;
 
         public Vector3 GripWorld => transform.TransformPoint(GripLocal);
@@ -458,7 +459,8 @@ internal static class FunWorld
             var pose = VrHands.Get(Hand);
             var handRot = pose.Aim;
             if (Thing.Kick > 0f) handRot *= Quaternion.Euler(-Thing.Kick * 9f, 0f, 0f);
-            rot = handRot * Thing.GripRot;
+            var adjust = Thing.Adjust != null ? Thing.Adjust() : Pose.identity;
+            rot = handRot * adjust.rotation * Thing.GripRot;
             if (Thing.Fore.HasValue && Thing.ForeLocal.HasValue)
             {
                 // both hands on it: it points from the back hand to the front one, rolled with the back hand
@@ -473,7 +475,7 @@ internal static class FunWorld
                 }
             }
 
-            pos = pose.Position - rot * Thing.GripLocal - handRot * Vector3.forward * (Thing.Kick * 0.035f);
+            pos = pose.Position + handRot * adjust.position - rot * Thing.GripLocal - handRot * Vector3.forward * (Thing.Kick * 0.035f);
         }
 
         public void Step()
@@ -701,6 +703,7 @@ internal static class FunWorld
         {
             var t = h.Thing;
             if (t == null || !t.ForeLocal.HasValue || t.Fore.HasValue || h.Hand == hand) continue;
+            if (t.Adjust != null && Input.GripAdjust.On) continue; // (its grip being set: the other hand places it)
             if ((t.transform.TransformPoint(t.ForeLocal.Value) - at).magnitude > 0.18f) continue;
             t.Fore = hand;
             VrControls.Rumble(hand, 0.25f, 0.04f);

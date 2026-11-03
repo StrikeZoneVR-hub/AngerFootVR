@@ -360,7 +360,22 @@ internal static class GunHold
             anchor = handPos;
         }
 
-        if (IsGun && DevMode != 1) rigRot = Arsenal.TwoHand(rig, rigRot, anchor, anchorInRig, _muzzleRest, type);
+        // GUN GRIP ADJUST: this gun as you set it, in your controller's aim (the hand holding it goes with it)
+        var gripKey = IsGun && type != null ? "level/" + type.name : null;
+        if (gripKey != null && DevMode != 1)
+        {
+            var off = GripAdjust.PoseOf(gripKey);
+            if (off.position != Vector3.zero || off.rotation != Quaternion.identity)
+            {
+                anchor += aim * off.position;
+                rigRot = aim * off.rotation * Quaternion.Inverse(aim) * rigRot;
+            }
+
+            GripAdjust.Holding(gripKey, type.name.ToUpperInvariant(), Hand, anchor, anchor + Vector3.up * 0.17f);
+        }
+
+        // (two hands on it steer it, except while grips are being set: then the other hand places it)
+        if (IsGun && DevMode != 1 && !GripAdjust.On) rigRot = Arsenal.TwoHand(rig, rigRot, anchor, anchorInRig, _muzzleRest, type);
         rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
         _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;

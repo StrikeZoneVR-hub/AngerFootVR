@@ -322,7 +322,7 @@ internal static class Lobby
         }
 
         MovieHouse.SignFacing("NOW SHOWING", new Vector3(6.93f, 3.05f, 0.45f), 0.42f, new Color(1f, 0.2f, 0.3f), face, _root);
-        _hint = MovieHouse.SignFacing("POINT AT A POSTER AND PULL THE TRIGGER TO PLAY IT", new Vector3(6.93f, 2.72f, 0.45f), 0.11f, new Color(0.15f, 0.95f, 1f), face, _root);
+        _hint = MovieHouse.SignFacing("POINT AT A POSTER AND PULL THE TRIGGER TO PLAY IT", new Vector3(6.93f, 2.64f, 0.45f), 0.11f, new Color(0.15f, 0.95f, 1f), face, _root);
         foreach (var (z, dir) in new[] { (-1.9f, -1), (2.8f, 1) })
         {
             var at = new Vector3(6.93f, 1.85f, z);
@@ -428,7 +428,7 @@ internal static class Lobby
         MovieHouse.Block(at, 0.22f, 0.92f);
         FunWorld.Solid(at + new Vector3(0f, 1f, 0f), new Vector3(1.84f, 2f, 0.42f), -90f);
         MovieHouse.SignFacing("SHOES", new Vector3(6.93f, 2.45f, -3.6f), 0.4f, new Color(1f, 0.16f, 0.62f), Vector3.left, _root);
-        _shoeNote = MovieHouse.SignFacing(ShoeHint, new Vector3(6.92f, 2.13f, -3.6f), 0.075f, new Color(0.15f, 0.95f, 1f), Vector3.left, _root);
+        _shoeNote = MovieHouse.SignFacing(ShoeHint, new Vector3(6.92f, 2.05f, -3.6f), 0.075f, new Color(0.15f, 0.95f, 1f), Vector3.left, _root);
         if (_shoeNote != null)
         {
             _shoeNote.rectTransform.sizeDelta = new Vector2(1.8f, 0.3f);

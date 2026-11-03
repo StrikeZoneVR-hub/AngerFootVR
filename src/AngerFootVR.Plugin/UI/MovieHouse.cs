@@ -177,8 +177,9 @@ internal static class MovieHouse
             }
 
         // the rage room's sign over its doors, flickering like an old one
-        _rageSign = Text("RAGE ROOM", new Vector3(DoorX, 2.95f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.62f, new Color(1f, 0.2f, 0.25f));
-        Text("KICK TO ENTER", new Vector3(DoorX, 2.6f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.24f, new Color(1f, 0.85f, 0.25f));
+        // (the doors' signs and the HALL OF FAME in one row: lower, the ARCADE sign had peeked over the wardrobe's board)
+        _rageSign = Text("RAGE ROOM", new Vector3(DoorX, 3.4f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.62f, new Color(1f, 0.2f, 0.25f));
+        Text("KICK TO ENTER", new Vector3(DoorX, 2.86f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.24f, new Color(1f, 0.85f, 0.25f));
 
         // ---- the lobby mirror: a free-standing one two metres to your left, facing you across the aisle ----
         var mirrorAt = new Vector3(-2.1f, 1.3f, Standing.z - Origin.z);
@@ -676,7 +677,7 @@ internal static class MovieHouse
         AddLight(new Vector3(-4f, 3.6f, -11f), new Color(0.25f, 0.85f, 1f), 1.8f, 9f);
         AddLight(new Vector3(-7.3f, 3.9f, -8.5f), new Color(1f, 0.9f, 0.75f), 1.2f, 8f);
         AddLight(new Vector3(-7.3f, 3.9f, -14f), new Color(1f, 0.9f, 0.75f), 1.2f, 8f);
-        Text("ARCADE", new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, 2.95f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.62f, new Color(0.15f, 0.95f, 1f));
+        Text("ARCADE", new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, 3.4f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.62f, new Color(0.15f, 0.95f, 1f));
         Text("ARCADE", new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, 2.95f, -6.16f), Quaternion.identity, 0.5f, new Color(0.15f, 0.95f, 1f));
     }
 
@@ -705,7 +706,7 @@ internal static class MovieHouse
         for (var d = 5; d <= 15; d += 5)
         {
             Box(white, new Vector3(mid.x, 0.006f, GunRangeLine + d), new Vector3(size.x, 0.012f, 0.06f));
-            Text($"{d} M", new Vector3(lo.x + 0.04f, 1.2f, GunRangeLine + d), Quaternion.Euler(0f, -90f, 0f), 0.3f, new Color(1f, 0.85f, 0.25f));
+            Text($"{d} M", new Vector3(lo.x + 0.04f, 2.1f, GunRangeLine + d), Quaternion.Euler(0f, -90f, 0f), 0.3f, new Color(1f, 0.85f, 0.25f));
         }
 
         // baffles across the ceiling, lights over the benches and down the lanes
@@ -742,7 +743,7 @@ internal static class MovieHouse
     {
         // (signs read from their -z side: these face back into the room)
         Text("SMASH IT", new Vector3(4f, 3.0f, RageMin.z + 0.06f), Quaternion.Euler(0f, 180f, 0f), 0.9f, new Color(1f, 0.2f, 0.3f));
-        Text("A / X  TO KICK", new Vector3(4f, 2.3f, RageMin.z + 0.06f), Quaternion.Euler(0f, 180f, 0f), 0.3f, new Color(1f, 0.85f, 0.25f));
+        Text("A / X  TO KICK", new Vector3(4f, 2.18f, RageMin.z + 0.06f), Quaternion.Euler(0f, 180f, 0f), 0.3f, new Color(1f, 0.85f, 0.25f));
     }
 
     private static Material _neonCyanSolid;
@@ -884,6 +885,8 @@ internal static class MovieHouse
             if (!ReferenceEquals(Glow.text, _main.text)) Glow.text = _main.text;
             if (Glow.enableWordWrapping != _main.enableWordWrapping) Glow.enableWordWrapping = _main.enableWordWrapping;
             if (Glow.rectTransform.sizeDelta != _main.rectTransform.sizeDelta) Glow.rectTransform.sizeDelta = _main.rectTransform.sizeDelta;
+            if (Glow.alignment != _main.alignment) Glow.alignment = _main.alignment; // (a left-set board's glow had stayed centred, a second copy beside it)
+            if (!Mathf.Approximately(Glow.fontSize, _main.fontSize)) Glow.fontSize = _main.fontSize;
             var c = _main.color;
             if (Mathf.Abs(Glow.color.r - c.r) + Mathf.Abs(Glow.color.g - c.g) + Mathf.Abs(Glow.color.b - c.b) > 0.01f) Glow.color = new Color(c.r, c.g, c.b, Glow.color.a);
             var a = _main.alpha * 0.35f;
