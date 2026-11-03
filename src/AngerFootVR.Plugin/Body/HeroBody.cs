@@ -86,6 +86,9 @@ internal static class HeroBody
 
     private static readonly float[] _thumb = { 0.1f, 0.1f }, _flip = { 0f, 0f };
 
+    /// <summary>How far the middle finger is up (0..1) on this hand (0 left, 1 right).</summary>
+    public static float FlipAmount(int side) => _flip[side];
+
     /// <summary>Dev: the fingers held at index, fist, thumb, middle finger (null: from the controllers).</summary>
     public static Vector4? DevFingers;
 
@@ -111,7 +114,25 @@ internal static class HeroBody
         var thumbOn = XrActions.Ready ? c.ThumbTouch : VrControls.Held(node, VrButton.Grip);
         _thumb[side] = Mathf.MoveTowards(_thumb[side], thumbOn ? 0.55f + 0.4f * fist : 0.1f, Time.unscaledDeltaTime * 8f);
         var thumb = _thumb[side];
-        if (node == Input.GunHold.Hand && Input.GunHold.Holding)
+        if (Input.MotionDrink.HoldingIn(node))
+        {
+            fist = 0.8f;
+            index = 0.75f;
+            thumb = 0.65f;
+        }
+        else if (node != Input.GunHold.Hand && Input.Arsenal.Dual)
+        {
+            fist = 1f;
+            index = Mathf.Lerp(0.45f, 0.85f, trigger);
+            thumb = 0.8f;
+        }
+        else if (node != Input.GunHold.Hand && Input.Arsenal.TwoHands)
+        {
+            fist = 0.9f;
+            index = 0.85f;
+            thumb = 0.75f;
+        }
+        else if (node == Input.GunHold.Hand && Input.GunHold.Holding)
         {
             // the held thing's own grip (a gun: round its handle, the index on its trigger; a box: hands open under it)
             var held = Input.GunHold.HeldGrip;

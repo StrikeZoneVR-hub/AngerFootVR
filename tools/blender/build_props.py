@@ -279,7 +279,7 @@ if '--no-rage' not in sys.argv:
         pass
 
 # (the rage room's wooden and cardboard things are long planks and flaps held at their ends)
-A.densify([ob for ob, g, o in models if ob.name in ("chair", "crate", "box", "table")])
+A.densify([ob for ob, g, o in models if ob.name in ("chair", "crate", "box", "table", "jukebox", "fishtank")])
 A.bake_ao([ob for ob, g, o in models if not ob.name.endswith('neon') and 'glow' not in ob.name])
 A.export(OUT, models)
 
@@ -298,7 +298,8 @@ if PREVIEW:
     show("sconce", (0.5, 0.8, 0.3), (0, 0, 0.0), 35)
     for n, v, t in (("crate", (1.2, 1.4, 1.0), (0, 0, 0.3)), ("tv", (0.9, 1.1, 0.7), (0, 0, 0.3)), ("bottle_green", (0.3, 0.45, 0.3), (0, 0, 0.12)),
                     ("vase", (0.6, 0.8, 0.5), (0, 0, 0.2)), ("chair", (1.2, 1.5, 1.1), (0, 0, 0.45)), ("table", (1.4, 1.8, 1.2), (0, 0, 0.4)),
-                    ("box", (0.8, 1.0, 0.7), (0, 0, 0.16)), ("gnome", (0.5, 0.75, 0.45), (0, 0, 0.25))):
+                    ("box", (0.8, 1.0, 0.7), (0, 0, 0.16)), ("gnome", (0.5, 0.75, 0.45), (0, 0, 0.25)),
+                    ("jukebox", (1.6, 2.2, 1.4), (0, 0, 0.7)), ("fishtank", (0.9, 1.3, 0.7), (0, 0, 0.2))):
         show(n, v, t)
     # the pieces of a few, spread out
     for n in ("tv", "gnome", "crate"):

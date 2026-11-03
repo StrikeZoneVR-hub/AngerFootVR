@@ -1,3 +1,4 @@
+using System.Linq;
 using AngerFootVR.Core;
 using Framework;
 using HarmonyLib;
@@ -22,7 +23,7 @@ internal static class GunHold
     public static XRNode Hand => VrInputProvider.GunHand;
 
     private const string WristName = "FPSHands_03_Rig:Wrist_R", MiddleName = "FPSHands_03_Rig:MiddleFinger1_R", ThumbName = "FPSHands_03_Rig:ThumbFinger1_R";
-    private static Transform _wrist, _middle, _thumb;
+    private static Transform _wrist, _middle, _thumb, _wristL, _middleL, _plungerRoot, _plungerEnd;
     private static HandRig _rig;
 
     /// <summary>Whether a gun (or anything the game holds on its rig) is in your hand this frame.</summary>
@@ -40,7 +41,8 @@ internal static class GunHold
     private static HoldableObjectType _held;
     private static readonly System.Reflection.FieldInfo MuzzleField = AccessTools.Field(typeof(HandRigGunObject), "_muzzlePosition");
     private static float _barrelOff, _heldSince;
-    private static Vector3 _palmRest;
+    private static Vector3 _palmRest, _muzzleRest, _axisRest;
+    private static string _axisObj = "";
 
     private static Vector3 GripFor(HoldableObjectType t)
     {
@@ -48,7 +50,7 @@ internal static class GunHold
             return new Vector3(0.35f, 0.3f, 0.3f); // hands open under it
         if (t == HoldableObjectType.Shield) return new Vector3(0.85f, 0.85f, 0.6f);
         if (t == HoldableObjectType.Bat || t == HoldableObjectType.Machete || t == HoldableObjectType.PizzaCutter ||
-            t == HoldableObjectType.Plunger || t == HoldableObjectType.Whip || t == HoldableObjectType.GimpClaw)
+            t == HoldableObjectType.Whip || t == HoldableObjectType.GimpClaw)
             return new Vector3(1f, 1f, 0.9f); // a fist round the handle
         if (t == HoldableObjectType.BeerBottle || t == HoldableObjectType.EnergyDrink || t == HoldableObjectType.Grenade)
             return new Vector3(0.8f, 0.75f, 0.7f);
@@ -71,18 +73,32 @@ internal static class GunHold
     private static void PlaceRig(HandRig __instance)
     {
         Holding = false;
-        if (!Aiming(out var pose) || !SingletonBehaviour<Player>.HasInstance) return;
+        if (!Aiming(out var pose) || !SingletonBehaviour<Player>.HasInstance)
+        {
+            Arsenal.Nothing();
+            return;
+        }
+
         var player = SingletonBehaviour<Player>.Instance;
-        if (!player.HasWeapon || player.HandRig != __instance) return;
+        if (player.HandRig != __instance) return;
+        if (!player.HasWeapon)
+        {
+            Arsenal.Nothing();
+            return;
+        }
         if (_rig != __instance || _wrist == null)
         {
             _rig = __instance;
-            _wrist = _middle = _thumb = null;
+            _wrist = _middle = _thumb = _wristL = _middleL = _plungerRoot = _plungerEnd = null;
             foreach (var t in __instance.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == WristName) _wrist = t;
                 else if (t.name == MiddleName) _middle = t;
                 else if (t.name == ThumbName) _thumb = t;
+                else if (t.name == "FPSHands_03_Rig:Wrist_L") _wristL = t;
+                else if (t.name == "FPSHands_03_Rig:MiddleFinger1_L") _middleL = t;
+                else if (t.name == "FPSHands_03_Rig:Plunger_Root") _plungerRoot = t;
+                else if (t.name == "FPSHands_03_Rig:Plunger") _plungerEnd = t;
             }
 
             if (_wrist == null) return;
@@ -137,7 +153,7 @@ internal static class GunHold
             rigRot = handRot * Quaternion.Inverse(fpsFrame);
             // a gun: its barrel on your aim, rolled with your controller (matched hand to hand, the game's pistol
             // grip points it at the floor); held things (bats, boxes, bottles) sit in your hand as the game's hand holds them
-            if (IsGun && DevMode != 1) rigRot = aim;
+            if (IsGun && DevMode != 1) rigRot = _axisRest != Vector3.zero ? aim * Quaternion.FromToRotation(_axisRest, Vector3.forward) : aim;
             if (DevMode == 1)
             {
                 // (the old way: turned about the wrist onto the aim)
@@ -151,7 +167,86 @@ internal static class GunHold
                 // the rig is taken once the thing is in hand, so the game's own recoil and reloads still move it
                 var palm = _wrist.position + along * 0.5f - back.normalized * (along.magnitude * 0.12f);
                 anchorInRig = rig.InverseTransformPoint(palm);
-                if (Time.unscaledTime - _heldSince < 0.6f || _palmRest == Vector3.zero) _palmRest = anchorInRig;
+                if (Time.unscaledTime - _heldSince < 0.6f || _palmRest == Vector3.zero)
+                {
+                    _palmRest = anchorInRig;
+                    _muzzleRest = _muzzle != null ? rig.InverseTransformPoint(_muzzle.position) : Vector3.zero;
+                    // no muzzle (the plunger): its length, from your palm to its middle, is what points
+                    _axisRest = Vector3.zero;
+                    if (_muzzle == null && type == HoldableObjectType.Plunger && _plungerRoot != null && _plungerEnd != null)
+                    {
+                        // the plunger's own bones: the one nearer a hand is the handle in your palm
+                        float Near(Vector3 p) => Mathf.Min((p - _wrist.position).sqrMagnitude, _wristL != null ? (p - _wristL.position).sqrMagnitude : float.MaxValue);
+                        var rootIsHandle = Near(_plungerRoot.position) <= Near(_plungerEnd.position);
+                        var handle = rootIsHandle ? _plungerRoot.position : _plungerEnd.position;
+                        var cup = rootIsHandle ? _plungerEnd.position : _plungerRoot.position;
+                        anchorInRig = rig.InverseTransformPoint(handle);
+                        _palmRest = anchorInRig;
+                        // (the cup's on the far side of the root from the other bone: the mesh grows from the root
+                        // away from it)
+                        var a = anchorInRig - rig.InverseTransformPoint(cup);
+                        if (a.sqrMagnitude > 1e-6f) _axisRest = a.normalized;
+                        _axisObj = rootIsHandle ? "plunger bones (root in hand)" : "plunger bones (end in hand)";
+                        // the handle: the mesh as it's posed now, its end furthest from the cup (a little in from it)
+                        try
+                        {
+                            var skin = __instance.GetComponentsInChildren<SkinnedMeshRenderer>(false).FirstOrDefault(r => r.name.Contains("Plunger"));
+                            if (skin != null && _axisRest != Vector3.zero)
+                            {
+                                var baked = new Mesh();
+                                skin.BakeMesh(baked);
+                                var verts = baked.vertices;
+                                var axisW = rig.TransformDirection(_axisRest);
+                                float lo = float.MaxValue, hi = float.MinValue;
+                                Vector3 loAt = default;
+                                foreach (var v in verts)
+                                {
+                                    var w = skin.transform.TransformPoint(v);
+                                    var d = Vector3.Dot(w, axisW);
+                                    if (d < lo)
+                                    {
+                                        lo = d;
+                                        loAt = w;
+                                    }
+
+                                    if (d > hi) hi = d;
+                                }
+
+                                Object.Destroy(baked);
+                                if (verts.Length > 0)
+                                {
+                                    anchorInRig = rig.InverseTransformPoint(loAt + axisW * ((hi - lo) * 0.08f));
+                                    _palmRest = anchorInRig;
+                                    _axisObj += $", handle from the mesh ({hi - lo:F2} m long)";
+                                }
+                            }
+                        }
+                        catch (System.Exception e)
+                        {
+                            _axisObj += ", mesh unreadable: " + e.Message;
+                        }
+                    }
+                    else if (_muzzle == null)
+                    {
+                        var obj = __instance.GetComponentsInChildren<HandRigObject>(false).FirstOrDefault(o => o.isActiveAndEnabled && o.GetComponentInChildren<Renderer>(false) != null);
+                        _axisObj = obj != null ? obj.name : "none";
+                        var rs = obj != null ? obj.GetComponentsInChildren<Renderer>(false) : new Renderer[0];
+                        if (rs.Length > 0)
+                        {
+                            var b = rs[0].bounds;
+                            foreach (var r in rs) b.Encapsulate(r.bounds);
+                            // (the game holds some things in its other hand: the plunger. Then that hand's palm is the grip)
+                            if (_wristL != null && _middleL != null && (_wristL.position - b.center).sqrMagnitude < (_wrist.position - b.center).sqrMagnitude)
+                            {
+                                anchorInRig = rig.InverseTransformPoint(_wristL.position + (_middleL.position - _wristL.position) * 0.5f);
+                                _palmRest = anchorInRig;
+                            }
+
+                            var a = rig.InverseTransformPoint(b.center) - anchorInRig;
+                            if (a.sqrMagnitude > 1e-4f) _axisRest = a.normalized;
+                        }
+                    }
+                }
                 else anchorInRig = _palmRest;
                 anchor = handPos + handRot * new Vector3(0f, 0f, PalmAlong);
             }
@@ -163,10 +258,15 @@ internal static class GunHold
             anchor = handPos;
         }
 
+        if (IsGun && DevMode != 1) rigRot = Arsenal.TwoHand(rig, rigRot, anchor, anchorInRig, _muzzleRest, type);
         rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
         _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;
+        Arsenal.AfterPlace(__instance, rig, anchorInRig, _muzzleRest, player.Weapon, type, IsGun);
     }
+
+    /// <summary>Where the held gun points from (its muzzle) and the way (its barrel).</summary>
+    public static void BarrelRay(VrHands.Pose pose, out Vector3 position, out Vector3 direction) => Barrel(pose, out position, out direction);
 
     /// <summary>Where a held gun's shots go: along its barrel (the old way: along the aim pose).</summary>
     private static void Barrel(VrHands.Pose pose, out Vector3 position, out Vector3 direction)
@@ -179,14 +279,25 @@ internal static class GunHold
             return;
         }
 
-        direction = _rig.transform.forward;
-        position = _muzzle != null ? _muzzle.position : pose.Position + direction * 0.22f;
+        direction = _axisRest != Vector3.zero ? _rig.transform.TransformDirection(_axisRest) : _rig.transform.forward;
+        position = _muzzle != null ? _muzzle.position : pose.Position + direction * 0.3f;
     }
 
     public static string Describe()
     {
         var pose = VrHands.Get(Hand);
-        var b = new System.Text.StringBuilder($"GUN holding={Holding} mode={DevMode} held={(_held != null ? _held.ToString() : "none")} grip={HeldGrip} barrel off aim {_barrelOff:F1} deg muzzle={(_muzzle != null ? _muzzle.position.ToString() : "none")} hand={pose.Tracked} {pose.Position} rig={(_rig != null ? _rig.transform.position + " " + _rig.transform.eulerAngles + " scale " + _rig.transform.localScale : "none")} wrist={(_wrist != null ? _wrist.position.ToString() : "none")}");
+        var line = "";
+        if (_rig != null && _muzzle != null)
+        {
+            var rigT = _rig.transform;
+            var palmW = rigT.TransformPoint(_palmRest);
+            var anim = AccessTools.Field(typeof(HandRig), "_animator")?.GetValue(_rig) as Animator;
+            line = $" barrel line {Vector3.Angle(rigT.forward, _muzzle.position - palmW):F0} deg (rig {rigT.InverseTransformDirection(_muzzle.position - palmW).normalized}) muzzle fwd {Vector3.Angle(rigT.forward, _muzzle.forward):F0} deg idle={(anim != null && anim.GetCurrentAnimatorStateInfo(0).IsName("Idle"))} muzzleRest {_muzzleRest} palmRest {_palmRest}";
+        }
+
+        line += $" axis {_axisRest} from '{_axisObj}'";
+
+        var b = new System.Text.StringBuilder(line + $" GUN holding={Holding} mode={DevMode} held={(_held != null ? _held.ToString() : "none")} grip={HeldGrip} barrel off aim {_barrelOff:F1} deg muzzle={(_muzzle != null ? _muzzle.position.ToString() : "none")} hand={pose.Tracked} {pose.Position} rig={(_rig != null ? _rig.transform.position + " " + _rig.transform.eulerAngles + " scale " + _rig.transform.localScale : "none")} wrist={(_wrist != null ? _wrist.position.ToString() : "none")}");
         if (_rig != null)
             foreach (var r in _rig.GetComponentsInChildren<Renderer>(true))
                 if (r.gameObject.activeInHierarchy)
@@ -199,10 +310,11 @@ internal static class GunHold
     /// <summary>Shots leave the gun in your hand along its barrel (the game fires from the middle of the view).</summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ProjectileWeapon), "CalculateProjectileSpawn")]
-    private static bool FromTheHand(ref Vector3 position, ref Vector3 direction)
+    private static bool FromTheHand(ProjectileWeapon __instance, ref Vector3 position, ref Vector3 direction)
     {
         if (!Aiming(out var pose)) return true;
-        Barrel(pose, out position, out direction);
+        Arsenal.ChooseDualHand(__instance);
+        if (!Arsenal.DualShot(__instance, out position, out direction)) Barrel(pose, out position, out direction);
         if (Dev.ActionLog.Enabled) Plugin.L.LogInfo($"ACTION shot from the hand at {position} towards {direction}");
         return false;
     }

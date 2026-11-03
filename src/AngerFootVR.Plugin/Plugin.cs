@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.4")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "1.0.0")]
 public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
@@ -64,7 +64,7 @@ public class Plugin : BaseUnityPlugin
         VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 0.1.4 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 1.0.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
@@ -140,6 +140,9 @@ public class Plugin : BaseUnityPlugin
         Rendering.SpectatorView.Update();
         Recentering();
         Input.MotionThrow.Update();
+        Input.MotionDrink.Update();
+        UI.Surprises.Update();
+        UI.Surprises.HallOfFame();
         VrSettings.Poll();
         Rendering.VrQuality.Update();
         var dt = Time.unscaledDeltaTime;
@@ -301,6 +304,36 @@ public class Plugin : BaseUnityPlugin
                         var a = arg.Split(' ');
                         Core.VrRig.DevHeadEuler = a[0] == "off" ? (Vector3?)null : new Vector3(float.Parse(a[0]), float.Parse(a[1]), a.Length > 2 ? float.Parse(a[2]) : 0f);
                         L.LogInfo("dev head " + (Core.VrRig.DevHeadEuler?.ToString() ?? "off"));
+                        break;
+                    }
+                    case "lookenemy":
+                    {
+                        // turn the (test runtime's) head to the nearest living enemy in sight
+                        var head = Core.VrRig.HeadPosition;
+                        Enemy best = null;
+                        var bestD = float.MaxValue;
+                        foreach (var e in UnityEngine.Object.FindObjectsOfType<Enemy>())
+                        {
+                            if (e == null || e.Health == null || !e.Health.IsAlive) continue;
+                            var d = (e.transform.position - head).magnitude;
+                            if (d < bestD)
+                            {
+                                bestD = d;
+                                best = e;
+                            }
+                        }
+
+                        if (best == null)
+                        {
+                            L.LogInfo("no enemies");
+                            break;
+                        }
+
+                        var to = best.transform.position + Vector3.up * 1.3f - head;
+                        var world = Quaternion.LookRotation(to).eulerAngles;
+                        world.y -= Core.VrRig.PlayYaw; // (the head's turn is in the play space)
+                        Core.VrRig.DevHeadEuler = new Vector3(world.x, world.y, 0f);
+                        L.LogInfo($"looking at {best.name} {bestD:F1} m away");
                         break;
                     }
                     case "press":
@@ -483,7 +516,11 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo($"eye scale {XRSettings.eyeTextureResolutionScale} -> {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}");
                         break;
                     case "flick":
-                        Input.MotionThrow.DevFlick();
+                        // flick [speed]: a throw from the gun hand along its aim (with a swing of this speed, m/s)
+                        Input.MotionThrow.DevFlick(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0f);
+                        break;
+                    case "slowmo":
+                        UI.Surprises.SlowMo(0.3f, 1.5f);
                         break;
                     case "eyes":
                     {
@@ -572,6 +609,22 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo($"kick lift {Body.Skeleton.KickLift} reach {Body.Skeleton.KickReach}");
                         break;
                     }
+                    case "drink":
+                    {
+                        // drink [beer|energy|lizard]: the first one in the level comes into your hand (as if grabbed)
+                        MonoBehaviour thing = arg == "energy" ? UnityEngine.Object.FindObjectOfType<EnergyDrink>() : arg == "lizard" ? UnityEngine.Object.FindObjectOfType<Lizard>() : (MonoBehaviour)UnityEngine.Object.FindObjectOfType<BeerBottle>();
+                        if (thing is BeerBottle b) b.OnInteraction();
+                        else if (thing is EnergyDrink e) e.OnInteraction();
+                        else if (thing is Lizard z) z.OnInteraction();
+                        L.LogInfo(thing == null ? "no " + arg + " here" : Input.MotionDrink.Describe());
+                        break;
+                    }
+                    case "scopeeye":
+                        L.LogInfo(Input.Arsenal.ScopeEye());
+                        break;
+                    case "give":
+                        L.LogInfo(Input.Arsenal.Give(arg));
+                        break;
                     case "gripmode":
                         Input.GunHold.DevMode = int.Parse(arg);
                         L.LogInfo(Input.GunHold.Describe());
@@ -669,6 +722,43 @@ public class Plugin : BaseUnityPlugin
                         foreach (var t in rootT.GetComponentsInChildren<Transform>(true))
                             if (a.Length < 2 || t.name.IndexOf(a[1], StringComparison.OrdinalIgnoreCase) >= 0)
                                 L.LogInfo($"BONE {t.name} parent {(t.parent != null ? t.parent.name : "-")} local {t.localPosition} {t.localEulerAngles} rootrel {rootT.InverseTransformPoint(t.position)}");
+                        break;
+                    }
+                    case "vrtab":
+                        // vrtab [n]: open SETTINGS and the VR tab (n: the n-th tab)
+                        L.LogInfo(UI.VrSettingsTab.Open(arg.Length > 0 ? int.Parse(arg) : -1));
+                        break;
+                    case "vrset":
+                        // vrset <row label part>: change that VR tab row through its own control (a click on it)
+                        L.LogInfo(UI.VrSettingsTab.DevChange(arg));
+                        break;
+                    case "clicklog":
+                        Input.InputPatches.DevClickLog = arg != "off";
+                        break;
+                    case "vrdefault":
+                        L.LogInfo(UI.VrSettingsTab.DevDefault());
+                        break;
+                    case "settingsdump":
+                        UI.VrSettingsTab.Dump();
+                        break;
+                    case "feedshot":
+                    {
+                        // the movie screen's picture as a PNG ("feedshot ui <name>": the game's menus)
+                        var ui = arg.StartsWith("ui");
+                        if (ui) arg = arg.Substring(2).Trim();
+                        var feed = ui ? UI.VrUi.Texture : Core.CinemaRig.Feed;
+                        if (feed == null) break;
+                        var dir = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots"));
+                        Directory.CreateDirectory(dir);
+                        var was = RenderTexture.active;
+                        RenderTexture.active = feed;
+                        var tex = new Texture2D(feed.width, feed.height, TextureFormat.RGB24, false);
+                        tex.ReadPixels(new Rect(0, 0, feed.width, feed.height), 0, 0);
+                        RenderTexture.active = was;
+                        var file = Path.Combine(dir, $"{(arg.Length > 0 ? arg : "feed")}_{DateTime.Now:HHmmss}.png");
+                        File.WriteAllBytes(file, tex.EncodeToPNG());
+                        UnityEngine.Object.Destroy(tex);
+                        L.LogInfo("Feed -> " + file);
                         break;
                     }
                     case "hier":

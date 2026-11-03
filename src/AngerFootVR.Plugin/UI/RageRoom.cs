@@ -68,7 +68,8 @@ internal static class RageRoom
         "bottle_green" or "bottle_brown" => byHand ? 2.5f : 3.0f,
         "vase" => byHand ? 2.8f : 3.4f,
         "gnome" => byHand ? 3.4f : 4.2f,
-        "tv" => byHand ? 4.5f : 5.0f,
+        "tv" or "jukebox" => byHand ? 4.5f : 5.0f,
+        "fishtank" => byHand ? 2.6f : 3.0f,
         "box" => 7f,
         _ => byHand ? 9f : 7.5f, // crates, chairs, tables
     };
@@ -78,7 +79,8 @@ internal static class RageRoom
         "bottle_green" or "bottle_brown" => "glass",
         "vase" => "china",
         "gnome" => "plaster",
-        "tv" => "tv",
+        "tv" or "jukebox" => "tv",
+        "fishtank" => "glass",
         "box" => "cardboard",
         _ => "wood",
     };
@@ -89,6 +91,8 @@ internal static class RageRoom
         "vase" => 1.2f,
         "gnome" => 2f,
         "tv" => 9f,
+        "jukebox" => 22f,
+        "fishtank" => 10f,
         "box" => 1.5f,
         "crate" => 6f,
         "table" => 8f,
@@ -98,7 +102,7 @@ internal static class RageRoom
 
     public static bool Ready => _scene.IsValid() && _root != null;
 
-    private static readonly string[] Kinds = { "bottle_green", "bottle_brown", "vase", "gnome", "tv", "box", "crate", "table", "chair" };
+    private static readonly string[] Kinds = { "bottle_green", "bottle_brown", "vase", "gnome", "tv", "box", "crate", "table", "chair", "jukebox", "fishtank" };
     private static Queue<Mesh> _toBake;
 
     /// <summary>Every frame in the movie house, until done: the pieces' collision shapes cooked a few at a time, and the
@@ -216,6 +220,7 @@ internal static class RageRoom
     {
         if (item.Broken) return;
         item.Broken = true;
+        Surprises.Smashed();
         var spot = item.Spot;
         var watch = System.Diagnostics.Stopwatch.StartNew();
         spot.BrokeAt = Time.unscaledTime;
@@ -317,6 +322,10 @@ internal static class RageRoom
         // boxes in a pile
         foreach (var (x, z, y) in new[] { (7.4f, -14.4f, 0f), (7.9f, -14.0f, 0f), (7.6f, -14.2f, 0.33f), (6.9f, -14.6f, 0f), (7.3f, -14.3f, 0.66f) })
             Spots.Add(new Spot { Kind = "box", Pos = new Vector3(x, y, z), Yaw = Random.Range(-20f, 20f) });
+        // the jukebox against the left wall, the fish tank on its own table by the right wall
+        Spots.Add(new Spot { Kind = "jukebox", Pos = new Vector3(-0.68f, 0f, -11.0f), Yaw = 90f });
+        Spots.Add(new Spot { Kind = "table", Pos = new Vector3(8.35f, 0f, -12.6f), Yaw = 90f });
+        Spots.Add(new Spot { Kind = "fishtank", Pos = new Vector3(8.35f, 0.76f, -12.6f), Yaw = -90f });
         // chairs, gnomes
         Spots.Add(new Spot { Kind = "chair", Pos = new Vector3(3.3f, 0f, -9.4f), Yaw = 200f });
         Spots.Add(new Spot { Kind = "chair", Pos = new Vector3(5.2f, 0f, -12.6f), Yaw = 30f });
@@ -331,6 +340,7 @@ internal static class RageRoom
         _handR = Pusher("Hand R", 0.07f);
         _you = Pusher("You", 0.25f, true);
         Plugin.L.LogInfo($"Rage room: {Spots.Count} things to break (built in {watch.Elapsed.TotalMilliseconds:F1} ms)");
+        Surprises.RageVisit();
         return true;
     }
 

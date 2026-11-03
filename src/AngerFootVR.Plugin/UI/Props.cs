@@ -164,6 +164,11 @@ internal static class Props
             "wood_light" => (new Color(0.78f, 0.57f, 0.36f), 0.35f, 0f, Color.black),
             "wood_dark" => (new Color(0.38f, 0.23f, 0.13f), 0.35f, 0f, Color.black),
             "tv_plastic" => (new Color(0.36f, 0.22f, 0.12f), 0.55f, 0f, Color.black),
+            "jukebox_glow" => (new Color(1f, 0.6f, 0.25f), 0.8f, 0f, new Color(1.9f, 0.85f, 0.35f)),
+            "glass_aqua" => (new Color(0.75f, 0.95f, 1f, 0.22f), 0.95f, 0f, Color.black),
+            "water_blue" => (new Color(0.15f, 0.55f, 0.9f, 0.42f), 0.9f, 0f, new Color(0.02f, 0.08f, 0.16f)),
+            "gravel" => (new Color(0.6f, 0.5f, 0.42f), 0.2f, 0f, Color.black),
+            "fish_orange" => (new Color(1f, 0.5f, 0.08f), 0.6f, 0f, new Color(0.15f, 0.05f, 0f)),
             "tv_screen" => (new Color(0.12f, 0.16f, 0.14f), 0.95f, 0f, new Color(0.02f, 0.05f, 0.04f)),
             "tv_knob" => (new Color(0.7f, 0.7f, 0.72f), 0.6f, 0.8f, Color.black),
             "tv_inside" => (new Color(0.18f, 0.32f, 0.18f), 0.3f, 0.2f, Color.black),
@@ -204,6 +209,17 @@ internal static class Props
             }
 
             m.renderQueue = 2000;
+            if (look.c.a < 1f)
+            {
+                // see-through (the fish tank's glass and water): blended, drawn after the solid things
+                m.SetFloat("_Mode", 2f);
+                m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                m.SetInt("_ZWrite", 0);
+                m.DisableKeyword("_ALPHATEST_ON");
+                m.EnableKeyword("_ALPHABLEND_ON");
+                m.renderQueue = 3000;
+            }
         }
 
         m.hideFlags |= HideFlags.DontUnloadUnusedAsset;

@@ -32,7 +32,20 @@ internal static class VrHands
     /// test runtime, which has no controllers. Null = off.</summary>
     public static (Vector3 pos, Vector3 euler)? DevLeft, DevRight;
 
-    public static Pose Get(XRNode hand) => hand == XRNode.LeftHand ? Left : Right;
+    /// <summary>A hand held at a point this frame (left, right): your other hand on a two-handed gun's front. The body's
+    /// hand goes there; null: where the controller is.</summary>
+    public static readonly Vector3?[] HoldAt = new Vector3?[2];
+
+    public static Pose Get(XRNode hand)
+    {
+        var p = hand == XRNode.LeftHand ? Left : Right;
+        var at = HoldAt[hand == XRNode.LeftHand ? 0 : 1];
+        if (at.HasValue && p.Tracked) p.Position = at.Value;
+        return p;
+    }
+
+    /// <summary>Where the controller really is (not where it's holding on).</summary>
+    public static Pose GetRaw(XRNode hand) => hand == XRNode.LeftHand ? Left : Right;
 
     /// <summary>Called after the VR rig placed the head this frame.</summary>
     public static void Update()

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using AngerFootVR.Core;
 using HarmonyLib;
 using UnityEngine;
@@ -38,6 +39,38 @@ internal static class VrQuality
     private static void ApplyTextures()
     {
         if (InVr && QualitySettings.masterTextureLimit < TextureLimit) QualitySettings.masterTextureLimit = TextureLimit;
+    }
+
+    /// <summary>
+    /// The game sets its texture size each time it applies its settings (every level load, and when SETTINGS closes):
+    /// in VR it sets ours there and then. (Setting the game's full size and then ours reloaded every texture twice, the
+    /// first time at full size: a level's load took video memory from 1.9 GB to 5.7 GB on a 6 GB card for a moment.)
+    /// </summary>
+    [HarmonyTranspiler]
+    [HarmonyPatch(typeof(GameSettings), nameof(GameSettings.Apply))]
+    private static IEnumerable<CodeInstruction> TextureSizeInApply(IEnumerable<CodeInstruction> code)
+    {
+        var setter = AccessTools.PropertySetter(typeof(QualitySettings), nameof(QualitySettings.masterTextureLimit));
+        var ours = AccessTools.Method(typeof(VrQuality), nameof(SetTextureLimit));
+        var n = 0;
+        foreach (var c in code)
+        {
+            if (c.Calls(setter))
+            {
+                c.operand = ours;
+                n++;
+            }
+
+            yield return c;
+        }
+
+        if (n == 0) Plugin.L.LogWarning("VR graphics: the game's texture size setting wasn't found (textures may reload twice on a level load)");
+    }
+
+    private static void SetTextureLimit(int game)
+    {
+        var limit = InVr ? Math.Max(game, TextureLimit) : game;
+        if (QualitySettings.masterTextureLimit != limit) QualitySettings.masterTextureLimit = limit;
     }
 
     [HarmonyPostfix]

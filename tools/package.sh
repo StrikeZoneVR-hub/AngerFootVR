@@ -17,4 +17,6 @@ sed -e 's#^enabled *=.*#enabled = true#' vendor/bepinex/doorstop_config.ini > "$
 cp src/AngerFootVR.Plugin/bin/Release/netstandard2.0/AngerFootVR.dll assets/props.afvp "$P/BepInEx/plugins/AngerFootVR/"
 # the launcher's font licences (kept out of the payload: that is copied into the game folder's root)
 mkdir -p "$OUT/AngerFootVR-Licenses" && cp src/AngerFootVR.Launcher/Assets/Fonts/*-OFL.txt "$OUT/AngerFootVR-Licenses/"
+# the readme (features, install, controls, options)
+cp README.md "$OUT/Anger Foot VR - README.md"
 echo "packaged $OUT"

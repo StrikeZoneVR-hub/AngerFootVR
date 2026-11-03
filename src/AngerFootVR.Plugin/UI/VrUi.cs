@@ -25,6 +25,9 @@ internal static class VrUi
     private const float CaptureDepth = -10000f; // the UI camera sits far below any level, seeing only its canvases
 
     private static RenderTexture _texture;
+
+    /// <summary>What the game's menus draw into (the movie screen and the floating panel show it).</summary>
+    public static RenderTexture Texture => _texture;
     private static Camera _uiCamera;
     private static GameObject _panel;
     private static Material _material;

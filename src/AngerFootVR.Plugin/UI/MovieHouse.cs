@@ -571,6 +571,10 @@ internal static class MovieHouse
         AddLight(new Vector3(4f, 2.2f, -15.5f), new Color(1f, 0.2f, 0.3f), 1.2f, 6f);
     }
 
+    /// <summary>A sign on a wall that faces back into its room (the hall's back wall, the rage room's far one).</summary>
+    public static TextMeshPro Sign(string text, Vector3 localPos, float size, Color color, bool glow = true) =>
+        glow ? Text(text, localPos, Quaternion.Euler(0f, 180f, 0f), size, color) : Letters(text, localPos, Quaternion.Euler(0f, 180f, 0f), size, color, 0f);
+
     /// <summary>The rage room's own signs (after the hall's are built).</summary>
     public static void RageSigns()
     {

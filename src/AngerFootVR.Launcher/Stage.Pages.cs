@@ -39,6 +39,12 @@ namespace AngerFootVR.Launcher
             {
                 if (_opts != null) return _opts;
                 bool Mod() => _cfg != null;
+                Opt Toggle(string section, string key, string label, string help) => new Opt
+                {
+                    Label = label, Help = help,
+                    Value = () => Cfg(section, key, "true").ToLowerInvariant() == "false" ? "OFF" : "ON",
+                    Step = by => Set(section, key, Cfg(section, key, "true").ToLowerInvariant() == "false" ? "true" : "false"), Enabled = Mod,
+                };
                 string Cfg(string section, string key, string fallback) => _cfg?.Get(section, key) ?? fallback;
                 void Set(string section, string key, string value)
                 {
@@ -112,6 +118,15 @@ namespace AngerFootVR.Launcher
                         Step = by => Set("Monitor", "MonitorFov", Math.Max(70, Math.Min(110, Int("Monitor", "MonitorFov", 90) + by * 5)).ToString(CultureInfo.InvariantCulture)),
                         Enabled = () => Mod() && Cfg("Monitor", "MonitorView", "Steady") == "Steady",
                     },
+                    Toggle("Controls", "SwingThrow", "SWING THROW", "Hold the gun hand's grip, swing and let go: it flies the way and as hard as you threw it. Off: the grip throws straight away."),
+                    Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
+                    Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
+                    Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
+                    Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
+                    new Opt { Header = true, Label = "FUN" },
+                    Toggle("Fun", "LastKillSlowMo", "LAST KILL SLOW-MO", "The last enemy standing goes down in slow motion."),
+                    Toggle("Fun", "DoorKickSlowMo", "DOOR KICK SLOW-MO", "A moment of slow motion when you kick a door open into enemies."),
+                    Toggle("Fun", "FlipOff", "FLIP THEM OFF", "Enemies who see your middle finger (right stick click) come for you."),
                     new Opt { Header = true, Label = "LAUNCHER" },
                     new Opt
                     {
@@ -220,9 +235,37 @@ namespace AngerFootVR.Launcher
             dc.Pop();
         }
 
+        private double _optScroll;
+
         private void DrawOptions(DrawingContext dc, Rect r)
         {
-            var y = r.Top + 78;
+            // the list scrolls (there are more options than fit): the selected one is always in view
+            var top = r.Top + 78;
+            var bottom = r.Bottom - 66;
+            double full = 0, selAt = 0;
+            var n = 0;
+            foreach (var o in Options)
+            {
+                if (o.Header)
+                {
+                    full += 25;
+                    continue;
+                }
+
+                if (_inPage && n == _pageSel) selAt = full;
+                n++;
+                full += 31;
+            }
+
+            var room = bottom - top;
+            var want = _optScroll;
+            if (selAt - want > room - 40) want = selAt - room + 40;
+            if (selAt - want < 30) want = selAt - 30;
+            want = Math.Max(0, Math.Min(Math.Max(0, full - room), want));
+            _optScroll += (want - _optScroll) * 0.35;
+            if (Math.Abs(want - _optScroll) < 0.5) _optScroll = want;
+            dc.PushClip(new RectangleGeometry(new Rect(r.Left, top - 6, r.Width, room + 6)));
+            var y = top - _optScroll;
             var index = 0;
             Opt current = null;
             foreach (var o in Options)
@@ -236,6 +279,7 @@ namespace AngerFootVR.Launcher
                 }
 
                 var i = index++;
+                var visible = y > top - 20 && y < bottom - 10;
                 var selected = _inPage && i == _pageSel;
                 var on = o.Enabled();
                 if (selected)
@@ -250,7 +294,7 @@ namespace AngerFootVR.Launcher
                 var vx = r.Right - 64;
                 var valueBrush = !on ? Faint : selected ? new SolidColorBrush(Yellow) : White;
                 Text(dc, value, Sign, 15, valueBrush, vx, y + 3, 1);
-                if (on)
+                if (on && visible)
                 {
                     var vw = TextWidth(value, Sign, 15);
                     Text(dc, "‹", BodyBold, 22, selected ? new SolidColorBrush(Pink) : Faint, vx - vw - 16, y - 1, 1);
@@ -271,6 +315,15 @@ namespace AngerFootVR.Launcher
                 y += 31;
             }
 
+            dc.Pop();
+            if (full > room)
+            {
+                // a thin scroll bar on the right
+                var bar = room * room / full;
+                var at = top + (room - bar) * (_optScroll / Math.Max(1, full - room));
+                dc.DrawRoundedRectangle(new SolidColorBrush(A(Pink, 0.45)), null, new Rect(r.Right - 18, at, 4, bar), 2, 2);
+            }
+
             var help = current?.Help ?? "Pick with the arrows or the mouse: ‹ › or click changes it. The VR ones apply next time you play (or straight away if the game is running).";
             Text(dc, help, Body, 14, Dim, r.Left + 36, r.Bottom - 50, 0, r.Width - 72);
         }
@@ -285,7 +338,7 @@ namespace AngerFootVR.Launcher
                 ("X", "KICK", "A", "KICK"),
                 ("Y", "shoe power", "B", "jump"),
                 (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
-                (left ? "GRIP" : "", left ? "throw your gun" : "", left ? "" : "GRIP", left ? "" : "throw your gun"),
+                (left ? "GRIP" : "", left ? "swing + let go: throw" : "", left ? "" : "GRIP", left ? "" : "swing + let go: throw"),
                 ("MENU", "pause", "CLICK STICK", "the middle finger"),
                 ("HOLD STICK", "recenter", "", ""),
             };

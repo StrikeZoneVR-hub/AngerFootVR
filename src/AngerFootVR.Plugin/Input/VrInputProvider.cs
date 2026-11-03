@@ -28,9 +28,10 @@ internal class VrInputProvider : IInputProvider
     private const float MenuDeadzone = 0.5f;
 
     // play
-    public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger);
-    public bool WasShootReleased() => VrControls.Up(GunHand, VrButton.Trigger);
-    public bool IsThrowPressed() => VrControls.Held(GunHand, VrButton.Grip) || MotionThrow.Held;
+    // (dual pistols: either trigger, each fires its own pistol: Arsenal)
+    public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger) || Arsenal.Dual && VrControls.HeldEither(VrButton.Trigger);
+    public bool WasShootReleased() => Arsenal.Dual ? VrControls.UpEither(VrButton.Trigger) && !VrControls.HeldEither(VrButton.Trigger) : VrControls.Up(GunHand, VrButton.Trigger);
+    public bool IsThrowPressed() => MotionThrow.GripThrows || MotionThrow.Held; // (SWING THROW: on the grip's release)
     public bool IsKickPressed() => VrControls.HeldEither(VrButton.Primary);
     public bool WasKickPressed() => VrControls.DownEither(VrButton.Primary);
     public bool WasKickReleased() => VrControls.UpEither(VrButton.Primary);
@@ -58,7 +59,9 @@ internal class VrInputProvider : IInputProvider
     public bool WasMenuAcceptPressed() => Live && (CinemaRig.Active
         ? !VrHands.Get(XRNode.LeftHand).Tracked && !VrHands.Get(XRNode.RightHand).Tracked && VrControls.DownEither(VrButton.Primary)
         : VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger));
-    public bool WasMenuCancelPressed() => Live && VrControls.DownEither(VrButton.Secondary);
+    // (B goes back, as on a gamepad: Y is the car's SHOES, and as a back too it opened the shoes and left them at once;
+    // in the movie house B or Y)
+    public bool WasMenuCancelPressed() => Live && (CinemaRig.Active ? VrControls.DownEither(VrButton.Secondary) : VrControls.Down(XRNode.RightHand, VrButton.Secondary));
     public bool WasMenuNextTabPressed() => Live && VrControls.Down(XRNode.RightHand, VrButton.Grip);
     public bool WasMenuPreviousTabPressed() => Live && VrControls.Down(XRNode.LeftHand, VrButton.Grip);
     public bool WasMenuCancelInputRemappingPressed() => VrControls.DownEither(VrButton.Menu);

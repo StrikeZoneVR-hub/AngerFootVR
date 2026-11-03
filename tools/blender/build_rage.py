@@ -197,6 +197,82 @@ def gnome(keep):
     emit(keep, "gnome", [whole], A.fracture(whole, 10, 31, "plaster"))
 
 
+def jukebox(keep):
+    """A jukebox: a wooden cabinet, an arched top glowing orange, a chrome grille, neon tubes up its sides. The cabinet
+    splinters, the glowing dome shatters, the chrome and the tubes fly off."""
+    w, d = 0.74, 0.46
+    cab = A.box("cabinet", (w, d, 0.9), material="wood_dark", round_=0.03, segments=3)
+    at(cab, (0, 0, 0.45))
+    arch = A.cylinder("arch", w / 2, d * 0.92, (0, 0, 0), "jukebox_glow", 32, axis='Y')
+    for v in arch.data.vertices:  # (the half above the cabinet only)
+        if v.co.z < 0:
+            v.co.z = 0
+    at(arch, (0, 0, 0.9))
+    rim = A.cylinder("rim", w / 2 + 0.02, 0.05, (0, 0, 0), "chrome", 32, axis='Y')
+    for v in rim.data.vertices:
+        if v.co.z < 0:
+            v.co.z = 0
+    at(rim, (0, d * 0.47, 0.9))
+    window = A.box("window", (w * 0.62, 0.02, 0.26), material="glass_dark", round_=0.02)
+    at(window, (0, d / 2 + 0.005, 0.68))
+    slats = []
+    for i in range(5):
+        sl = A.box(f"slat{i}", (w * 0.7, 0.025, 0.022), material="chrome", round_=0.006)
+        at(sl, (0, d / 2 + 0.012, 0.18 + i * 0.07))
+        slats.append(sl)
+    tubes = []
+    for x in (-1, 1):
+        t = A.cylinder(f"tube{x}", 0.018, 0.82, (0, 0, 0), "neon_pink" if x < 0 else "neon_cyan", 12)
+        at(t, (x * (w / 2 + 0.005), d / 2 - 0.03, 0.47))
+        tubes.append(t)
+    cabinet_pieces = A.fracture(cab, 8, 51, "wood_light")
+    dome_pieces = A.fracture(arch, 7, 52, "jukebox_glow")
+    whole = [copy(cab, "c"), copy(arch, "a"), copy(rim, "r"), copy(window, "w")] + [copy(x, "s") for x in slats] + [copy(t, "t") for t in tubes]
+    emit(keep, "jukebox", whole, cabinet_pieces + dome_pieces + [rim, window] + slats + tubes)
+    for o in (cab, arch):
+        try:
+            bpy.data.objects.remove(o)
+        except ReferenceError:
+            pass
+
+
+def fishtank(keep):
+    """A fish tank: glass walls round blue water, gravel and three goldfish. The glass shatters, the water's gone, the
+    gravel spills and the fish drop out."""
+    w, d, h, t = 0.7, 0.32, 0.42, 0.012
+    walls = []
+    for (sx, sy, sz, x, y, z) in ((w, t, h, 0, d / 2, h / 2), (w, t, h, 0, -d / 2, h / 2), (t, d, h, w / 2, 0, h / 2), (t, d, h, -w / 2, 0, h / 2)):
+        g = A.box("pane", (sx, sy, sz), material="glass_aqua")
+        at(g, (x, y, z))
+        walls.append(g)
+    base = A.box("base", (w + 0.02, d + 0.02, 0.03), material="metal_dark", round_=0.006)
+    at(base, (0, 0, 0.015))
+    lid = A.box("lid", (w + 0.02, d + 0.02, 0.025), material="metal_dark", round_=0.006)
+    at(lid, (0, 0, h + 0.012))
+    water = A.box("water", (w - 0.03, d - 0.03, h * 0.82), material="water_blue")
+    at(water, (0, 0, 0.03 + h * 0.41))
+    gravel = A.box("gravel", (w - 0.03, d - 0.03, 0.04), material="gravel", round_=0.01)
+    at(gravel, (0, 0, 0.05))
+    fish = []
+    for i, (x, z, yaw) in enumerate(((-0.15, 0.22, 0), (0.12, 0.3, 180), (0.02, 0.15, 20))):
+        body = A.lathe(f"fish{i}", [(0.0, -0.05), (0.018, -0.035), (0.024, 0.0), (0.016, 0.03), (0.0, 0.045)], 12, (0, 0, 0), "fish_orange")
+        tail = A.box(f"tail{i}", (0.004, 0.03, 0.028), material="fish_orange")
+        at(tail, (0, 0, -0.06))
+        f = A.join(f"goldfish{i}", [body, tail])
+        at(f, (x, 0, z), (90, 0, 90 + yaw))
+        fish.append(f)
+    glass = A.join("glass", walls)
+    glass_pieces = A.fracture(glass, 9, 61, "glass_aqua")
+    gravel_pieces = A.fracture(gravel, 4, 62, "gravel")
+    whole = [copy(glass, "g"), copy(base, "b"), copy(lid, "l"), copy(water, "w"), copy(gravel, "v")] + [copy(f, "f") for f in fish]
+    emit(keep, "fishtank", whole, glass_pieces + gravel_pieces + [base, lid] + fish)
+    for o in (glass, gravel, water):
+        try:
+            bpy.data.objects.remove(o)
+        except ReferenceError:
+            pass
+
+
 def build(models, keep):
     crate(keep)
     tv(keep)
@@ -207,3 +283,5 @@ def build(models, keep):
     table(keep)
     box_(keep)
     gnome(keep)
+    jukebox(keep)
+    fishtank(keep)
