@@ -98,13 +98,6 @@ public class Plugin : BaseUnityPlugin
         };
         VrSettings.Init(Config);
         Rendering.BloodDecals.Init();
-        UI.GameSounds.Init();
-        UI.RageRoom.Init();
-        UI.Lobby.Init();
-        UI.Arcade.Init();
-        UI.GunRange.Init();
-        Wardrobe.Wardrobe.Init();
-        UI.WardrobeBoard.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.2.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -185,13 +178,9 @@ public class Plugin : BaseUnityPlugin
         Rendering.BehindView.Update();
         Recentering();
         Input.MotionThrow.Update();
-        Input.Swat.Update();
-        Input.MotionMelee.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
         UI.Surprises.HallOfFame();
-        Wardrobe.HeroShell.Update();
-        Wardrobe.Wardrobe.Update();
         VrSettings.Poll();
         Rendering.VrQuality.Update();
         Rendering.Gore.Update();
@@ -274,7 +263,6 @@ public class Plugin : BaseUnityPlugin
         CinemaRig.LateUpdate();
         MapRig.LateUpdate();
         UI.Laser.Update();
-        UI.WristWatch.Update();
     }
 
     private static void Watchdog()
@@ -693,15 +681,10 @@ public class Plugin : BaseUnityPlugin
                         CinemaRig.DevGo(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), a.Length > 2 ? Dev.MockControllers.F(a[2]) : 0f);
                         break;
                     }
-                    case "fun":
-                        // fun: the movie house's rooms, how they stand
-                        L.LogInfo(UI.FunWorld.Describe() + " | " + UI.Lobby.Describe() + " | " + UI.Arcade.Describe() + " | " + UI.GunRange.Describe());
-                        break;
                     case "rage":
                         if (arg == "open") UI.MovieHouse.TryKickDoor(UI.MovieHouse.Root.TransformPoint(new Vector3(UI.MovieHouse.DoorX, 1.6f, -5.0f)), Vector3.back);
-                        else if (arg == "kick") UI.FunWorld.Kick(CinemaRig.HeadPosition, CinemaRig.HeadRotation * Vector3.forward);
-                        else if (arg == "reset") UI.RageRoom.ResetAll();
-                        L.LogInfo(UI.RageRoom.Describe() + " | " + UI.RageMode.Describe() + " | " + UI.Dummy.Describe() + " | " + UI.GameSounds.Describe());
+                        else if (arg == "kick") UI.RageRoom.Kick(CinemaRig.HeadPosition, CinemaRig.HeadRotation * Vector3.forward);
+                        L.LogInfo(UI.RageRoom.Describe());
                         break;
                     case "ctl":
                     {
@@ -778,39 +761,6 @@ public class Plugin : BaseUnityPlugin
                     case "modshaders":
                         L.LogInfo(Rendering.Shaders.Describe());
                         break;
-                    case "toontest":
-                    {
-                        // toontest [on|off]: the body (and its mirror twin) in the cartoon shader, its own texture kept
-                        var toon = Rendering.Shaders.Get("AngerFootVR/Toon");
-                        var root = Body.VrBody.Root;
-                        if (toon == null || root == null)
-                        {
-                            L.LogInfo("toontest: no shader or no body");
-                            break;
-                        }
-
-                        var info = new System.Text.StringBuilder("toontest");
-                        foreach (var r in Body.VrBody.AllRenderers())
-                        {
-                            var mats = r.materials;
-                            for (var i = 0; i < mats.Length; i++)
-                            {
-                                var m = mats[i];
-                                if (m == null) continue;
-                                if (info.Length < 900) info.Append($" | {r.name}: '{m.shader.name}' tex [{string.Join(",", m.GetTexturePropertyNames())}] main {(m.mainTexture != null ? m.mainTexture.name : "-")}");
-                                var tex = m.mainTexture;
-                                var col = m.HasProperty("_Color") ? m.color : Color.white;
-                                m.shader = toon;
-                                if (tex != null) m.mainTexture = tex;
-                                m.color = col;
-                            }
-
-                            r.materials = mats;
-                        }
-
-                        L.LogInfo(info.ToString());
-                        break;
-                    }
                     case "heroexport":
                         L.LogInfo(Dev.MeshProbe.ExportHero());
                         break;
@@ -843,110 +793,6 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo(sb.ToString());
                         break;
                     }
-                    case "portrait":
-                    {
-                        // portrait [name] [side|back]: the mirror twin photographed from in front, close (dev)
-                        var a = arg.Split(' ');
-                        var twin = Body.VrBody.Roots[1];
-                        if (twin == null) break;
-                        var head = Body.VrBody.TwinAnimator?.GetBoneTransform(HumanBodyBones.Head);
-                        var hips = Body.VrBody.TwinAnimator?.GetBoneTransform(HumanBodyBones.Hips);
-                        if (head == null || hips == null) break;
-                        var mid = (head.position + hips.position) * 0.5f;
-                        var close = 2.6f;
-                        var fwd = Vector3.ProjectOnPlane(twin.forward, Vector3.up).normalized;
-                        if (a.Length > 1 && a[1] == "hands")
-                        {
-                            // (both hands, close: the gloves)
-                            var lh = Body.VrBody.TwinAnimator.GetBoneTransform(HumanBodyBones.LeftHand);
-                            var rh = Body.VrBody.TwinAnimator.GetBoneTransform(HumanBodyBones.RightHand);
-                            if (lh != null && rh != null) mid = (lh.position + rh.position) * 0.5f;
-                            close = 1.0f;
-                        }
-                        if (a.Length > 1 && a[1] == "side") fwd = Vector3.Cross(Vector3.up, fwd);
-                        if (a.Length > 1 && a[1] == "back") fwd = -fwd;
-                        var go = new GameObject("AngerFootVR portrait");
-                        var cam = go.AddComponent<Camera>();
-                        cam.enabled = false;
-                        cam.stereoTargetEye = StereoTargetEyeMask.None;
-                        cam.fieldOfView = 40f;
-                        cam.nearClipPlane = 0.05f;
-                        cam.clearFlags = CameraClearFlags.SolidColor;
-                        cam.backgroundColor = new Color(0.12f, 0.1f, 0.14f);
-                        cam.cullingMask = 1 << twin.gameObject.layer;
-                        go.transform.position = mid + fwd * close + Vector3.up * 0.1f;
-                        go.transform.rotation = Quaternion.LookRotation(mid - go.transform.position);
-                        var rt = new RenderTexture(900, 1200, 24);
-                        cam.targetTexture = rt;
-                        cam.Render();
-                        RenderTexture.active = rt;
-                        var tex = new Texture2D(900, 1200, TextureFormat.RGB24, false);
-                        tex.ReadPixels(new Rect(0, 0, 900, 1200), 0, 0);
-                        RenderTexture.active = null;
-                        var dir = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots"));
-                        Directory.CreateDirectory(dir);
-                        var file = Path.Combine(dir, $"portrait_{(a[0].Length > 0 ? a[0] : "p")}.png");
-                        File.WriteAllBytes(file, tex.EncodeToPNG());
-                        UnityEngine.Object.Destroy(tex);
-                        rt.Release();
-                        UnityEngine.Object.Destroy(go);
-                        L.LogInfo("portrait -> " + file);
-                        break;
-                    }
-                    case "bodyparts":
-                    {
-                        var sb = new System.Text.StringBuilder("BODYPARTS");
-                        var root = Body.VrBody.Root;
-                        if (root != null)
-                            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
-                                if (r.gameObject.activeInHierarchy && r.enabled && !r.forceRenderingOff)
-                                    sb.Append($" | {r.name} layer {r.gameObject.layer} shadows {r.shadowCastingMode} mat {(r.sharedMaterial != null ? r.sharedMaterial.name : "-")}");
-                        foreach (var c in Camera.allCameras)
-                            sb.Append($" || cam {c.name} mask {c.cullingMask:X}");
-                        L.LogInfo(sb.ToString());
-                        break;
-                    }
-                    case "wardrobe":
-                        L.LogInfo(Wardrobe.Wardrobe.Describe());
-                        break;
-                    case "wear":
-                    {
-                        // wear <id>: dress in a body style or gloves now (dev: open or not)
-                        var item = Wardrobe.Wardrobe.Bodies.Find(i => i.Id == arg);
-                        var glove = Wardrobe.Wardrobe.Gloves.Find(i => i.Id == arg);
-                        if (item != null) Wardrobe.Wardrobe.DevBody = item;
-                        else if (glove != null) Wardrobe.Wardrobe.DevGlove = glove;
-                        else if (arg == "off") Wardrobe.Wardrobe.DevBody = Wardrobe.Wardrobe.DevGlove = null;
-                        else L.LogInfo("wear: no " + arg + " (bodies: " + string.Join(", ", Wardrobe.Wardrobe.Bodies.ConvertAll(i => i.Id).ToArray()) + "; gloves: " + string.Join(", ", Wardrobe.Wardrobe.Gloves.ConvertAll(i => i.Id).ToArray()) + ")");
-                        break;
-                    }
-                    case "shellbuild":
-                        Wardrobe.HeroShell.Request(arg.Length > 0 ? arg.Split(' ') : new[] { "AngerfootBody" });
-                        L.LogInfo(Wardrobe.HeroShell.Describe());
-                        break;
-                    case "glovetest":
-                    {
-                        // glovetest [outward m]: a plain glove shell on both hands (after shellbuild)
-                        var shell = Wardrobe.HeroShell.Get("AngerfootBody");
-                        if (shell == null)
-                        {
-                            L.LogInfo("glovetest: no shell yet (" + Wardrobe.HeroShell.Describe() + ")");
-                            break;
-                        }
-
-                        Wardrobe.Fit.TakeOff();
-                        var anim = Body.VrBody.Animator;
-                        var hands = Wardrobe.Fit.Under(anim, HumanBodyBones.LeftHand, HumanBodyBones.RightHand);
-                        var mesh = shell.Shell(n => hands.Contains(n), arg.Length > 0 ? Dev.MockControllers.F(arg) : 0.004f, out var cov);
-                        var toon = Rendering.Shaders.Get("AngerFootVR/Toon");
-                        var mat = new Material(toon) { color = new Color(0.25f, 0.13f, 0.07f) };
-                        mat.SetFloat("_Outline", 0.003f);
-                        Wardrobe.Fit.WearShell("AngerfootBody", mesh, mat);
-                        var tpl = Body.HeroModel.Template.GetComponentsInChildren<SkinnedMeshRenderer>(true);
-                        var src = System.Array.Find(tpl, x => x.name == "AngerfootBody");
-                        L.LogInfo($"glovetest: {mesh.vertexCount} points ({cov:P0} of the skin), {hands.Count} hand bones, worn {Wardrobe.Fit.Count}; template smr scale {src.transform.lossyScale:F3} active {src.gameObject.activeInHierarchy}; {Wardrobe.HeroShell.Describe()}");
-                        break;
-                    }
                     case "holeinfo":
                         foreach (var mr in UnityEngine.Object.FindObjectsOfType<MeshRenderer>())
                             if (mr.name.StartsWith("AngerFootVR hole"))
@@ -954,12 +800,6 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "holetest":
                         L.LogInfo(Dev.MeshProbe.HoleTest(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0.06f));
-                        break;
-                    case "poke":
-                        L.LogInfo("poke: " + UI.FunWorld.DevPoke(arg));
-                        break;
-                    case "rangegun":
-                        L.LogInfo("rangegun: " + UI.GunRange.DevHold(arg));
                         break;
                     case "grip":
                         // grip on|off: GUN GRIP ADJUST for now (dev: the cfg untouched); grip: how it stands
@@ -969,13 +809,6 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "textcheck":
                         L.LogInfo(Dev.TextCheck.Run());
-                        break;
-                    case "course":
-                        // course <1-7>|hit|swat: run a range training course, hit what's up, swat the grenades
-                        L.LogInfo(UI.GunRange.DevCourse(arg));
-                        break;
-                    case "swattest":
-                        L.LogInfo("Swat test: " + Input.Swat.DevGrenade());
                         break;
                     case "givegun":
                         Dev.DevPlay.GiveGun(arg);
@@ -1098,6 +931,21 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo("tp " + at);
                         break;
                     }
+                    case "tpfront":
+                    {
+                        // tpfront x z [m]: stand that far from the spot, facing it (the way you face now)
+                        var a = arg.Split(' ');
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        if (pl == null) break;
+                        var fwd = Vector3.ProjectOnPlane(VrRig.HeadRotation * Vector3.forward, Vector3.up).normalized;
+                        var target = new Vector3(Dev.MockControllers.F(a[0]), pl.transform.position.y, Dev.MockControllers.F(a[1]));
+                        var at = target - fwd * (a.Length > 2 ? Dev.MockControllers.F(a[2]) : 1.1f);
+                        if (Physics.Raycast(at + Vector3.up * 1.5f, Vector3.down, out var floor, 3f, LayerMasks.ThingsPlayerCanStandOn)) at.y = floor.point.y + 0.05f;
+                        pl.Rigidbody.position = at;
+                        pl.transform.position = at;
+                        L.LogInfo($"tpfront {at:F2} facing {fwd:F2}");
+                        break;
+                    }
                     case "goenemy":
                     {
                         // stand 1.1 m from the nearest living enemy, the play space facing it
@@ -1204,6 +1052,40 @@ public class Plugin : BaseUnityPlugin
                         // stall <ms>: the game stops for that long, as a slow PC's hitch would (tests the timing of things)
                         System.Threading.Thread.Sleep(Mathf.Clamp(arg.Length > 0 ? int.Parse(arg) : 500, 0, 3000));
                         break;
+                    case "soundcheck":
+                    {
+                        // soundcheck [stop]: the level's looping props and Shepard tone doors whose sound has gone back to the
+                        // game's pool while they still hold it (what broke kicks); stop: one of them stopped again, as they do
+                        var loopF = HarmonyLib.AccessTools.Field(typeof(PropSoundLoop), "_loop");
+                        var doorF = HarmonyLib.AccessTools.Field(typeof(ShepardToneDoor), "_sound");
+                        int held = 0, stale = 0;
+                        SoundManager.SoundInstance one = null;
+                        void Look(object o, System.Reflection.FieldInfo f)
+                        {
+                            if (!(f.GetValue(o) is SoundManager.SoundInstance si) || si == null) return;
+                            held++;
+                            if (!si.IsPooled) return;
+                            stale++;
+                            one ??= si;
+                        }
+
+                        foreach (var x in UnityEngine.Object.FindObjectsOfType<PropSoundLoop>()) Look(x, loopF);
+                        foreach (var x in UnityEngine.Object.FindObjectsOfType<ShepardToneDoor>()) Look(x, doorF);
+                        if (arg == "stop" && one != null) one.StopAndDestroy();
+                        L.LogInfo($"soundcheck: {held} sounds held by props and doors, {stale} of them already back in the pool{(arg == "stop" && one != null ? "; one stopped again" : "")}");
+                        break;
+                    }
+                    case "scenetest":
+                    {
+                        // scenetest: an empty scene made and unloaded (the game's sound pool then stops the level's sounds:
+                        // what the rage room's own scene did on every unload)
+                        var sc = UnityEngine.SceneManagement.SceneManager.CreateScene("AngerFootVR scene test " + Time.frameCount);
+                        UnityEngine.SceneManagement.SceneManager.UnloadSceneAsync(sc);
+                        var doors = new System.Collections.Generic.List<string>();
+                        foreach (var d in UnityEngine.Object.FindObjectsOfType<ShepardToneDoor>()) doors.Add(d.name + " " + d.transform.position.ToString("F1"));
+                        L.LogInfo("scenetest: made and unloaded " + sc.name + "; scenes now " + UnityEngine.SceneManagement.SceneManager.sceneCount + "; Shepard tone doors: " + string.Join(", ", doors.ToArray()));
+                        break;
+                    }
                     case "pause":
                         // pause | resume: the game's own pause, as its menu button and CONTINUE do it
                         GameState.PauseGame();

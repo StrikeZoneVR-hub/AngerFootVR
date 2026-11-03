@@ -6,21 +6,26 @@ using UnityEngine;
 namespace AngerFootVR.Input;
 
 /// <summary>
-/// Throwing your gun: hold the gun hand's grip and let go. It leaves your hand the way your hand was going (steadied a
-/// little by where the gun points), as hard as you threw it (from a lob to a fastball, 0.85 to 1.6 times the game's own
-/// throw), spinning the way your wrist turned; let go without a swing and it goes where it points. Only letting go of the
-/// grip throws: hands moving about never do (a flick of the hand used to throw too, and people move their hands a lot).
-/// A gentle aim assist takes a throw that's nearly on an enemy (within 10 degrees, in sight) onto them, lifting it for
-/// the drop.
+/// Throwing your gun: hold the gun hand's grip, swing and let go. It leaves your hand the way your hand was moving
+/// (steadied by where you look, and a little by where the gun points), as hard as you threw it (from a lob to a
+/// fastball, 0.75 to 1.7 times the game's own throw), spinning the way your wrist turned; let go without a swing and it
+/// goes where it points. The swing is read from the steadiest fast moment just before you let go (the hand is often
+/// already slowing as it opens), not from one frame. Let go while the game can't throw yet (a pickup, a reload) and the
+/// throw waits a moment for it. Only letting go of the grip throws: hands moving about never do. A gentle aim assist
+/// takes a throw that's nearly on an enemy (within 12 degrees, in sight) onto them, lifting it for the drop.
 /// </summary>
 [HarmonyPatch]
 internal static class MotionThrow
 {
     private const float SwingSpeed = 1.5f; // m/s at the release: a throw (slower: let go where it points)
+    private const float Wait = 0.35f; // (a release the game can't throw yet waits this long for it)
     private static int _requestFrame = -10;
     private static Vector3 _throwDir, _spin;
     private static float _throwAt = -10f, _cooldown, _power = 1f;
-    private static bool _gripping;
+    private static bool _gripping, _pending;
+    private static float _pendingAt;
+    private static Vector3 _pendingDir, _pendingSpin;
+    private static float _pendingPower;
 
     // the gun hand's last moments: speed and turn (for the release)
     private const int History = 12;
@@ -53,30 +58,90 @@ internal static class MotionThrow
         if (_gripping && VrControls.Up(GunHold.Hand, VrButton.Grip))
         {
             _gripping = false;
-            if (canThrow) Release(pose);
+            Release(pose); // (read now, thrown now or as soon as the game can)
+        }
+
+        if (_pending)
+        {
+            if (canThrow)
+            {
+                _pending = false;
+                Throw(_pendingDir, _pendingPower, _pendingSpin);
+            }
+            else if (Time.unscaledTime - _pendingAt > Wait) _pending = false;
         }
     }
 
     private static void Release(VrHands.Pose pose)
     {
-        // the fastest moment of the last 0.12 s (the release itself is often already slowing)
-        var best = Vector3.zero;
-        for (var i = 0; i < History; i++)
-            if (Time.unscaledTime - At[i] < 0.12f && Vel[i].sqrMagnitude > best.sqrMagnitude)
-                best = Vel[i];
+        var best = Swing();
         var aim = GunHold.Aim(pose) * Vector3.forward;
+        Vector3 dir, spin;
+        float power;
         if (best.magnitude >= SwingSpeed)
         {
-            var dir = Vector3.Slerp(aim, best.normalized, 0.75f).normalized;
-            var power = Mathf.Clamp(best.magnitude / 3.2f, 0.85f, 1.6f);
-            Throw(dir, power, WristSpin());
+            // the way the hand went, steadied by where you're looking (people look at what they throw at) and a little
+            // by where the gun points; the faster the swing, the more it's the hand's own
+            var gaze = VrRig.HeadRotation * Vector3.forward;
+            var own = Mathf.Lerp(0.6f, 0.8f, Mathf.InverseLerp(SwingSpeed, 6f, best.magnitude));
+            dir = (best.normalized * own + gaze * (0.85f - own) + aim * 0.15f).normalized;
+            power = Mathf.Clamp(best.magnitude / 3.4f, 0.75f, 1.7f);
+            spin = WristSpin();
             if (Dev.ActionLog.Enabled) Plugin.L.LogInfo($"ACTION thrown at {best.magnitude:F1} m/s, power {power:F2}");
         }
         else
         {
-            Throw(aim, 1f, Vector3.zero);
+            dir = aim;
+            power = 1f;
+            spin = Vector3.zero;
             if (Dev.ActionLog.Enabled) Plugin.L.LogInfo("ACTION let go: thrown where it points");
         }
+
+        var player = SingletonBehaviour<Player>.Instance;
+        if (player.HasWeapon && player.HandRig != null && player.HandRig.CanThrow && Time.unscaledTime >= _cooldown)
+        {
+            Throw(dir, power, spin);
+            return;
+        }
+
+        // (the game can't throw just now: it's thrown as soon as it can, the way you threw it)
+        _pending = true;
+        _pendingAt = Time.unscaledTime;
+        _pendingDir = dir;
+        _pendingPower = power;
+        _pendingSpin = spin;
+    }
+
+    /// <summary>The swing at the release: over the last 0.15 s, the three frames in a row that went fastest, averaged
+    /// (one frame's speed jumps about; the release itself is often already slowing).</summary>
+    private static Vector3 Swing()
+    {
+        var best = Vector3.zero;
+        var bestSpeed = 0f;
+        for (var k = 0; k < History; k++)
+        {
+            var i = (_head - k + History) % History;
+            if (Time.unscaledTime - At[i] > 0.15f) break;
+            var sum = Vector3.zero;
+            var n = 0;
+            for (var j = 0; j < 3; j++)
+            {
+                var x = (i - j + History) % History;
+                if (Time.unscaledTime - At[x] > 0.2f) break;
+                sum += Vel[x];
+                n++;
+            }
+
+            if (n == 0) continue;
+            var v = sum / n;
+            if (v.magnitude > bestSpeed)
+            {
+                bestSpeed = v.magnitude;
+                best = v;
+            }
+        }
+
+        return best;
     }
 
     /// <summary>How fast the wrist was turning over the last few frames (radians a second, world).</summary>
@@ -107,7 +172,7 @@ internal static class MotionThrow
         VrControls.DevPresent();
         var pose = VrHands.GetRaw(GunHold.Hand);
         var aim = GunHold.Aim(pose) * Vector3.forward;
-        Throw(aim, speed > 0f ? Mathf.Clamp(speed / 3.2f, 0.85f, 1.6f) : 1f, Vector3.zero);
+        Throw(aim, speed > 0f ? Mathf.Clamp(speed / 3.4f, 0.75f, 1.7f) : 1f, Vector3.zero);
     }
 
     /// <summary>The thrown gun (or the bottle you drank) leaves your hand, the way you threw it.</summary>
@@ -130,7 +195,7 @@ internal static class MotionThrow
         if (Physics.Linecast(head, from, out _, LayerMasks.ThingsThrownOrDroppedObjectsDepenetrateFrom)) from = head + dir * 0.1f;
         thrownObject.transform.position = from;
 
-        // aim assist: nearly on an enemy (10 degrees, in sight, 30 m): onto them, lifted for the drop; else the game's
+        // aim assist: nearly on an enemy (12 degrees, in sight, 30 m): onto them, lifted for the drop; else the game's
         // own homing: on what's in line
         var target = Assist(from, dir, speed);
         if (target.HasValue) dir = target.Value;
@@ -143,7 +208,7 @@ internal static class MotionThrow
     private static Vector3? Assist(Vector3 from, Vector3 dir, float speed)
     {
         Vector3? best = null;
-        var bestAngle = 10f;
+        var bestAngle = 12f;
         foreach (var e in Object.FindObjectsOfType<Enemy>())
         {
             if (e == null || e.Health == null || !e.Health.IsAlive) continue;

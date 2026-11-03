@@ -278,19 +278,8 @@ if '--no-rage' not in sys.argv:
     except ImportError:
         pass
 
-if '--no-fun' not in sys.argv:
-    import build_fun
-    build_fun.build(models, keep)
-
-if '--no-wardrobe' not in sys.argv:
-    import build_wardrobe
-    build_wardrobe.build(models, keep)
-
-# (the rage room's wooden and cardboard things are long planks and flaps held at their ends; the big new pieces of
-# furniture are long boxes too)
-A.densify([ob for ob, g, o in models if ob.name in ("chair", "crate", "box", "table", "jukebox", "fishtank", "vending", "concession_counter",
-                                                      "shoe_shelf", "weapon_rack", "door_kicker", "gallery", "kickometer", "shoe_toss", "bowling_lane",
-                                                      "photo_kiosk", "popcorn_machine", "dish_rack")])
+# (the rage room's wooden and cardboard things are long planks and flaps held at their ends)
+A.densify([ob for ob, g, o in models if ob.name in ("chair", "crate", "box", "table", "jukebox", "fishtank")])
 A.bake_ao([ob for ob, g, o in models if not ob.name.endswith('neon') and 'glow' not in ob.name])
 A.export(OUT, models)
 
@@ -311,21 +300,6 @@ if PREVIEW:
                     ("vase", (0.6, 0.8, 0.5), (0, 0, 0.2)), ("chair", (1.2, 1.5, 1.1), (0, 0, 0.45)), ("table", (1.4, 1.8, 1.2), (0, 0, 0.4)),
                     ("box", (0.8, 1.0, 0.7), (0, 0, 0.16)), ("gnome", (0.5, 0.75, 0.45), (0, 0, 0.25)),
                     ("jukebox", (1.6, 2.2, 1.4), (0, 0, 0.7)), ("fishtank", (0.9, 1.3, 0.7), (0, 0, 0.2))):
-        show(n, v, t)
-    for n, v, t in (("vending", (1.8, 2.6, 1.8), (0, 0, 0.95)), ("popcorn_machine", (1.5, 2.2, 1.6), (0, 0, 0.9)), ("pinata", (0.9, 1.1, 0.8), (0, 0.1, 0.3)),
-                    ("barrel", (1.1, 1.5, 1.0), (0, 0, 0.45)), ("cutout_goon", (1.2, 2.6, 1.4), (0, 0, 0.9)), ("cutout_granny", (1.2, 2.6, 1.4), (0, 0, 0.9)),
-                    ("door_kicker", (3.5, 5.0, 2.2), (0, 0, 1.2)), ("gallery", (3.6, 5.0, 2.4), (0, -1.2, 1.4)), ("kickometer", (1.8, 2.8, 2.0), (0, 0, 1.2)),
-                    ("shoe_toss", (2.5, -1.5, 2.2), (0, 2.5, 0.8)), ("bowling_lane", (2.5, -2.0, 2.0), (0, 3.5, 0.2)), ("goon_pin", (0.5, 0.7, 0.4), (0, 0, 0.19)),
-                    ("weapon_rack", (1.6, 2.4, 1.2), (0, 0, 0.55)), ("bat", (0.6, 0.9, 0.6), (0, 0, 0.42)), ("sledge", (0.6, 1.0, 0.8), (0, 0, 0.5)),
-                    ("soda_fountain", (0.9, 1.2, 0.8), (0, 0, 0.3)), ("soda_cup", (0.3, 0.4, 0.3), (0, 0, 0.12)), ("popcorn_bucket", (0.4, 0.55, 0.4), (0, 0, 0.14)),
-                    ("concession_counter", (2.5, 3.0, 1.8), (0, 0, 0.5)), ("photo_kiosk", (1.4, 2.2, 1.4), (0, 0, 1.1)), ("rage_button", (0.8, 1.2, 1.4), (0, 0, 0.6)),
-                    ("cooler", (0.9, 1.2, 1.0), (0, 0, 0.7)), ("kickball", (0.4, 0.5, 0.3), (0, 0, 0.0)), ("lightgun", (0.4, 0.4, 0.3), (0, 0.05, 0.08))):
-        show(n, v, t)
-    for n, v, t in (("kb_skull", (0.35, 0.5, 0.1), (0, 0, -0.02)), ("kb_upper", (0.6, 0.9, 0.7), (0, 0, 0.5)), ("kb_lower", (0.6, -0.9, 0.7), (0, 0, 0.5)),
-                    ("kb_ribcage", (0.5, 0.75, 0.25), (0, 0, 0)), ("kb_pelvis", (0.4, 0.6, 0.3), (0, 0, 0)), ("kb_palm", (0.2, 0.3, 0.2), (0, 0, 0.05)),
-                    ("kb_foot", (0.35, 0.45, 0.2), (0, 0.07, -0.05)), ("kb_joint", (0.25, 0.35, 0.15), (0, 0, 0)),
-                    ("sk_skull", (0.35, 0.5, 0.1), (0, 0, -0.02)), ("sk_ribcage", (0.5, 0.75, 0.25), (0, 0, 0)), ("sk_bone", (0.6, 0.9, 0.7), (0, 0, 0.5)),
-                    ("sk_palm", (0.2, 0.3, 0.2), (0, 0, 0.05)), ("sk_foot", (0.35, 0.45, 0.2), (0, 0.07, -0.05))):
         show(n, v, t)
     # the pieces of a few, spread out
     for n in ("tv", "gnome", "crate"):

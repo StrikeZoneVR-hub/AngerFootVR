@@ -150,14 +150,13 @@ internal static class BehindView
         var reach = dist;
         if (cinema)
         {
-            // (the movie house's rooms are boxes: kept inside the one you're in, and in front of its machines)
+            // (the movie house's rooms are boxes: kept inside the one you're in)
             for (var k = 12; k >= 0; k--)
             {
                 reach = Mathf.Max(0.3f, dist * k / 12f);
                 if (InRoom(pivot + to / dist * reach)) break;
             }
 
-            if (UI.FunWorld.Raycast(pivot, to / dist, reach + 0.25f, out var hit)) reach = Mathf.Max(0.3f, hit.distance - 0.25f);
         }
         else if (Physics.SphereCast(pivot, 0.2f, to / dist, out var hit, dist, WallMask, QueryTriggerInteraction.Ignore))
             reach = Mathf.Max(0.3f, hit.distance - 0.05f);
@@ -184,8 +183,7 @@ internal static class BehindView
         var p = UI.MovieHouse.Root != null ? UI.MovieHouse.Root.InverseTransformPoint(world) : world - UI.MovieHouse.Origin;
         const float m = 0.25f;
         static bool In(Vector3 q, Vector3 lo, Vector3 hi) => q.x > lo.x + m && q.x < hi.x - m && q.z > lo.z + m && q.z < hi.z - m && q.y > 0.3f && q.y < hi.y - m;
-        return In(p, new Vector3(-6.9f, 0f, -5.95f), new Vector3(6.9f, 5.5f, 12.95f)) || In(p, UI.MovieHouse.ArcadeMin, UI.MovieHouse.ArcadeMax) ||
-               In(p, UI.MovieHouse.RangeMin, UI.MovieHouse.RangeMax) || In(p, UI.MovieHouse.RageMin, UI.MovieHouse.RageMax);
+        return In(p, new Vector3(-6.9f, 0f, -5.95f), new Vector3(6.9f, 5.5f, 12.95f)) || In(p, UI.MovieHouse.RageMin, UI.MovieHouse.RageMax);
     }
 
     private static void Draw()

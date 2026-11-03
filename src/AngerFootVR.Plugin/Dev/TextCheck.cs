@@ -25,11 +25,8 @@ internal static class TextCheck
     // where you stand (movie house local, x z) and look round from, room by room
     private static readonly (string name, Vector2 at)[] Views =
     {
-        ("lobby", new Vector2(0f, -3.2f)), ("wardrobe", new Vector2(-0.9f, -4.4f)), ("aisle", new Vector2(0f, 1.5f)),
-        ("shoes", new Vector2(5.4f, -3.6f)), ("posters", new Vector2(5.2f, 0.45f)), ("photo", new Vector2(5.4f, -4.6f)),
-        ("concessions", new Vector2(-5.4f, -0.4f)), ("range line", new Vector2(-10.3f, -2.4f)), ("range back", new Vector2(-10.8f, -4.6f)),
-        ("arcade door", new Vector2(-4.6f, -7.2f)), ("arcade", new Vector2(-8f, -10f)), ("arcade back", new Vector2(-6f, -13.5f)),
-        ("rage room", new Vector2(4f, -9f)), ("rage back", new Vector2(4f, -13f)),
+        ("lobby", new Vector2(0f, -3.2f)), ("aisle", new Vector2(0f, 1.5f)), ("left wall", new Vector2(-5.4f, -0.4f)), ("right wall", new Vector2(5.4f, -0.4f)),
+        ("back left", new Vector2(-4.5f, -5f)), ("back right", new Vector2(5f, -5f)), ("rage room", new Vector2(4f, -9f)), ("rage back", new Vector2(4f, -13f)),
     };
 
     public static string Run()
@@ -63,6 +60,7 @@ internal static class TextCheck
             var a = labels[i];
             var b = labels[j];
             if (Vector3.Dot(a.Normal, b.Normal) < 0.7f) continue; // (facing other ways: not read together)
+            if (a.Text == b.Text && (a.Centre - b.Centre).magnitude < 0.05f) continue; // (a sign and its own glow)
             var d = b.Centre - a.Centre;
             if (Mathf.Abs(Vector3.Dot(d, a.Normal)) > 0.35f) continue; // (far apart in depth: the view check's)
             var bc = new Vector2(Vector3.Dot(d, a.Right), Vector3.Dot(d, a.Up));
@@ -101,6 +99,7 @@ internal static class TextCheck
                 var (j, dj) = shown[y];
                 var key = (Mathf.Min(i, j), Mathf.Max(i, j));
                 if (reported.Contains(key)) continue;
+                if (labels[i].Text == labels[j].Text && (labels[i].Centre - labels[j].Centre).magnitude < 0.05f) continue; // (its own glow)
                 var deg = Seen(eye, labels[i], labels[j]);
                 if (deg < 0.3f) continue; // (degrees into each other: under that, a sliver of a corner)
                 reported.Add(key);
@@ -120,26 +119,13 @@ internal static class TextCheck
         return $"TEXTCHECK {labels.Count} labels: {wall} on walls, {seen} as seen" + sb;
     }
 
-    private static readonly RaycastHit[] Hits = new RaycastHit[16];
-
-    /// <summary>Something solid (not a button) between the eye and there, or one of the hall's walls (drawn, not
-    /// solid: only their doorways let you see through).</summary>
+    /// <summary>One of the hall's walls between the eye and there (only the rage room's doorway lets you see through).</summary>
     private static bool Hidden(Vector3 eye, Vector3 at)
     {
         var root = UI.MovieHouse.Root;
         var e = root.InverseTransformPoint(eye);
         var a = root.InverseTransformPoint(at);
-        // the back wall (z -5.97: the arcade's and the rage room's doors in it), the range's wall (x -7.05: its door)
-        if (Crosses(e, a, 2, -5.97f, out var p) && !(p.y < 2.42f && (p.x > UI.MovieHouse.ArcadeDoorX0 && p.x < UI.MovieHouse.ArcadeDoorX1 || Mathf.Abs(p.x - UI.MovieHouse.DoorX) < 0.95f))) return true;
-        if (Crosses(e, a, 0, -7.05f, out p) && p.z > -6f && !(p.y < 2.42f && p.z > UI.MovieHouse.RangeDoorZ0 && p.z < UI.MovieHouse.RangeDoorZ1)) return true;
-        // (the arcade and the rage room, side by side behind the back wall: a wall between them)
-        if (Crosses(e, a, 0, UI.MovieHouse.ArcadeMax.x, out p) && p.z < -6.1f) return true;
-        var d = at - eye;
-        var n = UI.FunWorld.Physics.Raycast(eye, d.normalized, Hits, d.magnitude - 0.1f, 1 << UI.FunWorld.PhysLayer, QueryTriggerInteraction.Ignore); // (the fun world's own physics)
-        for (var k = 0; k < n; k++)
-            if (Hits[k].collider != null && Hits[k].collider.GetComponent<UI.FunWorld.Press>() == null)
-                return true;
-        return false;
+        return Crosses(e, a, 2, -5.97f, out var p) && !(p.y < 2.42f && Mathf.Abs(p.x - UI.MovieHouse.DoorX) < 0.95f);
     }
 
     private static bool Crosses(Vector3 a, Vector3 b, int axis, float plane, out Vector3 at)
@@ -207,7 +193,7 @@ internal static class TextCheck
         return pts;
     }
 
-    private static string Local(Vector3 w) => UI.FunWorld.Local(w).ToString("F2");
+    private static string Local(Vector3 w) => UI.MovieHouse.Root.InverseTransformPoint(w).ToString("F2");
 
     private static string Clean(string s)
     {

@@ -21,14 +21,13 @@ internal static class VrSettings
     public static ConfigEntry<int> SmoothSpeed;
     public static ConfigEntry<Hand> GunHand;
     public static ConfigEntry<bool> VrMap;
-    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, HandSwat, WristWatch, GripAdjust;
+    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust;
     public static ConfigEntry<OpeningMode> Opening;
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
     public static ConfigEntry<int> MonitorFov;
     public static ConfigEntry<GoreLevel> Gore;
     public static ConfigEntry<BloodTint> BloodColour;
-    public static ConfigEntry<string> BodyStyle, Gloves;
 
     public static void Init(ConfigFile cfg)
     {
@@ -38,10 +37,8 @@ internal static class VrSettings
         GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand that holds the guns (its trigger shoots, its grip throws). The other hand's grip interacts.");
         TwoHandAim = cfg.Bind("Controls", "TwoHandAim", true, "Two-handed guns: your other hand on the front (grip squeezed) holds the gun there and steers the barrel.");
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
-        HandSwat = cfg.Bind("Controls", "HandSwat", true, "Grenades (and anything else you could kick back): hit them with your hand, fast, and back they go, as a kick sends them.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");
         GripAdjust = cfg.Bind("Controls", "GunGripAdjust", false, "Hold a gun and set how it sits in your hand: the gun hand's stick moves it (a click: the next way), or your other hand's grip places it. Each gun keeps its own (BepInEx/AngerFootVR/gun-grips.txt). Off when you're done.");
-        WristWatch = cfg.Bind("Display", "WristWatch", true, "A watch on your free hand's wrist in a level: turn it to you for the time, your ammo and the star goals.");
         SniperScope = cfg.Bind("Display", "SniperScope", true, "The sniper rifle's scope magnifies when you put your eye to it.");
         FlipOff = cfg.Bind("Fun", "FlipOff", true, "Enemies who see your middle finger come for you.");
         VrMap = cfg.Bind("Controls", "LevelSelectInVR", true, "The level select in VR: sit in the car with the map book and point at the levels. Off: it plays on the movie screen.");
@@ -51,8 +48,6 @@ internal static class VrSettings
         MonitorFov = cfg.Bind("Monitor", "MonitorFov", 90, new ConfigDescription("How wide the Steady view is (degrees across); never wider than the headset's eye sees.", new AcceptableValueRange<int>(70, 110)));
         Gore = cfg.Bind("Gore", "Gore", GoreLevel.Extra, "Blood: Off (none), Game (the game's own) or Extra (more: kicks splatter the walls, headshots pop heads, wounds and blood stay on bodies and on you). Follows the game's own Show Blood setting.");
         BloodColour = cfg.Bind("Gore", "BloodColour", BloodTint.Pink, "The blood's colour: Pink (the game's own) or Red.");
-        BodyStyle = cfg.Bind("Wardrobe", "BodyStyle", "classic", "Your body's style (chosen at the wardrobe beside the movie house's mirror).");
-        Gloves = cfg.Bind("Wardrobe", "Gloves", "bare", "Your gloves (chosen at the wardrobe beside the movie house's mirror).");
         _cfg = cfg;
         ApplyHand();
         GunHand.SettingChanged += (s, e) => ApplyHand();
