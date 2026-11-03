@@ -68,7 +68,7 @@
 - **Drink for real:** bring the bottle to your mouth.
 - Haptics for shots, kicks, doors, hits, throws and shoe powers.
 
-### Gore (new in 1.1)
+### Gore (new in 1.1: The Gore Update)
 - **GORE: EXTRA** (the default) builds on the game's own blood:
   - kicks splatter the wall behind the goon, and kicking a body makes it bleed;
   - **headshot kills pop heads**, with a fountain from the neck (not bosses, and not the goons whose heads are
@@ -82,6 +82,11 @@
 - **GORE: GAME** is the game's own blood as it is, **OFF** turns blood off. The game's own **Show Blood** setting still
   decides whether there's any.
 - The blood splats land on walls and floors properly in VR, each eye its own.
+
+<p align="center">
+  <img src="docs/images/gore-headpop.jpg" alt="A headshot kill: the goon's head pops in a spray of pink blood as he drops" width="49%">
+  <img src="docs/images/gore-aftermath.jpg" alt="The aftermath: a body lying in its own pool, the blood staining it, splats up the wall beside it" width="49%">
+</p>
 
 ### The Movie House
 - A neon picture palace built for the mod, where the game's menus and cutscenes play on the big screen. Point a laser
