@@ -62,7 +62,12 @@ internal class VrInputProvider : IInputProvider
     public bool WasMenuNextTabPressed() => Live && VrControls.Down(XRNode.RightHand, VrButton.Grip);
     public bool WasMenuPreviousTabPressed() => Live && VrControls.Down(XRNode.LeftHand, VrButton.Grip);
     public bool WasMenuCancelInputRemappingPressed() => VrControls.DownEither(VrButton.Menu);
-    public bool WasSkipCinematicPressed() => Live && (VrControls.DownEither(VrButton.Secondary) || VrControls.DownEither(VrButton.Menu));
+    // (the logo screen's "press any key": any button, A/X and the trigger too, though they kick and click in the movie house)
+    public bool WasSkipCinematicPressed() => Live && (VrControls.DownEither(VrButton.Secondary) || VrControls.DownEither(VrButton.Menu)
+        || CinemaRig.Active && AnyFaceOrTrigger() && OnLogoScreen());
+
+    private static bool OnLogoScreen() =>
+        UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == Framework.ScriptableObjectSingleton<GameConfig>.Instance.LogoScreen.SceneName;
     public bool WasAdvanceConversationPressed() => Live && AnyFaceOrTrigger();
     public bool WasCancelConversationPressed() => VrControls.DownEither(VrButton.Menu);
 
