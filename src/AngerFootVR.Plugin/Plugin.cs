@@ -96,6 +96,7 @@ public class Plugin : BaseUnityPlugin
             Dev.LegRecorder.Tick();
         };
         VrSettings.Init(Config);
+        Rendering.BloodDecals.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.0.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -819,6 +820,23 @@ public class Plugin : BaseUnityPlugin
                     case "throw":
                         // throw [m/s]: a throw from the gun hand (along its aim; with a speed, as hard as that)
                         Input.MotionThrow.DevThrow(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0f);
+                        break;
+                    case "spawnblood":
+                    {
+                        // spawnblood [m]: the game's own blood splash (with its decals) this far in front of you
+                        if (!Framework.SingletonBehaviour<BloodCamera>.HasInstance) break;
+                        var fwd = Core.VrRig.HeadRotation * Vector3.forward;
+                        fwd.y = 0f;
+                        fwd.Normalize();
+                        var at = Core.VrRig.HeadPosition + fwd * (arg.Length > 0 ? Dev.MockControllers.F(arg) : 1.5f) - Vector3.up * 0.5f;
+                        Framework.SingletonBehaviour<BloodCamera>.Instance.SpawnBlood(at, fwd, spawnDecalToo: true);
+                        L.LogInfo($"blood spawned at {at} (show blood {GameSettings.ShowBlood})");
+                        break;
+                    }
+                    case "blood":
+                        // blood [on|off]: the blood decals' depth per eye (on) or the game's own mono way (off)
+                        if (arg == "on" || arg == "off") Rendering.BloodDecals.On = arg == "on";
+                        L.LogInfo(Rendering.BloodDecals.Describe());
                         break;
                     case "laserscroll":
                         // laserscroll <-1..1|off>: push the right stick for the laser's list scrolling
