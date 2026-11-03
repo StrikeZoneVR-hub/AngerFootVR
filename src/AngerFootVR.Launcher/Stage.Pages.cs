@@ -89,6 +89,12 @@ namespace AngerFootVR.Launcher
                     },
                     new Opt
                     {
+                        Label = "LEVEL SELECT", Help = "IN THE CAR: sit in the car with the map book and point at a level (trigger plays it, a grip turns the page). ON THE SCREEN: it plays on the movie screen.",
+                        Value = () => Cfg("Controls", "LevelSelectInVR", "true").ToLowerInvariant() == "false" ? "ON THE SCREEN" : "IN THE CAR",
+                        Step = by => Set("Controls", "LevelSelectInVR", Cfg("Controls", "LevelSelectInVR", "true").ToLowerInvariant() == "false" ? "true" : "false"), Enabled = Mod,
+                    },
+                    new Opt
+                    {
                         Label = "VR OPENING", Help = "The short opening when the game starts in VR (A, B or the menu button skips it).",
                         Value = () => Cfg("Opening", "Opening", "FirstLaunchOnly") == "On" ? "EVERY START" : Cfg("Opening", "Opening", "FirstLaunchOnly") == "Off" ? "OFF" : "FIRST START ONLY",
                         Step = by => Set("Opening", "Opening", Cycle(Cfg("Opening", "Opening", "FirstLaunchOnly"), openings, by)), Enabled = Mod,
@@ -280,7 +286,8 @@ namespace AngerFootVR.Launcher
                 ("Y", "shoe power", "B", "jump"),
                 (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
                 (left ? "GRIP" : "", left ? "throw your gun" : "", left ? "" : "GRIP", left ? "" : "throw your gun"),
-                ("MENU", "pause", "HOLD STICK", "recenter"),
+                ("MENU", "pause", "CLICK STICK", "the middle finger"),
+                ("HOLD STICK", "recenter", "", ""),
             };
             var colL = r.Left + 36;
             var colR = r.Left + r.Width / 2 + 10;

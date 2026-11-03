@@ -397,7 +397,11 @@ internal static unsafe class XrActions
         b.Add((_menuA, "/user/hand/left/input/menu/click"));
         b.Add((_primaryA, "/user/hand/right/input/a/click"));
         b.Add((_secondaryA, "/user/hand/right/input/b/click"));
-        Suggest("/interaction_profiles/oculus/touch_controller", b);
+        // the thumb rest too (a thumb resting there folds over the fist); a runtime that doesn't know it gets the rest
+        var withRest = new List<(ulong, string)>(b) { (_thumbA, "/user/hand/left/input/thumbrest/touch"), (_thumbA, "/user/hand/right/input/thumbrest/touch") };
+        if (Suggest("/interaction_profiles/oculus/touch_controller", withRest, quiet: true) < 0)
+            Suggest("/interaction_profiles/oculus/touch_controller", b);
+        else Plugin.L.LogInfo("Controllers: Touch thumb rests bound");
     }
 
     private static void SuggestIndex()
@@ -470,12 +474,13 @@ internal static unsafe class XrActions
         Suggest("/interaction_profiles/khr/simple_controller", b);
     }
 
-    private static void Suggest(string profile, List<(ulong action, string path)> bindings)
+    private static int Suggest(string profile, List<(ulong action, string path)> bindings, bool quiet = false)
     {
         var arr = stackalloc SuggestedBinding[bindings.Count];
         for (var i = 0; i < bindings.Count; i++) arr[i] = new SuggestedBinding { action = bindings[i].action, binding = Path(bindings[i].path) };
         var info = new ProfileSuggestedBinding { type = TypeProfileSuggested, interactionProfile = Path(profile), countSuggestedBindings = (uint)bindings.Count, suggestedBindings = arr };
-        Check(_suggest(_instance, &info), "suggest " + profile);
+        var r = _suggest(_instance, &info);
+        return quiet ? r : Check(r, "suggest " + profile);
     }
 
     private static void Attach()

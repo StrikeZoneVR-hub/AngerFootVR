@@ -142,6 +142,14 @@ internal static class VrUi
             return position != Vector3.zero;
         }
 
+        // the level select in the car: your head there
+        if (MapRig.Active)
+        {
+            position = MapRig.HeadPosition;
+            rotation = MapRig.HeadRotation;
+            return position != Vector3.zero;
+        }
+
         // elsewhere (title, menus) the game poses its camera itself, and that is the view: centre on it
         var main = Camera.main;
         if (main == null) return false;
@@ -177,9 +185,11 @@ internal static class VrUi
             _panelPitch = Mathf.MoveTowards(_panelPitch, pitch, 240f * Time.unscaledDeltaTime);
         }
 
-        // menus: 1.8 m away, 2.1 m wide, at eye level; HUD: 1.5 m away, 1.5 m wide, a little below eye level
-        var distance = DevDistance ?? (hud ? 1.5f : 1.8f);
-        var width = DevWidth ?? (hud ? 1.5f : 2.1f);
+        // menus: 1.8 m away, 2.1 m wide, at eye level; HUD: 1.5 m away, 1.5 m wide, a little below eye level; in the
+        // car (the map book is in your lap, under a metre away): 0.7 m away, 1 m wide, over the book
+        var car = MapRig.Active;
+        var distance = DevDistance ?? (car ? 0.7f : hud ? 1.5f : 1.8f);
+        var width = DevWidth ?? (car ? 1.0f : hud ? 1.5f : 2.1f);
         var drop = hud ? 12f : 4f;
         var rot = Quaternion.Euler(_panelPitch + drop, _panelYaw, 0f);
         _panel.transform.SetPositionAndRotation(headPos + rot * Vector3.forward * distance, rot);

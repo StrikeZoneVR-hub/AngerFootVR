@@ -63,7 +63,13 @@ internal sealed class Skeleton
     /// <summary>How fast the floor under you moves (world, per second): the feet keep up with it instead of sliding.</summary>
     public Vector3 GroundVelocity;
 
-    private const float KickTime = 0.38f;
+    private const float KickTime = 0.42f;
+
+    // the kick's height above the hip and its reach (of the leg's length): tunable from the dev console (kick lift reach)
+    public static float KickLift = 0.3f, KickReach = 0.84f;
+
+    /// <summary>Dev: the kick held at full stretch (for looking at it).</summary>
+    public static bool DevKickFreeze;
 
     private static float YawOf(Vector3 v) => Mathf.Atan2(v.x, v.z) * Mathf.Rad2Deg;
     private static float Smooth(float t) => t * t * (3f - 2f * t);
@@ -202,6 +208,7 @@ internal sealed class Skeleton
             else Step(pelvis, rFlat, eye.y, k, speed, groundAt, dt);
 
             _kickT = Mathf.Min(1f, _kickT + dt / KickTime);
+            if (DevKickFreeze && _kickT > 0.4f && _kickT < 1f) _kickT = 0.4f;
         }
 
         for (var i = 0; i < 2; i++)
@@ -226,9 +233,10 @@ internal sealed class Skeleton
 
             if (i == _kickLeg && _kickT < 1f)
             {
-                // the kick: out in front, up to just under hip height, sole first, and back
-                var w = Mathf.Sin(_kickT * Mathf.PI);
-                var kickAt = hip + ft * ((ThighLen + ShinLen) * 0.92f * k) - tu * (0.12f * k);
+                // the kick: snapped out in front, up past hip height (where you can see it), sole first, held a moment,
+                // and back
+                var w = _kickT < 0.28f ? Smooth(_kickT / 0.28f) : _kickT < 0.55f ? 1f : 1f - Smooth((_kickT - 0.55f) / 0.45f);
+                var kickAt = hip + ft * ((ThighLen + ShinLen) * KickReach * k) + tu * (KickLift * k);
                 ankleTarget = Vector3.Lerp(ankleTarget, kickAt, w);
                 sole = Quaternion.Slerp(sole, Quaternion.LookRotation(Vector3.Slerp(ft, tu, 0.65f), -ft), w);
                 footFwd = Vector3.Slerp(footFwd, ft, w);

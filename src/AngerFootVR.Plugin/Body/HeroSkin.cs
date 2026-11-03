@@ -36,7 +36,12 @@ internal sealed class HeroSkin
         public Quaternion Rot;
         public float Scale; // world units per metre of hand
         public float Index, Grip, Thumb;
+        public float Flip; // the middle finger (0..1): the others in a fist, the middle one straight up
     }
+
+    // the thumb (tunable from the dev console: thumb <across> <base> <mid> <tip> <sign>): its base swings across the
+    // palm round the hand's long axis (opposition) as it curls, its two joints bend towards the palm
+    public static float ThumbAcross = 70f, ThumbBase = 35f, ThumbMid = 55f, ThumbTip = 65f, ThumbSign = 1f;
 
     private readonly Transform _root, _twinRoot;
     private readonly List<Transform> _all = new List<Transform>();
@@ -687,12 +692,18 @@ internal sealed class HeroSkin
         var curlIndex = h.Valid ? h.Index : 0.25f;
         var curlGrip = h.Valid ? h.Grip : 0.3f;
         var curlThumb = h.Valid ? h.Thumb : 0.2f;
-        var canonBack = Canonical(side, out _) * Vector3.up;
+        var flip = h.Valid ? h.Flip : 0f;
+        var canon = Canonical(side, out _);
+        var canonBack = canon * Vector3.up;
+        var canonAlong = canon * Vector3.forward;
+        var across = (side == 1 ? 1f : -1f) * ThumbSign;
         for (var f = 0; f < 5; f++)
         {
             var chain = _fingers[side * 5 + f];
             if (chain == null) continue;
             var curl = f == 0 ? curlIndex : f == 4 ? curlThumb : Mathf.Min(1f, curlGrip + f * 0.02f);
+            // the middle finger: that one straight, the rest a tight fist, the thumb over them
+            if (flip > 0f) curl = Mathf.Lerp(curl, f == 1 ? 0f : f == 4 ? 0.9f : 1f, flip);
             for (var j = 0; j < chain.Length; j++)
             {
                 var i = chain[j];
@@ -701,10 +712,15 @@ internal sealed class HeroSkin
                 var axisWorld = Vector3.Cross(canonBack, dir.normalized);
                 if (axisWorld.sqrMagnitude < 1e-6f) continue;
                 var axis = Quaternion.Inverse(_rr[i]) * axisWorld.normalized;
-                float angle;
-                if (f == 4) angle = j == 0 ? curl * 25f : curl * (j == 1 ? 45f : 55f);
-                else angle = 6f + curl * (j == 0 ? 72f : j == 1 ? 95f : 70f);
-                var q = _rl[i] * Quaternion.AngleAxis(angle, axis);
+                Quaternion bend;
+                if (f == 4)
+                {
+                    // the thumb: across the palm at its base (round the hand's long axis), then bending in
+                    bend = Quaternion.AngleAxis(curl * (j == 0 ? ThumbBase : j == 1 ? ThumbMid : ThumbTip), axis);
+                    if (j == 0) bend = Quaternion.AngleAxis(curl * ThumbAcross * across, Quaternion.Inverse(_rr[i]) * canonAlong) * bend;
+                }
+                else bend = Quaternion.AngleAxis(6f + curl * (j == 0 ? 84f : j == 1 ? 100f : 72f), axis);
+                var q = _rl[i] * bend;
                 _all[i].localRotation = q;
                 if (_twin != null) _twin[i].localRotation = q;
             }

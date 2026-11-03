@@ -183,8 +183,8 @@ internal static class RageRoom
 
     private static void DoKick()
     {
-        var foot = _kickFrom + _kickFacing * 0.7f + Vector3.up * 0.45f;
-        var n = _physics.OverlapSphere(foot, 0.55f, Hits, 1 << PhysLayer, QueryTriggerInteraction.Ignore);
+        var foot = _kickFrom + _kickFacing * 0.7f + Vector3.up * 0.55f; // (the kick reaches about hip height)
+        var n = _physics.OverlapSphere(foot, 0.6f, Hits, 1 << PhysLayer, QueryTriggerInteraction.Ignore);
         var any = false;
         for (var i = 0; i < n; i++)
         {

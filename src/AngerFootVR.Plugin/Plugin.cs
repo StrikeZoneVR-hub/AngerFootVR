@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.3")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "0.1.4")]
 public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
@@ -59,11 +59,12 @@ public class Plugin : BaseUnityPlugin
         {
             CinemaRig.BeforeRender();
             VrRig.BeforeRender();
+            MapRig.BeforeRender();
         };
         VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 0.1.3 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 0.1.4 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
@@ -129,6 +130,7 @@ public class Plugin : BaseUnityPlugin
         XrManager.Update();
         XrActions.Update();
         VrControls.Update();
+        MapRig.Update();
         CinemaRig.Update();
         UI.Opening.Update();
         UI.VrUi.Update();
@@ -185,12 +187,12 @@ public class Plugin : BaseUnityPlugin
 
     private float _recenterHeld;
 
-    /// <summary>Holding the right stick in recentres you (in play: on where you stand, at your height; in the movie
-    /// house: back to your spot facing the screen).</summary>
+    /// <summary>Holding the left stick in recentres you (in play: on where you stand, at your height; in the movie
+    /// house: back to your spot facing the screen). (The right stick's click is the middle finger.)</summary>
     private void Recentering()
     {
         if (!XrManager.IsRunning) return;
-        if (!VrControls.Held(XRNode.RightHand, VrButton.StickClick))
+        if (!VrControls.Held(XRNode.LeftHand, VrButton.StickClick))
         {
             _recenterHeld = 0f;
             return;
@@ -201,6 +203,7 @@ public class Plugin : BaseUnityPlugin
         if (_recenterHeld < 0.8f) return;
         _recenterHeld = -1f; // once a hold
         if (CinemaRig.Active) CinemaRig.Recenter();
+        else if (MapRig.Active) MapRig.Recenter();
         else VrRig.Recenter();
         VrControls.Rumble(XRNode.LeftHand, 0.5f, 0.08f);
         VrControls.Rumble(XRNode.RightHand, 0.5f, 0.08f);
@@ -210,6 +213,7 @@ public class Plugin : BaseUnityPlugin
     private void LateUpdate()
     {
         CinemaRig.LateUpdate();
+        MapRig.LateUpdate();
         UI.Laser.Update();
     }
 
@@ -530,6 +534,48 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo(layers.ToString());
                         break;
                     }
+                    case "fingers":
+                    {
+                        // fingers <index> <fist> <thumb> <middle finger> | off: the hands' curls held (the test
+                        // runtime's controllers send no trigger or grip)
+                        var a = arg.Split(' ');
+                        Body.HeroBody.DevFingers = a[0] == "off" ? (Vector4?)null
+                            : new Vector4(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2]), a.Length > 3 ? Dev.MockControllers.F(a[3]) : 0f);
+                        L.LogInfo("fingers " + (Body.HeroBody.DevFingers?.ToString() ?? "from the controllers"));
+                        break;
+                    }
+                    case "thumb":
+                    {
+                        // thumb <across> <base> <mid> <tip> [sign]: the thumb's angles at a full curl
+                        var a = arg.Split(' ');
+                        Body.HeroSkin.ThumbAcross = Dev.MockControllers.F(a[0]);
+                        Body.HeroSkin.ThumbBase = Dev.MockControllers.F(a[1]);
+                        Body.HeroSkin.ThumbMid = Dev.MockControllers.F(a[2]);
+                        Body.HeroSkin.ThumbTip = Dev.MockControllers.F(a[3]);
+                        if (a.Length > 4) Body.HeroSkin.ThumbSign = Dev.MockControllers.F(a[4]);
+                        L.LogInfo($"thumb across {Body.HeroSkin.ThumbAcross} base {Body.HeroSkin.ThumbBase} mid {Body.HeroSkin.ThumbMid} tip {Body.HeroSkin.ThumbTip} sign {Body.HeroSkin.ThumbSign}");
+                        break;
+                    }
+                    case "kick":
+                    {
+                        // kick [lift reach]: the body kicks (with its height above the hip and its reach)
+                        var a = arg.Split(' ');
+                        if (a.Length >= 2 && a[0].Length > 0)
+                        {
+                            Body.Skeleton.KickLift = Dev.MockControllers.F(a[0]);
+                            Body.Skeleton.KickReach = Dev.MockControllers.F(a[1]);
+                        }
+
+                        Body.Skeleton.DevKickFreeze = a.Length > 2 && a[2] == "hold";
+
+                        Body.HeroBody.Kick();
+                        L.LogInfo($"kick lift {Body.Skeleton.KickLift} reach {Body.Skeleton.KickReach}");
+                        break;
+                    }
+                    case "gripmode":
+                        Input.GunHold.DevMode = int.Parse(arg);
+                        L.LogInfo(Input.GunHold.Describe());
+                        break;
                     case "go":
                     {
                         // go x z [yaw]: stand at this spot of the movie house (local metres)
@@ -594,6 +640,16 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "safe":
                         Dev.DevPlay.Safe(arg != "off");
+                        break;
+                    case "worldmap":
+                        GameState.LoadWorldMap(LoadingTransition.FadeToAndFromBlack);
+                        break;
+                    case "map":
+                        L.LogInfo(MapRig.Describe());
+                        break;
+                    case "mapbuttons":
+                        // mapbuttons [n]: the levels on the map and where they are on the book; n aims the laser at one (-1: off)
+                        L.LogInfo(MapRig.Buttons(arg.Length > 0 ? int.Parse(arg) : -2));
                         break;
                     case "levels":
                         Dev.DevPlay.Levels("");

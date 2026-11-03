@@ -47,7 +47,7 @@ internal static class CinemaRig
     private static UnityEngine.Rendering.AmbientMode _savedMode;
 
     private static bool Wanted =>
-        XrManager.IsRunning && (DevForce || !SingletonBehaviour<Player>.HasInstance || GameState.IsGamePausedOrNotFocused);
+        XrManager.IsRunning && (DevForce || !SingletonBehaviour<Player>.HasInstance || GameState.IsGamePausedOrNotFocused) && !MapRig.Wanted;
 
     public static void Update()
     {

@@ -84,6 +84,13 @@ internal static class HeroBody
         return feetY;
     }
 
+    private static readonly float[] _thumb = { 0.1f, 0.1f }, _flip = { 0f, 0f };
+
+    /// <summary>Dev: the fingers held at index, fist, thumb, middle finger (null: from the controllers).</summary>
+    public static Vector4? DevFingers;
+
+    private static float Smooth(float t) => t * t * (3f - 2f * t);
+
     /// <summary>A hand from its controller: InkVR's grip-to-hand frame (z along the fingers, y out of the back of the hand).</summary>
     private static HeroSkin.HandPose Hand(int side, VrHands.Pose pose)
     {
@@ -97,18 +104,35 @@ internal static class HeroBody
         var c = side == 0 ? XrActions.Left : XrActions.Right;
         var trigger = XrActions.Ready ? c.Trigger : VrControls.Held(node, VrButton.Trigger) ? 1f : 0f;
         var grip = XrActions.Ready ? c.Grip : VrControls.Held(node, VrButton.Grip) ? 1f : 0f;
-        var thumb = XrActions.Ready && c.ThumbTouch ? 0.85f : 0.2f;
-        var index = Mathf.Lerp(0.15f, 1f, trigger);
-        var fist = Mathf.Lerp(0.15f, 1f, grip);
+        // (a full fist before the grip is squeezed all the way: nobody holds it at 100%)
+        var index = Mathf.Lerp(0.12f, 1f, Smooth(Mathf.Clamp01(trigger / 0.85f)));
+        var fist = Mathf.Lerp(0.12f, 1f, Smooth(Mathf.Clamp01(grip / 0.8f)));
+        // the thumb: on the stick, a button or the thumb rest it folds over the fist; lifted, it's a thumbs-up
+        var thumbOn = XrActions.Ready ? c.ThumbTouch : VrControls.Held(node, VrButton.Grip);
+        _thumb[side] = Mathf.MoveTowards(_thumb[side], thumbOn ? 0.55f + 0.4f * fist : 0.1f, Time.unscaledDeltaTime * 8f);
+        var thumb = _thumb[side];
         if (node == Input.GunHold.Hand && Input.GunHold.Holding)
         {
-            // round the gun's grip, the index finger on its trigger
-            fist = 1f;
-            index = Mathf.Lerp(0.45f, 0.85f, trigger);
-            thumb = 0.8f;
+            // the held thing's own grip (a gun: round its handle, the index on its trigger; a box: hands open under it)
+            var held = Input.GunHold.HeldGrip;
+            fist = held.x;
+            index = held.y < 0f ? Mathf.Lerp(0.45f, 0.85f, trigger) : held.y;
+            thumb = held.z;
         }
 
-        return new HeroSkin.HandPose { Valid = true, Wrist = pos, Rot = rot, Scale = 1f, Index = index, Grip = fist, Thumb = thumb };
+        // the right stick's click: the middle finger (eased in and out)
+        var flipOn = side == 1 && VrControls.Held(XRNode.RightHand, VrButton.StickClick);
+        _flip[side] = Mathf.MoveTowards(_flip[side], flipOn ? 1f : 0f, Time.unscaledDeltaTime * 9f);
+        if (DevFingers != null)
+        {
+            var d = DevFingers.Value;
+            index = d.x;
+            fist = d.y;
+            thumb = d.z;
+            _flip[side] = d.w;
+        }
+
+        return new HeroSkin.HandPose { Valid = true, Wrist = pos, Rot = rot, Scale = 1f, Index = index, Grip = fist, Thumb = thumb, Flip = _flip[side] };
     }
 
     public static string Describe() => (Ready ? $"scale {_skin.Scale:F3} rest eyes {_skin.RestEyeHeight:F2} {_skin.DescribeArms()} | " : "no skin | ") + Sk.Describe();

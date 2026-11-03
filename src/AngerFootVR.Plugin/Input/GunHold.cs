@@ -7,12 +7,13 @@ using UnityEngine.XR;
 namespace AngerFootVR.Input;
 
 /// <summary>
-/// Guns in your hand (an early look at the motion controls). The game animates its guns on its first-person rig (sway,
-/// recoil, reloading), with the gun hanging off the rig's right wrist and the barrel along the rig's forward. In VR that
-/// whole rig (its arms hidden: your body's arms are yours) is placed every frame, after the game's own sway, so its hand
-/// is on your body's hand (wrist on wrist, fingers along fingers: the gun sits in your grip as the game's own hand holds
-/// it), turned about the wrist so the barrel runs along your aim: the game's own gun, animations and all, in your hand.
-/// Shots leave its muzzle along your aim; the crosshair in the middle of your view goes (you aim with your hand).
+/// What you hold, in your hand. The game animates its guns, bats, boxes on its first-person rig (sway, recoil,
+/// reloading), hanging off the rig's right hand. In VR that whole rig (its arms hidden: your body's arms are yours) is
+/// placed every frame, after the game's own sway, so its hand is exactly on your body's hand (palm in palm, fingers along
+/// fingers): the thing sits in your grip just as the game's own hand holds it. (A left hand holds it in the game's hand
+/// mirrored.) A gun fires from its muzzle along its barrel, so shots go where it visibly points; the crosshair in the
+/// middle of your view goes (you aim with your hand). Your fingers take the thing's own grip: round a gun's handle with
+/// the index on its trigger, a fist round a bat, open under a box.
 /// </summary>
 [HarmonyPatch]
 internal static class GunHold
@@ -24,8 +25,37 @@ internal static class GunHold
     private static Transform _wrist, _middle, _thumb;
     private static HandRig _rig;
 
-    /// <summary>Whether a gun is in your hand this frame.</summary>
+    /// <summary>Whether a gun (or anything the game holds on its rig) is in your hand this frame.</summary>
     public static bool Holding { get; private set; }
+
+    /// <summary>The held thing's grip for your fingers: x the fist, y the index (below 0: on the gun's trigger), z the thumb.</summary>
+    public static Vector3 HeldGrip { get; private set; } = new Vector3(1f, -1f, 0.8f);
+
+    /// <summary>Dev: 1 = the old way (the rig turned about the wrist onto the aim pose; shots along the aim).</summary>
+    public static int DevMode;
+
+    // where the palm sits along your hand from the wrist (HeroSkin puts the body's palm there)
+    private const float PalmAlong = 0.045f;
+    private static Transform _muzzle;
+    private static HoldableObjectType _held;
+    private static readonly System.Reflection.FieldInfo MuzzleField = AccessTools.Field(typeof(HandRigGunObject), "_muzzlePosition");
+    private static float _barrelOff, _heldSince;
+    private static Vector3 _palmRest;
+
+    private static Vector3 GripFor(HoldableObjectType t)
+    {
+        if (t == HoldableObjectType.ShoeBox || t == HoldableObjectType.PizzaBox || t == HoldableObjectType.SnakeBucket)
+            return new Vector3(0.35f, 0.3f, 0.3f); // hands open under it
+        if (t == HoldableObjectType.Shield) return new Vector3(0.85f, 0.85f, 0.6f);
+        if (t == HoldableObjectType.Bat || t == HoldableObjectType.Machete || t == HoldableObjectType.PizzaCutter ||
+            t == HoldableObjectType.Plunger || t == HoldableObjectType.Whip || t == HoldableObjectType.GimpClaw)
+            return new Vector3(1f, 1f, 0.9f); // a fist round the handle
+        if (t == HoldableObjectType.BeerBottle || t == HoldableObjectType.EnergyDrink || t == HoldableObjectType.Grenade)
+            return new Vector3(0.8f, 0.75f, 0.7f);
+        return new Vector3(1f, -1f, 0.8f); // a gun: round its grip, the index on the trigger
+    }
+
+    private static bool IsGun => HeldGrip.y < 0f;
 
     private static bool Aiming(out VrHands.Pose pose)
     {
@@ -66,29 +96,97 @@ internal static class GunHold
         var handRot = pose.Rotation * local;
         var handPos = pose.Position + pose.Rotation * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f));
 
-        // the game's own first-person hand, in the same kind of frame (it holds the gun as the game animates it)
-        var wristInRig = rig.InverseTransformPoint(_wrist.position);
+        // what's held: its grip for your fingers, its muzzle
+        var type = player.Weapon != null ? player.Weapon.HoldableObjectType : null;
+        if (type != _held || _muzzle == null || !_muzzle.gameObject.activeInHierarchy)
+        {
+            if (type != _held)
+            {
+                _heldSince = Time.unscaledTime;
+                _palmRest = Vector3.zero;
+            }
+
+            _held = type;
+            HeldGrip = GripFor(type);
+            _muzzle = null;
+            if (MuzzleField != null)
+                foreach (var g in __instance.GetComponentsInChildren<HandRigGunObject>(false))
+                    if (MuzzleField.GetValue(g) is Transform m && m != null)
+                    {
+                        _muzzle = m;
+                        break;
+                    }
+        }
+
+        // a left hand: the game's (right) first-person hand, mirrored
+        var ls = rig.localScale;
+        var wantX = Mathf.Abs(ls.x) * (DevMode == 1 ? 1f : s);
+        if (!Mathf.Approximately(ls.x, wantX)) rig.localScale = new Vector3(wantX, ls.y, ls.z);
+
+        // the game's own first-person hand, in the same kind of frame (it holds the thing as the game animates it)
         Quaternion rigRot;
+        Vector3 anchorInRig, anchor;
         if (_middle != null && _thumb != null)
         {
             var along = _middle.position - _wrist.position;
             var thumb = Vector3.ProjectOnPlane(_thumb.position - _wrist.position, along.normalized);
-            var back = s > 0 ? Vector3.Cross(thumb, along) : Vector3.Cross(along, thumb);
+            // (a right hand's back from its thumb; a mirrored one's, the other way round)
+            var mirrored = rig.lossyScale.x < 0f;
+            var back = (DevMode == 1 ? s < 0 : mirrored) ? Vector3.Cross(along, thumb) : Vector3.Cross(thumb, along);
             var fpsFrame = Quaternion.Inverse(rig.rotation) * Quaternion.LookRotation(along, back);
-            // its hand onto yours, then turned about the wrist just enough that the barrel runs along your aim
             rigRot = handRot * Quaternion.Inverse(fpsFrame);
-            rigRot = Quaternion.FromToRotation(rigRot * Vector3.forward, aim * Vector3.forward) * rigRot;
+            // a gun: its barrel on your aim, rolled with your controller (matched hand to hand, the game's pistol
+            // grip points it at the floor); held things (bats, boxes, bottles) sit in your hand as the game's hand holds them
+            if (IsGun && DevMode != 1) rigRot = aim;
+            if (DevMode == 1)
+            {
+                // (the old way: turned about the wrist onto the aim)
+                rigRot = Quaternion.FromToRotation(rigRot * Vector3.forward, aim * Vector3.forward) * rigRot;
+                anchorInRig = rig.InverseTransformPoint(_wrist.position);
+                anchor = handPos;
+            }
+            else
+            {
+                // its palm in yours (the hands differ in size: the palms meet, not the wrists); where its palm rests in
+                // the rig is taken once the thing is in hand, so the game's own recoil and reloads still move it
+                var palm = _wrist.position + along * 0.5f - back.normalized * (along.magnitude * 0.12f);
+                anchorInRig = rig.InverseTransformPoint(palm);
+                if (Time.unscaledTime - _heldSince < 0.6f || _palmRest == Vector3.zero) _palmRest = anchorInRig;
+                else anchorInRig = _palmRest;
+                anchor = handPos + handRot * new Vector3(0f, 0f, PalmAlong);
+            }
         }
-        else rigRot = aim;
+        else
+        {
+            rigRot = aim;
+            anchorInRig = rig.InverseTransformPoint(_wrist.position);
+            anchor = handPos;
+        }
 
-        rig.SetPositionAndRotation(handPos - rigRot * Vector3.Scale(wristInRig, rig.lossyScale), rigRot);
+        rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
+        _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;
+    }
+
+    /// <summary>Where a held gun's shots go: along its barrel (the old way: along the aim pose).</summary>
+    private static void Barrel(VrHands.Pose pose, out Vector3 position, out Vector3 direction)
+    {
+        var aim = Aim(pose);
+        if (DevMode == 1 || !Holding || !IsGun || _rig == null)
+        {
+            direction = aim * Vector3.forward;
+            position = pose.Position + direction * 0.22f + aim * Vector3.up * 0.06f; // about where the muzzle is
+            return;
+        }
+
+        direction = _rig.transform.forward;
+        position = _muzzle != null ? _muzzle.position : pose.Position + direction * 0.22f;
     }
 
     public static string Describe()
     {
         var pose = VrHands.Get(Hand);
-        var b = new System.Text.StringBuilder($"GUN holding={Holding} hand={pose.Tracked} {pose.Position} rig={(_rig != null ? _rig.transform.position + " " + _rig.transform.eulerAngles : "none")} wrist={(_wrist != null ? _wrist.position.ToString() : "none")}");
+        var b = new System.Text.StringBuilder($"GUN holding={Holding} mode={DevMode} held={(_held != null ? _held.ToString() : "none")} grip={HeldGrip} barrel off aim {_barrelOff:F1} deg muzzle={(_muzzle != null ? _muzzle.position.ToString() : "none")} hand={pose.Tracked} {pose.Position} rig={(_rig != null ? _rig.transform.position + " " + _rig.transform.eulerAngles + " scale " + _rig.transform.localScale : "none")} wrist={(_wrist != null ? _wrist.position.ToString() : "none")}");
         if (_rig != null)
             foreach (var r in _rig.GetComponentsInChildren<Renderer>(true))
                 if (r.gameObject.activeInHierarchy)
@@ -98,15 +196,13 @@ internal static class GunHold
         return b.ToString();
     }
 
-    /// <summary>Shots leave the gun in your hand along your aim (the game fires from the middle of the view).</summary>
+    /// <summary>Shots leave the gun in your hand along its barrel (the game fires from the middle of the view).</summary>
     [HarmonyPrefix]
     [HarmonyPatch(typeof(ProjectileWeapon), "CalculateProjectileSpawn")]
     private static bool FromTheHand(ref Vector3 position, ref Vector3 direction)
     {
         if (!Aiming(out var pose)) return true;
-        var aim = Aim(pose);
-        direction = aim * Vector3.forward;
-        position = pose.Position + direction * 0.22f + aim * Vector3.up * 0.06f; // about where the muzzle is
+        Barrel(pose, out position, out direction);
         if (Dev.ActionLog.Enabled) Plugin.L.LogInfo($"ACTION shot from the hand at {position} towards {direction}");
         return false;
     }
