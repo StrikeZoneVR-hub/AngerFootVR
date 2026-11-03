@@ -19,4 +19,6 @@ cp src/AngerFootVR.Plugin/bin/Release/netstandard2.0/AngerFootVR.dll assets/prop
 mkdir -p "$OUT/AngerFootVR-Licenses" && cp src/AngerFootVR.Launcher/Assets/Fonts/*-OFL.txt "$OUT/AngerFootVR-Licenses/"
 # the readme (features, install, controls, options)
 cp README.md "$OUT/Anger Foot VR - README.md"
+cp "docs/INSTALL GUIDE.txt" "$OUT/INSTALL GUIDE - Anger Foot VR.txt"
+cp LICENSE "$OUT/AngerFootVR-Licenses/AngerFootVR-GPL-3.0.txt"
 echo "packaged $OUT"

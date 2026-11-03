@@ -1,0 +1,55 @@
+ANGER FOOT VR - INSTALL GUIDE
+Mod by StrikeZoneVR. Free, unofficial and fan-made: https://github.com/StrikeZoneVR-hub/AngerFootVR
+
+WHAT YOU NEED
+- Anger Foot on Steam (PC).
+- A PC VR headset: Quest 2/3/Pro through Virtual Desktop, Air Link/Link or Steam Link, or a SteamVR headset
+  (Index, Vive, Windows Mixed Reality).
+- An internet connection the first time (the installer downloads Unity's VR plugin from Unity).
+
+INSTALL (about a minute)
+1. Find your game folder: in Steam, right-click Anger Foot > Manage > Browse local files.
+2. Unzip this zip INTO that folder, so "Anger Foot VR.exe" sits next to "Anger Foot.exe".
+3. Run "Anger Foot VR.exe" (the mod's launcher).
+   - If Windows says "Windows protected your PC": click "More info", then "Run anyway" (the launcher isn't signed).
+4. Start your VR app first (Virtual Desktop, the Meta/Oculus app or SteamVR), then press PLAY IN VR.
+   The first time, it installs the mod (BepInEx plus the mod) before starting the game.
+   - If your antivirus complains about winhttp.dll: that's BepInEx's mod loader; allow it.
+5. Put the headset on: you start in the movie house.
+
+If the game starts on the wrong VR app, open OPTIONS > VR RUNTIME in the launcher and pick yours.
+The VR CHECK page shows what the mod sees.
+
+CONTROLS (Quest/Touch; Index, Vive and WMR are mapped too)
+Left hand:
+  Stick ............ move
+  Hold stick in .... recenter
+  X ................ kick
+  Y ................ shoe power (in the car: your shoes)
+  Grip ............. pick up / use what your hand reaches or points at (bottles, drinks, doors),
+                     or hold the front of a two-handed gun
+  Menu ............. pause
+Right hand:
+  Stick ............ turn (snap or smooth)
+  Click stick ...... the middle finger
+  B ................ kick
+  A ................ jump
+  Trigger .......... shoot
+  Grip ............. hold it, then let go: throw your gun (swing to throw it hard)
+The gun hand can be switched to the left in the settings.
+
+GOOD TO KNOW
+- The menus play on a big screen in the movie house: point at it and pull the trigger.
+  Lists scroll with the right stick while you point at them, or hold the trigger and drag.
+- The game's SETTINGS has a VR tab (the headset icon) with every VR option.
+- The level select is in the car: point at a level on the map book, pull the trigger to pick it, again to play.
+- Kicking: B or X. Jump and kick while moving for a flying double kick.
+- Your saves are never touched by the mod.
+
+UNINSTALL
+Run "Anger Foot VR.exe", go to VR CHECK, press UNINSTALL (twice: it asks to be sure). The game folder goes back
+to how it was.
+
+FOUND A BUG?
+Open an issue on the GitHub page (or tell StrikeZoneVR) with what happened and the log: in the launcher, VR CHECK > GAME LOG
+(it's the file BepInEx\LogOutput.log in the game folder).
