@@ -69,11 +69,16 @@ internal static class MovieHouse
         // ---- the hall: 14 m wide, 22 m long, 11 m high (the proscenium's crown fits), the screen at the far end (+z) ----
         Box(carpet, new Vector3(0f, -0.05f, 5f), new Vector3(14f, 0.1f, 22f));
         Box(ceiling, new Vector3(0f, Height + 0.05f, 5f), new Vector3(14f, 0.1f, 22f));
-        Box(brick, new Vector3(-7.05f, Height / 2, 5f), new Vector3(0.1f, Height, 22f));
+        // the left wall, with the gun range's doorway cut in it near the back (z -5.4 to -3.6, 2.4 m high)
+        Box(brick, new Vector3(-7.05f, Height / 2, (RangeDoorZ1 + 16f) / 2), new Vector3(0.1f, Height, 16f - RangeDoorZ1));
+        Box(brick, new Vector3(-7.05f, Height / 2, (-6f + RangeDoorZ0) / 2), new Vector3(0.1f, Height, RangeDoorZ0 + 6f));
+        Box(brick, new Vector3(-7.05f, (Height + 2.42f) / 2, (RangeDoorZ0 + RangeDoorZ1) / 2), new Vector3(0.1f, Height - 2.42f, RangeDoorZ1 - RangeDoorZ0));
         Box(brick, new Vector3(7.05f, Height / 2, 5f), new Vector3(0.1f, Height, 22f));
         Box(brick, new Vector3(0f, Height / 2, 16.25f), new Vector3(14f, Height, 0.1f));
         // the back wall, with the rage room's doorway cut in it (x 3.0 to 5.0, 2.4 m high)
-        Box(brick, new Vector3(-4f, Height / 2, -6.05f), new Vector3(6f, Height, 0.1f));
+        Box(brick, new Vector3((-7f + ArcadeDoorX0) / 2, Height / 2, -6.05f), new Vector3(ArcadeDoorX0 + 7f, Height, 0.1f));
+        Box(brick, new Vector3((ArcadeDoorX1 - 1f) / 2, Height / 2, -6.05f), new Vector3(-1f - ArcadeDoorX1, Height, 0.1f));
+        Box(brick, new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, (Height + 2.42f) / 2, -6.05f), new Vector3(ArcadeDoorX1 - ArcadeDoorX0, Height - 2.42f, 0.1f));
         Box(brick, new Vector3(2f, Height / 2, -6.05f), new Vector3(2f, Height, 0.1f));
         Box(brick, new Vector3(0f, (BoothHeight - 0.58f) / 2, -6.05f), new Vector3(2f, BoothHeight - 0.58f, 0.1f));
         Box(brick, new Vector3(0f, (BoothHeight + 0.58f + Height) / 2, -6.05f), new Vector3(2f, Height - BoothHeight - 0.58f, 0.1f));
@@ -89,8 +94,8 @@ internal static class MovieHouse
         {
             Model("proscenium", new Vector3(0f, StageHeight, 15.92f), 0f);
             Model("proscenium_neon", new Vector3(0f, StageHeight, 15.92f), 0f);
-            Model("curtain", new Vector3(-6.55f, StageHeight, 15.75f), 0f);
-            Model("curtain", new Vector3(6.55f, StageHeight, 15.75f), 180f);
+            _curtainL = Model("curtain", new Vector3(-6.55f, StageHeight, 15.75f), 0f)?.transform;
+            _curtainR = Model("curtain", new Vector3(6.55f, StageHeight, 15.75f), 180f)?.transform;
             Model("valance", new Vector3(0f, StageHeight + 7.45f, 15.7f), 0f);
         }
 
@@ -139,6 +144,8 @@ internal static class MovieHouse
         }
 
         BuildRageShell(concrete, brick, metal);
+        BuildArcadeShell(carpet, brick, metal);
+        BuildRangeShell(concrete, brick, metal);
         Combine();
         CombineInstances();
 
@@ -207,13 +214,70 @@ internal static class MovieHouse
 
     // ---- layout (local metres; the screen at +z) ----
     public const float Height = 11f, StageHeight = 0.7f, BoothHeight = 7.0f, DoorX = 4.0f;
-    private const int Rows = 6, SeatsPerSide = 8;
-    private const float FrontRowZ = 11.4f, RowDepth = 1.45f, RowRise = 0.17f, AisleHalf = 1.0f, SeatPitch = 0.62f, SeatBlock = 5.25f;
+    public const int Rows = 6, SeatsPerSide = 8;
+    public const float FrontRowZ = 11.4f, RowDepth = 1.45f, RowRise = 0.17f, AisleHalf = 1.0f, SeatPitch = 0.62f, SeatBlock = 5.25f;
 
     /// <summary>The rage room behind the lobby doors (local): x -1 to 9, z -16.3 to -6.1, 4.5 m high.</summary>
     public static readonly Vector3 RageMin = new Vector3(-1f, 0f, -16.3f), RageMax = new Vector3(9f, 4.5f, -6.1f);
 
+    /// <summary>The arcade behind the back wall's left doorway: x -13.5 to -1.2, z -16.3 to -6.1, 4.5 m high.</summary>
+    public static readonly Vector3 ArcadeMin = new Vector3(-13.5f, 0f, -16.3f), ArcadeMax = new Vector3(-1.2f, 4.5f, -6.1f);
+
+    /// <summary>The gun range through the left wall's doorway: x -13.5 to -7.1, z -6 to 16, 4 m high.</summary>
+    public static readonly Vector3 RangeMin = new Vector3(-13.5f, 0f, -6f), RangeMax = new Vector3(-7.1f, 4f, 16f);
+
+    public const float ArcadeDoorX0 = -5.6f, ArcadeDoorX1 = -3.6f, RangeDoorZ0 = -5.4f, RangeDoorZ1 = -3.6f;
+
+    /// <summary>The gun range's shooting line (its benches, local z): you stand behind it.</summary>
+    public const float GunRangeLine = -1.8f;
+
+    /// <summary>Things standing on the floors (the rooms put them here: the arcade's machines, the counters): no walking
+    /// through them (local boxes on the floor: x, z centre and half sizes).</summary>
+    public static readonly List<(Vector2 centre, Vector2 half)> Obstacles = new List<(Vector2, Vector2)>();
+
+    public static void Block(Vector3 centre, float halfX, float halfZ)
+    {
+        var o = (new Vector2(centre.x, centre.z), new Vector2(halfX, halfZ));
+        if (!Obstacles.Contains(o)) Obstacles.Add(o);
+    }
+
     public static Light ScreenLight { get; private set; }
+
+    private static Transform _curtainL, _curtainR;
+    private static float _curtains, _curtainsTo;
+    private static readonly Dictionary<Light, float> HouseIntensity = new Dictionary<Light, float>();
+    private static bool _lightsOn = true;
+
+    /// <summary>The curtains drawn across the screen (true) or back (false); they move there.</summary>
+    public static void Curtains(bool closed) => _curtainsTo = closed ? 1f : 0f;
+
+    public static bool CurtainsClosed => _curtainsTo > 0.5f;
+
+    /// <summary>The house lights on or down (the screen's own light and the neon stay).</summary>
+    public static void HouseLights(bool on)
+    {
+        _lightsOn = on;
+        foreach (var l in Lights)
+        {
+            if (l == null) continue;
+            if (!HouseIntensity.ContainsKey(l)) HouseIntensity[l] = l.intensity;
+            if (l != ScreenLight) l.intensity = on ? HouseIntensity[l] : HouseIntensity[l] * 0.12f;
+        }
+    }
+
+    public static bool LightsOn => _lightsOn;
+
+    private static void AnimateCurtains()
+    {
+        if (_curtainL == null) return;
+        if (Mathf.Approximately(_curtains, _curtainsTo)) return;
+        _curtains = Mathf.MoveTowards(_curtains, _curtainsTo, Time.unscaledDeltaTime * 0.45f);
+        var e = _curtains * _curtains * (3f - 2f * _curtains);
+        _curtainL.localPosition = new Vector3(Mathf.Lerp(-6.55f, -2.9f, e), StageHeight, 15.75f);
+        _curtainR.localPosition = new Vector3(Mathf.Lerp(6.55f, 2.9f, e), StageHeight, 15.75f);
+        _curtainL.localScale = new Vector3(Mathf.Lerp(1f, 1.55f, e), 1f, 1f);
+        _curtainR.localScale = new Vector3(Mathf.Lerp(1f, 1.55f, e), 1f, 1f);
+    }
 
     private static readonly Dictionary<Material, List<CombineInstance>> InstanceParts = new Dictionary<Material, List<CombineInstance>>();
     private static Mesh _sphere;
@@ -315,12 +379,24 @@ internal static class MovieHouse
 
     // ================================================================================== walking
 
+    /// <summary>Whether the floor here is hard (the rage room's, the arcade's and the range's concrete) or carpet.</summary>
+    public static bool HardFloor(Vector3 local) => local.z < -6.1f || local.x < -7.05f;
+
     /// <summary>The open floor (local, at your feet): inside the hall's walls, off the stage, not through the seats or
     /// the mirror; through the doors into the rage room once they're open.</summary>
     public static bool Walkable(Vector3 p)
     {
         const float r = 0.25f; // your body's radius
+        foreach (var (c, h) in Obstacles)
+            if (Mathf.Abs(p.x - c.x) < h.x + r && Mathf.Abs(p.z - c.y) < h.y + r)
+                return false;
         if (DoorOpen && Mathf.Abs(p.x - DoorX) < 0.95f - r && p.z > -6.6f && p.z < -5.5f) return true; // the doorway
+        if (p.x > ArcadeDoorX0 + r && p.x < ArcadeDoorX1 - r && p.z > -6.6f && p.z < -5.5f) return true; // the arcade's doorway
+        if (p.z > RangeDoorZ0 + r && p.z < RangeDoorZ1 - r && p.x > -7.6f && p.x < -6.5f) return true; // the range's
+        if (p.z < -6.1f && p.x < ArcadeMax.x)
+            return p.x > ArcadeMin.x + r && p.x < ArcadeMax.x - r && p.z > ArcadeMin.z + r && p.z < ArcadeMax.z - r;
+        if (p.x < -7.1f)
+            return p.x > RangeMin.x + r && p.x < RangeMax.x - r && p.z > RangeMin.z + r && p.z < GunRangeLine - r;
         if (p.z < -6.1f)
             return DoorOpen && p.x > RageMin.x + r && p.x < RageMax.x - r && p.z > RageMin.z + r && p.z < RageMax.z - r;
         if (p.x < -6.9f + r || p.x > 6.9f - r || p.z < -5.95f + r || p.z > 12.95f - r) return false;
@@ -465,6 +541,7 @@ internal static class MovieHouse
     {
         if (Root == null) return;
         var now = Time.unscaledTime;
+        AnimateCurtains();
         if (now >= _nextChase && Bulbs.Count > 0)
         {
             _nextChase = now + 0.14f;
@@ -571,9 +648,94 @@ internal static class MovieHouse
         AddLight(new Vector3(4f, 2.2f, -15.5f), new Color(1f, 0.2f, 0.3f), 1.2f, 6f);
     }
 
+    /// <summary>The arcade: a carpeted room of neon under a dark ceiling, its machines put in by the Arcade.</summary>
+    private static void BuildArcadeShell(Material carpet, Material brick, Material metal)
+    {
+        var lo = ArcadeMin;
+        var hi = ArcadeMax;
+        var mid = (lo + hi) / 2;
+        var size = hi - lo;
+        var dark = Lit(brick.mainTexture as Texture2D, new Color(0.22f, 0.18f, 0.28f), new Vector2(5f, 2f));
+        var floor = Lit(carpet.mainTexture as Texture2D, new Color(0.45f, 0.3f, 0.6f), new Vector2(5f, 4f));
+        Box(floor, new Vector3(mid.x, -0.05f, mid.z), new Vector3(size.x, 0.1f, size.z));
+        Box(Lit(null, new Color(0.04f, 0.03f, 0.06f), Vector2.one), new Vector3(mid.x, hi.y + 0.05f, mid.z), new Vector3(size.x, 0.1f, size.z));
+        Box(dark, new Vector3(lo.x - 0.05f, hi.y / 2, mid.z), new Vector3(0.1f, hi.y, size.z));
+        Box(dark, new Vector3(hi.x + 0.05f, hi.y / 2, mid.z), new Vector3(0.1f, hi.y, size.z));
+        Box(dark, new Vector3(mid.x, hi.y / 2, lo.z - 0.05f), new Vector3(size.x, hi.y, 0.1f));
+        // (its front wall is the hall's back wall, the doorway in it; to its left, the gun range's back wall)
+        Box(dark, new Vector3((lo.x - 7.1f) / 2, hi.y / 2, hi.z + 0.05f), new Vector3(-7.1f - lo.x, hi.y, 0.1f));
+        var pink = Unlit(new Color(1f, 0.16f, 0.62f));
+        var cyan = Unlit(new Color(0.15f, 0.95f, 1f));
+        Box(pink, new Vector3(lo.x + 0.03f, 3.6f, mid.z), new Vector3(0.03f, 0.05f, size.z - 0.4f));
+        Box(cyan, new Vector3(hi.x - 0.03f, 3.6f, mid.z), new Vector3(0.03f, 0.05f, size.z - 0.4f));
+        Box(cyan, new Vector3(mid.x, 3.6f, lo.z + 0.03f), new Vector3(size.x - 0.4f, 0.05f, 0.03f));
+        foreach (var x in new[] { -11f, -7.3f, -3.6f })
+        foreach (var z in new[] { -9f, -13.5f })
+            Box(metal, new Vector3(x, hi.y - 0.04f, z), new Vector3(0.9f, 0.06f, 0.9f));
+        AddLight(new Vector3(-10.5f, 3.6f, -11f), new Color(1f, 0.3f, 0.75f), 1.8f, 9f);
+        AddLight(new Vector3(-4f, 3.6f, -11f), new Color(0.25f, 0.85f, 1f), 1.8f, 9f);
+        AddLight(new Vector3(-7.3f, 3.9f, -8.5f), new Color(1f, 0.9f, 0.75f), 1.2f, 8f);
+        AddLight(new Vector3(-7.3f, 3.9f, -14f), new Color(1f, 0.9f, 0.75f), 1.2f, 8f);
+        Text("ARCADE", new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, 2.95f, -5.97f), Quaternion.Euler(0f, 180f, 0f), 0.62f, new Color(0.15f, 0.95f, 1f));
+        Text("ARCADE", new Vector3((ArcadeDoorX0 + ArcadeDoorX1) / 2, 2.95f, -6.16f), Quaternion.identity, 0.5f, new Color(0.15f, 0.95f, 1f));
+    }
+
+    /// <summary>The gun range: a long concrete room, benches across it with the guns laid out behind, targets out to
+    /// 20 m (put in by the GunRange).</summary>
+    private static void BuildRangeShell(Material concrete, Material brick, Material metal)
+    {
+        var lo = RangeMin;
+        var hi = RangeMax;
+        var mid = (lo + hi) / 2;
+        var size = hi - lo;
+        var dark = Lit(brick.mainTexture as Texture2D, new Color(0.3f, 0.3f, 0.32f), new Vector2(3f, 1.6f));
+        var side = Lit(concrete.mainTexture as Texture2D, new Color(0.36f, 0.36f, 0.38f), new Vector2(10f, 1.6f));
+        Box(concrete, new Vector3(mid.x, -0.05f, mid.z), new Vector3(size.x, 0.1f, size.z));
+        Box(Lit(null, new Color(0.06f, 0.06f, 0.07f), Vector2.one), new Vector3(mid.x, hi.y + 0.05f, mid.z), new Vector3(size.x, 0.1f, size.z));
+        Box(side, new Vector3(lo.x - 0.05f, hi.y / 2, mid.z), new Vector3(0.1f, hi.y, size.z));
+        Box(dark, new Vector3(mid.x, hi.y / 2, hi.z + 0.05f), new Vector3(size.x, hi.y, 0.1f));
+        // (its right wall is the hall's left wall with the doorway; the arcade's front wall is its back)
+        // the backstop at the far end: dark rubber
+        Box(Lit(null, new Color(0.05f, 0.05f, 0.06f), Vector2.one), new Vector3(mid.x, hi.y / 2, hi.z - 0.3f), new Vector3(size.x, hi.y, 0.5f));
+        // lane lines on the floor, distance marks every 5 m
+        var paint = Unlit(new Color(0.95f, 0.75f, 0.1f));
+        var white = Unlit(new Color(0.85f, 0.85f, 0.85f));
+        foreach (var x in new[] { lo.x + size.x / 3f, lo.x + size.x * 2f / 3f })
+            Box(paint, new Vector3(x, 0.006f, (GunRangeLine + hi.z) / 2), new Vector3(0.05f, 0.012f, hi.z - GunRangeLine));
+        for (var d = 5; d <= 15; d += 5)
+        {
+            Box(white, new Vector3(mid.x, 0.006f, GunRangeLine + d), new Vector3(size.x, 0.012f, 0.06f));
+            Text($"{d} M", new Vector3(lo.x + 0.04f, 1.2f, GunRangeLine + d), Quaternion.Euler(0f, -90f, 0f), 0.3f, new Color(1f, 0.85f, 0.25f));
+        }
+
+        // baffles across the ceiling, lights over the benches and down the lanes
+        for (var z = 1f; z < hi.z - 1f; z += 4f) Box(metal, new Vector3(mid.x, hi.y - 0.25f, z), new Vector3(size.x, 0.5f, 0.15f));
+        var tube = Unlit(new Color(0.9f, 0.95f, 1f));
+        foreach (var z in new[] { -4.5f, -2.5f })
+            Box(tube, new Vector3(mid.x, hi.y - 0.05f, z), new Vector3(size.x - 0.6f, 0.04f, 0.08f));
+        AddLight(new Vector3(mid.x, 3.5f, -3.8f), new Color(1f, 0.97f, 0.9f), 1.6f, 7f);
+        AddLight(new Vector3(mid.x, 3.5f, 6f), new Color(0.9f, 0.95f, 1f), 1.0f, 10f);
+        AddLight(new Vector3(mid.x, 3.5f, 13.5f), new Color(1f, 0.45f, 0.35f), 1.2f, 8f);
+        Text("GUN RANGE", new Vector3(-6.97f, 2.95f, (RangeDoorZ0 + RangeDoorZ1) / 2), Quaternion.Euler(0f, 90f, 0f), 0.5f, new Color(1f, 0.85f, 0.25f));
+        Text("GUN RANGE", new Vector3(lo.x + 0.05f, 3.3f, -4f), Quaternion.Euler(0f, -90f, 0f), 0.55f, new Color(1f, 0.85f, 0.25f));
+    }
+
     /// <summary>A sign on a wall that faces back into its room (the hall's back wall, the rage room's far one).</summary>
     public static TextMeshPro Sign(string text, Vector3 localPos, float size, Color color, bool glow = true) =>
         glow ? Text(text, localPos, Quaternion.Euler(0f, 180f, 0f), size, color) : Letters(text, localPos, Quaternion.Euler(0f, 180f, 0f), size, color, 0f);
+
+    /// <summary>A neon sign read from the side it faces (local), glowing.</summary>
+    /// (Given a parent (a room's things, gone with the room), the sign goes with it.)
+    public static TextMeshPro SignFacing(string text, Vector3 localPos, float size, Color color, Vector3 facing, Transform parent = null)
+    {
+        if (Root == null) return null;
+        var before = Root.childCount;
+        var tmp = Text(text, localPos, Quaternion.Euler(0f, Mathf.Atan2(-facing.x, -facing.z) * Mathf.Rad2Deg, 0f), size, color);
+        if (parent != null)
+            for (var i = Root.childCount - 1; i >= before; i--)
+                Root.GetChild(i).SetParent(parent, true);
+        return tmp;
+    }
 
     /// <summary>The rage room's own signs (after the hall's are built).</summary>
     public static void RageSigns()

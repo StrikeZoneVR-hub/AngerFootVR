@@ -93,6 +93,10 @@ internal static class Laser
         dir = pose.Aim * Vector3.forward; // the controller's pointing way (its aim pose)
         uv = default;
         dist = 0f;
+        // (a hand holding something in the rooms is busy; the big screen only from the hall, not through its walls)
+        if (FunWorld.Busy(hand) || MovieHouse.Root == null) return false;
+        var local = MovieHouse.Root.InverseTransformPoint(origin);
+        if (local.z < -6.05f || Mathf.Abs(local.x) > 7.05f) return false;
         return pose.Tracked && OnTheScreen(origin, dir, out uv, out dist);
     }
 

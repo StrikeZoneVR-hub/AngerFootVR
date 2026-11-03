@@ -98,6 +98,11 @@ public class Plugin : BaseUnityPlugin
         };
         VrSettings.Init(Config);
         Rendering.BloodDecals.Init();
+        UI.GameSounds.Init();
+        UI.RageRoom.Init();
+        UI.Lobby.Init();
+        UI.Arcade.Init();
+        UI.GunRange.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.1.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -672,10 +677,15 @@ public class Plugin : BaseUnityPlugin
                         CinemaRig.DevGo(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), a.Length > 2 ? Dev.MockControllers.F(a[2]) : 0f);
                         break;
                     }
+                    case "fun":
+                        // fun: the movie house's rooms, how they stand
+                        L.LogInfo(UI.FunWorld.Describe() + " | " + UI.Lobby.Describe() + " | " + UI.Arcade.Describe() + " | " + UI.GunRange.Describe());
+                        break;
                     case "rage":
                         if (arg == "open") UI.MovieHouse.TryKickDoor(UI.MovieHouse.Root.TransformPoint(new Vector3(UI.MovieHouse.DoorX, 1.6f, -5.0f)), Vector3.back);
-                        else if (arg == "kick") UI.RageRoom.Kick(CinemaRig.HeadPosition, CinemaRig.HeadRotation * Vector3.forward);
-                        L.LogInfo(UI.RageRoom.Describe());
+                        else if (arg == "kick") UI.FunWorld.Kick(CinemaRig.HeadPosition, CinemaRig.HeadRotation * Vector3.forward);
+                        else if (arg == "reset") UI.RageRoom.ResetAll();
+                        L.LogInfo(UI.RageRoom.Describe() + " | " + UI.RageMode.Describe() + " | " + UI.Dummy.Describe() + " | " + UI.GameSounds.Describe());
                         break;
                     case "ctl":
                     {
@@ -907,6 +917,34 @@ public class Plugin : BaseUnityPlugin
                         var clips = an.GetCurrentAnimatorClipInfo(0);
                         var idleField = HarmonyLib.AccessTools.Field(typeof(HandRig), "_isInIdleState");
                         L.LogInfo($"GUNOFF hand off its rest {(rig.transform.TransformPoint(now) - rig.transform.TransformPoint(rest)).magnitude:F3} m (now {now:F3} rest {rest:F3}) | state {si.shortNameHash} (Idle {Animator.StringToHash("Idle")}) t {si.normalizedTime:F2} len {si.length:F2} loop {si.loop} transition {an.IsInTransition(0)} rig idle {idleField?.GetValue(rig)} clips {string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(clips, c => c.clip.name + " " + c.weight.ToString("F2"))))} speed {an.speed} timescale {Time.timeScale} layers {an.layerCount}");
+                        break;
+                    }
+                    case "weapondump":
+                    {
+                        // weapondump: the game's weapon prefabs loaded now (not in a scene), and the random weapon shoe's list
+                        var sb = new System.Text.StringBuilder("WEAPONS");
+                        foreach (var w in Resources.FindObjectsOfTypeAll<Weapon>())
+                            if (w != null && !w.gameObject.scene.IsValid())
+                                sb.Append($" | {w.name} [{(w.HoldableObjectType != null ? w.HoldableObjectType.name : "?")}] {w.GetType().Name} model {(w.RenderModel != null ? w.RenderModel.name : "-")}");
+                        foreach (var a in Resources.FindObjectsOfTypeAll<RandomWeaponDropAbility>())
+                            if (HarmonyLib.AccessTools.Field(typeof(RandomWeaponDropAbility), "_weaponPrefabs")?.GetValue(a) is GameObject[] list)
+                                sb.Append($" || drop list {list.Length}: {string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(list, g => g != null ? g.name : "null")))}");
+                        L.LogInfo(sb.ToString());
+                        break;
+                    }
+                    case "sounddump":
+                    {
+                        // sounddump [part]: the game's sound banks loaded now (name, clips) and its long clips (music)
+                        var sb = new System.Text.StringBuilder("SOUNDS");
+                        foreach (var b in Resources.FindObjectsOfTypeAll<SoundManager.SingleSoundBank>())
+                            if (b != null && (arg.Length == 0 || b.name.IndexOf(arg, StringComparison.OrdinalIgnoreCase) >= 0))
+                                sb.Append($" | {b.name} ({(b.Clips != null ? b.Clips.Length : 0)})");
+                        L.LogInfo(sb.ToString());
+                        var mb = new System.Text.StringBuilder("MUSIC");
+                        foreach (var c in Resources.FindObjectsOfTypeAll<AudioClip>())
+                            if (c != null && c.length > 40f)
+                                mb.Append($" | {c.name} {c.length:F0}s {c.loadType}");
+                        L.LogInfo(mb.ToString());
                         break;
                     }
                     case "stall":

@@ -90,7 +90,8 @@ internal static class CinemaRig
 
         // walking: the left stick, the way you look, on the open floor (the aisles, the lobby; not through the seats)
         var stick = VrControls.DevMove != Vector2.zero ? VrControls.DevMove : VrControls.Stick(XRNode.LeftHand);
-        if (stick.magnitude > 0.2f)
+        if (_seated && stick.magnitude > 0.5f) UI.Lobby.GetUp();
+        if (stick.magnitude > 0.2f && !_seated)
         {
             var look = Vector3.ProjectOnPlane(yawRot * rot * Vector3.forward, Vector3.up).normalized;
             var right = Vector3.Cross(Vector3.up, look);
@@ -107,11 +108,11 @@ internal static class CinemaRig
         VrHands.UpdateAt(HeadPosition, tracked, Yaw);
         // your standing eye height: the highest your head has been since you came in (or recentred)
         if (tracked.y > 0.5f) _standingEye = Mathf.Max(_standingEye, tracked.y);
-        Body.HeroBody.PoseCinema(HeadPosition, HeadRotation, UI.MovieHouse.Standing.y, _standingEye > 0.5f ? _standingEye : height);
+        Body.HeroBody.PoseCinema(HeadPosition, HeadRotation, UI.MovieHouse.Standing.y + _seatRise, _standingEye > 0.5f ? _standingEye : height);
 
         UI.MovieHouse.Animate();
         UI.RageRoom.Prepare();
-        UI.RageRoom.Update();
+        UI.FunWorld.Update();
         Interact();
     }
 
@@ -127,16 +128,23 @@ internal static class CinemaRig
         {
             Body.HeroBody.Kick();
             var facing = HeadRotation * Vector3.forward;
-            if (!UI.MovieHouse.TryKickDoor(HeadPosition, facing)) UI.RageRoom.Kick(HeadPosition, facing);
+            if (!UI.MovieHouse.TryKickDoor(HeadPosition, facing)) UI.FunWorld.Kick(HeadPosition, facing);
         }
 
         var feet = new Vector3(HeadPosition.x, UI.MovieHouse.Standing.y, HeadPosition.z);
+        var stepped = false;
         if ((feet - _lastStep).magnitude > 0.7f)
         {
             if (_lastStep != Vector3.zero && (feet - _lastStep).magnitude < 3f)
-                UI.Sounds.Play(feet.z - UI.MovieHouse.Origin.z < -6.1f ? "step_hard" : "step", feet, 0.3f);
+            {
+                stepped = true;
+                UI.Sounds.Play(UI.MovieHouse.HardFloor(feet - UI.MovieHouse.Origin) ? "step_hard" : "step", feet, 0.3f);
+            }
+
             _lastStep = feet;
         }
+
+        UI.Fx.Update(feet, stepped);
     }
 
     private static readonly List<AudioListener> Silenced = new List<AudioListener>();
@@ -191,6 +199,7 @@ internal static class CinemaRig
         if (!UI.MovieHouse.Build(UI.VrUi.Layer)) return;
         UI.MovieHouse.Root.gameObject.SetActive(true);
         VrHands.LetGo(); // (whatever the level had in your hands stays there)
+        UI.Dummy.TryCapture(); // (paused in a level: a goon of the game's for the rage room's dummy)
         if (Camera == null)
         {
             var go = new GameObject("AngerFootVR Cinema Camera");
@@ -215,6 +224,8 @@ internal static class CinemaRig
         _centered = false;
         _walk = Vector3.zero; // back to your spot facing the screen
         Yaw = 0f;
+        _seated = false;
+        _seatRise = 0f;
         Active = true;
         UI.MovieHouse.CloseDoors();
         ParkGameCameras();
@@ -231,6 +242,35 @@ internal static class CinemaRig
         var local = Quaternion.Euler(0f, yaw, 0f) * new Vector3(tracked.x - _center.x, 0f, tracked.z - _center.z);
         _walk = UI.MovieHouse.Origin + new Vector3(x, 0f, z) - UI.MovieHouse.Standing - local;
         _walk.y = 0f;
+    }
+
+    private static bool _seated;
+    private static float _seatRise;
+
+    /// <summary>Whether you're sitting in one of the movie house's seats.</summary>
+    public static bool Seated => _seated;
+
+    /// <summary>Sit in a seat (its cushion's middle, local): your eyes go to a seated height over it, facing the screen.</summary>
+    public static void Sit(Vector3 seatLocal, float rise)
+    {
+        if (!Active) return;
+        VrRig.TryGetTrackedHead(out var tracked, out _);
+        Yaw = 0f;
+        var local = new Vector3(tracked.x - _center.x, 0f, tracked.z - _center.z);
+        var eye = _standingEye > 0.5f ? _standingEye : 1.62f;
+        _walk = UI.MovieHouse.Origin + new Vector3(seatLocal.x, 0f, seatLocal.z) - UI.MovieHouse.Standing - local;
+        _walk.y = rise + 1.12f - eye; // (seated, your eyes are about 1.12 m over the seat's floor)
+        _seatRise = rise;
+        _seated = true;
+    }
+
+    /// <summary>Up out of the seat, into the aisle (local).</summary>
+    public static void Stand(Vector3 aisleLocal)
+    {
+        if (!_seated) return;
+        _seated = false;
+        _seatRise = 0f;
+        DevGo(aisleLocal.x, aisleLocal.z, Yaw);
     }
 
     /// <summary>Back to your spot facing the screen, centred on where you stand now.</summary>
@@ -269,6 +309,13 @@ internal static class CinemaRig
         Parked.Clear();
         Listen(false);
         UI.RageRoom.Clear();
+        UI.RageMode.Clear();
+        UI.Lobby.Clear();
+        UI.Arcade.Clear();
+        UI.GunRange.Clear();
+        UI.Dummy.Clear();
+        UI.FunWorld.Clear();
+        UI.Fx.Clear();
         Plugin.L.LogInfo("Cinema: back to the game");
     }
 
