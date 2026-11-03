@@ -190,6 +190,7 @@ internal static class CinemaRig
     {
         if (!UI.MovieHouse.Build(UI.VrUi.Layer)) return;
         UI.MovieHouse.Root.gameObject.SetActive(true);
+        VrHands.LetGo(); // (whatever the level had in your hands stays there)
         if (Camera == null)
         {
             var go = new GameObject("AngerFootVR Cinema Camera");

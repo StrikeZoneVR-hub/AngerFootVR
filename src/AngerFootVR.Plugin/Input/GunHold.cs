@@ -79,8 +79,7 @@ internal static class GunHold
     private static void HoldHand(Vector3? at, Quaternion? rot)
     {
         var i = Hand == XRNode.LeftHand ? 0 : 1;
-        VrHands.HoldRot[i] = rot;
-        VrHands.HoldAt[i] = at; // (the other hand's is the two-hand grip's: only the gun hand's here)
+        VrHands.Hold(i, at, rot); // (the other hand's is the two-hand grip's: only the gun hand's here)
     }
     private static string _axisObj = "";
 

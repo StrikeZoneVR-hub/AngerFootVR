@@ -67,7 +67,21 @@
   Looking at them still works too.
 - **Drink for real:** bring the bottle to your mouth.
 - Haptics for shots, kicks, doors, hits, throws and shoe powers.
-- The game's blood splats land on walls and floors properly in VR.
+
+### Gore (new in 1.1)
+- **GORE: EXTRA** (the default) builds on the game's own blood:
+  - kicks splatter the wall behind the goon, and kicking a body makes it bleed;
+  - **headshot kills pop heads**, with a fountain from the neck (not bosses, and not the goons whose heads are
+    special);
+  - bullet wounds spurt and stay on the goon, going down with them;
+  - bodies leave smears where they slam into walls and floors, and pools of blood stain the bodies lying in them;
+  - explosions spray blood all round;
+  - **blood on you**: a bloody kick leaves it on your shoe, a close kill on your gun hand, and it dries off after a
+    while.
+- **BLOOD COLOUR:** the game's own pink, or red.
+- **GORE: GAME** is the game's own blood as it is, **OFF** turns blood off. The game's own **Show Blood** setting still
+  decides whether there's any.
+- The blood splats land on walls and floors properly in VR, each eye its own.
 
 ### The Movie House
 - A neon picture palace built for the mod, where the game's menus and cutscenes play on the big screen. Point a laser
@@ -82,7 +96,9 @@
 </p>
 
 ### The level select, in the car
-- Sit in the car with the map book on your lap and **point at a level** to see its card, then pull the trigger.
+- Sit in the car with the map book on your lap and **point at a level** to see its card, then pull the trigger: the
+  card shows the level's **star goals** and your best time.
+- Want the star goals in view while you play too? Turn on the game's own **Show Goals** (SETTINGS, Gameplay).
 - Press **Y** for your shoes.
 
 <p align="center">
@@ -114,7 +130,7 @@
 
 ## Install
 
-1. Download `AngerFootVR-v1.0.0.zip` from the [latest release](../../releases/latest).
+1. Download `AngerFootVR-v1.1.0.zip` from the [latest release](../../releases/latest).
 2. Find your game folder: in Steam, right-click **Anger Foot**, **Manage**, **Browse local files**.
 3. Unzip the zip **into that folder**, so `Anger Foot VR.exe` sits next to `Anger Foot.exe`.
 4. Run **Anger Foot VR.exe**. If Windows says "Windows protected your PC", click **More info**, then **Run anyway**
@@ -154,6 +170,7 @@ The gun hand can be switched to the left in the settings.
 | You're facing the wrong way, or off-centre | Hold the left stick in to recenter. |
 | Smooth turning makes you queasy | SETTINGS, VR: **TURNING** to SNAP. |
 | You'd rather pick levels on the big screen | SETTINGS, VR: turn off **LEVEL SELECT IN THE CAR**. |
+| Too much blood (or not enough) | SETTINGS, VR: **GORE** to GAME or OFF, or back to EXTRA. |
 | It stutters | Lower the game's own graphics settings (shadows, effects), and close other apps using the GPU. |
 
 ## Reporting a bug

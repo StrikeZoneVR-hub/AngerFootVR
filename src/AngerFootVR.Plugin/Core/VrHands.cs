@@ -39,10 +39,36 @@ internal static class VrHands
     /// <summary>The way a hand is turned while it holds something (the gun hand round its gun's grip).</summary>
     public static readonly Quaternion?[] HoldRot = new Quaternion?[2];
 
+    /// <summary>The frame a hand's hold was last set (a hold not set this frame or the last is over: the game stopped
+    /// updating what set it, as at a level's end, and the hand had stayed pinned where it was in the level).</summary>
+    public static readonly int[] HoldFrame = { -10, -10 };
+
+    /// <summary>A hand held somewhere (at: where, rot: how it's turned; null: as the controller is), for this frame.</summary>
+    public static void Hold(int i, Vector3? at, Quaternion? rot)
+    {
+        if (at.HasValue && !Finite(at.Value)) at = null;
+        if (rot.HasValue && !Finite(rot.Value)) rot = null;
+        HoldAt[i] = at;
+        HoldRot[i] = rot;
+        HoldFrame[i] = Time.frameCount;
+    }
+
+    /// <summary>Every hold let go (the movie house: nothing is in your hands there).</summary>
+    public static void LetGo()
+    {
+        HoldAt[0] = HoldAt[1] = null;
+        HoldRot[0] = HoldRot[1] = null;
+    }
+
+    private static bool Finite(Vector3 v) => !(float.IsNaN(v.x) || float.IsNaN(v.y) || float.IsNaN(v.z) || float.IsInfinity(v.x) || float.IsInfinity(v.y) || float.IsInfinity(v.z));
+
+    private static bool Finite(Quaternion q) => !(float.IsNaN(q.x) || float.IsNaN(q.y) || float.IsNaN(q.z) || float.IsNaN(q.w)) && q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w > 0.5f;
+
     public static Pose Get(XRNode hand)
     {
         var p = hand == XRNode.LeftHand ? Left : Right;
         var i = hand == XRNode.LeftHand ? 0 : 1;
+        if (Time.frameCount - HoldFrame[i] > 1) return p;
         if (HoldAt[i].HasValue && p.Tracked) p.Position = HoldAt[i].Value;
         if (HoldRot[i].HasValue && p.Tracked) p.Rotation = HoldRot[i].Value;
         return p;

@@ -33,6 +33,8 @@ internal static class VrSettingsTab
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
     public static int MonitorFov;
+    public static VrSettings.GoreLevel Gore;
+    public static VrSettings.BloodTint BloodColour;
 
     public enum SnapStep { S15, S30, S45, S60, S90 }
 
@@ -98,6 +100,19 @@ internal static class VrSettingsTab
             Label = "MONITOR FOV", Field = nameof(MonitorFov), Min = 70, Max = 110,
             Help = "How wide the STEADY view is, in degrees (never wider than your headset shows).", Enabled = () => Monitor == VrSettings.MonitorView.Steady,
             Load = () => MonitorFov = VrSettings.MonitorFov.Value, Save = () => VrSettings.MonitorFov.Value = Mathf.Clamp(MonitorFov, 70, 110),
+        },
+        new Row { Header = "GORE" },
+        new Row
+        {
+            Label = "GORE", Field = nameof(Gore), Options = new[] { "OFF", "GAME", "EXTRA" },
+            Help = "EXTRA: kicks splatter the walls, headshots pop heads, wounds and blood stay on bodies and on you. GAME: the game's own blood. (The game's SHOW BLOOD setting still decides if there's any.)",
+            Load = () => Gore = VrSettings.Gore.Value, Save = () => VrSettings.Gore.Value = Gore,
+        },
+        new Row
+        {
+            Label = "BLOOD COLOUR", Field = nameof(BloodColour), Options = new[] { "PINK", "RED" },
+            Help = "PINK is the game's own; RED for the classic look.", Enabled = () => Gore != VrSettings.GoreLevel.Off,
+            Load = () => BloodColour = VrSettings.BloodColour.Value, Save = () => VrSettings.BloodColour.Value = BloodColour,
         },
         new Row { Header = "FUN" },
         Toggle("FLIP THEM OFF", nameof(FlipOff), VrSettings.FlipOff, "Enemies who see your middle finger (right stick click) come for you."),
@@ -442,6 +457,7 @@ internal static class VrSettingsTab
                      {
                          VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
+                         VrSettings.Gore, VrSettings.BloodColour,
                      })
                 e.BoxedValue = e.DefaultValue;
             VrSettings.NoteOwnSave();

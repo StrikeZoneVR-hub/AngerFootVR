@@ -13,6 +13,8 @@ internal static class VrSettings
     public enum Hand { Right, Left }
     public enum OpeningMode { On, FirstLaunchOnly, Off }
     public enum MonitorView { Steady, Eye }
+    public enum GoreLevel { Off, Game, Extra }
+    public enum BloodTint { Pink, Red }
 
     public static ConfigEntry<TurnStyle> Turn;
     public static ConfigEntry<int> SnapAngle;
@@ -24,6 +26,8 @@ internal static class VrSettings
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
     public static ConfigEntry<int> MonitorFov;
+    public static ConfigEntry<GoreLevel> Gore;
+    public static ConfigEntry<BloodTint> BloodColour;
 
     public static void Init(ConfigFile cfg)
     {
@@ -41,6 +45,8 @@ internal static class VrSettings
         OpeningSeen = cfg.Bind("Opening", "OpeningSeen", false, "Set once the opening has played (FirstLaunchOnly plays it until then).");
         Monitor = cfg.Bind("Monitor", "MonitorView", MonitorView.Steady, "What the monitor shows: Steady (a level, smooth 16:9 view for anyone watching or recording) or Eye (the headset's left eye as it is).");
         MonitorFov = cfg.Bind("Monitor", "MonitorFov", 90, new ConfigDescription("How wide the Steady view is (degrees across); never wider than the headset's eye sees.", new AcceptableValueRange<int>(70, 110)));
+        Gore = cfg.Bind("Gore", "Gore", GoreLevel.Extra, "Blood: Off (none), Game (the game's own) or Extra (more: kicks splatter the walls, headshots pop heads, wounds and blood stay on bodies and on you). Follows the game's own Show Blood setting.");
+        BloodColour = cfg.Bind("Gore", "BloodColour", BloodTint.Pink, "The blood's colour: Pink (the game's own) or Red.");
         _cfg = cfg;
         ApplyHand();
         GunHand.SettingChanged += (s, e) => ApplyHand();

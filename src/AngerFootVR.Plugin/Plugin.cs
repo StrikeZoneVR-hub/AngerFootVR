@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "1.0.0")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "1.1.0")]
 public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
@@ -78,6 +78,7 @@ public class Plugin : BaseUnityPlugin
     private float _startXrAt = -1f, _nextReport, _nextCmd, _nextWatch;
     private int _frames;
     private float _frameTime, _worst;
+    private float _nextHitchLog;
     private string _cmdFile;
 
     /// <summary>The game quits itself past this much private memory (MB): a dev-run safety net, after a test loop of
@@ -99,7 +100,7 @@ public class Plugin : BaseUnityPlugin
         Rendering.BloodDecals.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 1.0.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 1.1.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
@@ -180,10 +181,17 @@ public class Plugin : BaseUnityPlugin
         UI.Surprises.HallOfFame();
         VrSettings.Poll();
         Rendering.VrQuality.Update();
+        Rendering.Gore.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
         _worst = Mathf.Max(_worst, dt);
+        if (dt > 0.1f && now >= _nextHitchLog && XrManager.IsRunning)
+        {
+            // (a stall long enough to feel in the headset: what scene, so a player's log says where)
+            _nextHitchLog = now + 2f;
+            L.LogInfo($"HITCH {dt * 1000f:F0} ms (scene {UnityEngine.SceneManagement.SceneManager.GetActiveScene().name}, frame {Time.frameCount})");
+        }
         if (now >= _nextReport)
         {
             _nextReport = now + 5f;
@@ -814,6 +822,54 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo($"GONEAR {all[n].name}: standing at {at}, it is {(target - Core.VrRig.HeadPosition)} from the head");
                         break;
                     }
+                    case "complete":
+                        // complete: finish the level now (the level complete screen)
+                        GameState.CompleteLevel();
+                        break;
+                    case "shadow":
+                        L.LogInfo(Body.VrBody.DevShadow(int.Parse(arg)));
+                        break;
+                    case "testlight":
+                    {
+                        // testlight [on|off]: a sun from behind you, hard shadows (to look at your shadow)
+                        var old = GameObject.Find("AngerFootVR Test Light");
+                        if (old != null) UnityEngine.Object.Destroy(old);
+                        if (arg == "off") break;
+                        var lg = new GameObject("AngerFootVR Test Light");
+                        var light = lg.AddComponent<Light>();
+                        light.type = LightType.Directional;
+                        light.shadows = LightShadows.Hard;
+                        light.intensity = 1.2f;
+                        var yawF = Core.VrRig.HeadRotation.eulerAngles.y;
+                        lg.transform.rotation = Quaternion.Euler(35f, yawF, 0f);
+                        L.LogInfo("test light from behind, yaw " + yawF.ToString("F0"));
+                        break;
+                    }
+                    case "lights":
+                        foreach (var lt in UnityEngine.Object.FindObjectsOfType<Light>())
+                            if (lt.shadows != LightShadows.None || lt.type == LightType.Directional)
+                                L.LogInfo($"LIGHT '{lt.name}' {lt.type} shadows {lt.shadows} intensity {lt.intensity:F2} at {lt.transform.position} rot {lt.transform.eulerAngles} range {lt.range:F1} mask {lt.cullingMask:X} mode {lt.renderMode} dist to head {(lt.transform.position - Core.VrRig.HeadPosition).magnitude:F1}");
+                        L.LogInfo($"LIGHTS shadow distance {QualitySettings.shadowDistance} shadows {QualitySettings.shadows} pixel lights {QualitySettings.pixelLightCount}");
+                        break;
+                    case "tp":
+                    {
+                        // tp x z: stand there (on the floor found under it)
+                        var a = arg.Split(' ');
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        if (pl == null) break;
+                        var x = Dev.MockControllers.F(a[0]);
+                        var z = Dev.MockControllers.F(a[1]);
+                        var y = pl.transform.position.y;
+                        if (Physics.Raycast(new Vector3(x, a.Length > 2 ? Dev.MockControllers.F(a[2]) : 6f, z), Vector3.down, out var floor, 20f, LayerMasks.ThingsPlayerCanStandOn)) y = floor.point.y;
+                        var at = new Vector3(x, y + 0.05f, z);
+                        pl.Rigidbody.position = at;
+                        pl.transform.position = at;
+                        L.LogInfo("tp " + at);
+                        break;
+                    }
+                    case "handdiag":
+                        L.LogInfo(Body.HeroBody.HandDiag());
+                        break;
                     case "legrec":
                         Dev.LegRecorder.Start(arg.Length > 0 ? int.Parse(arg) : 60);
                         break;
@@ -837,6 +893,22 @@ public class Plugin : BaseUnityPlugin
                         // blood [on|off]: the blood decals' depth per eye (on) or the game's own mono way (off)
                         if (arg == "on" || arg == "off") Rendering.BloodDecals.On = arg == "on";
                         L.LogInfo(Rendering.BloodDecals.Describe());
+                        break;
+                    case "playcard":
+                        // playcard <level name part>: the map's play card raised for that level (its star goals)
+                        L.LogInfo(UI.MenuFixes.DevPlayCard(arg));
+                        break;
+                    case "gorehit":
+                        // gorehit head|body|kick|explode: the nearest living enemy, as the game does it
+                        L.LogInfo(Rendering.Gore.DevHit(arg));
+                        break;
+                    case "gore":
+                        // gore [off|game|extra|pink|red|you]: the VR gore setting (this run only, not saved) and how it stands
+                        if (arg == "off" || arg == "game" || arg == "extra") VrSettings.Gore.BoxedValue = (VrSettings.GoreLevel)System.Enum.Parse(typeof(VrSettings.GoreLevel), arg, true);
+                        if (arg == "you") Rendering.Gore.DevOnYou();
+                        if (arg == "youworld") Body.BloodOnYou.DevWorld = !Body.BloodOnYou.DevWorld;
+                        if (arg == "pink" || arg == "red") VrSettings.BloodColour.BoxedValue = (VrSettings.BloodTint)System.Enum.Parse(typeof(VrSettings.BloodTint), arg, true);
+                        L.LogInfo(Rendering.Gore.Describe());
                         break;
                     case "laserscroll":
                         // laserscroll <-1..1|off>: push the right stick for the laser's list scrolling

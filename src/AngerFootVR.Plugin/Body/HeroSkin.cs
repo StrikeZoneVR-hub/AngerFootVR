@@ -73,6 +73,9 @@ internal sealed class HeroSkin
     public Transform Head => _role[(int)R.Head] >= 0 ? _all[_role[(int)R.Head]] : null;
     public Transform Neck => _role[(int)R.Neck] >= 0 ? _all[_role[(int)R.Neck]] : null;
     public Transform HandBone(int side) => _all[_role[side == 0 ? (int)R.LHand : (int)R.RHand]];
+    public Transform FootBone(int side) => Bone(side == 0 ? R.LFoot : R.RFoot);
+    public Transform ToeBone(int side) => Bone(side == 0 ? R.LToe : R.RToe);
+    private Transform Bone(R role) => _role[(int)role] >= 0 ? _all[_role[(int)role]] : null;
 
     public HeroSkin(Transform root, Animator animator, Transform twinRoot)
     {

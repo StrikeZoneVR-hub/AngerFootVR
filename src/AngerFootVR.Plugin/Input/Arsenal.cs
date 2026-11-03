@@ -51,7 +51,7 @@ internal static class Arsenal
     {
         var was = TwoHands;
         TwoHands = false;
-        VrHands.HoldAt[OffHand == XRNode.LeftHand ? 0 : 1] = null;
+        VrHands.Hold(OffHand == XRNode.LeftHand ? 0 : 1, null, null);
         if (!IsTwoHanded(type) || muzzleInRig == Vector3.zero || (VrSettings.TwoHandAim != null && !VrSettings.TwoHandAim.Value)) return rigRot;
         var off = VrHands.GetRaw(OffHand);
         if (!off.Tracked || !VrControls.Held(OffHand, VrButton.Grip)) return rigRot;
@@ -68,7 +68,7 @@ internal static class Arsenal
         rigRot = Quaternion.FromToRotation(have, want) * rigRot;
         TwoHands = true;
         // your other hand's on the gun now (the body's hand goes to it)
-        VrHands.HoldAt[OffHand == XRNode.LeftHand ? 0 : 1] = anchor + rigRot * Vector3.Scale(_foreRest - anchorInRig, scale);
+        VrHands.Hold(OffHand == XRNode.LeftHand ? 0 : 1, anchor + rigRot * Vector3.Scale(_foreRest - anchorInRig, scale), null);
         if (!was) VrControls.Rumble(OffHand, 0.35f, 0.04f);
         return rigRot;
     }
@@ -348,8 +348,7 @@ internal static class Arsenal
     {
         Dual = false;
         TwoHands = false;
-        VrHands.HoldAt[0] = VrHands.HoldAt[1] = null;
-        VrHands.HoldRot[0] = VrHands.HoldRot[1] = null;
+        VrHands.LetGo();
         if (_ammo != null) _ammo.gameObject.SetActive(false);
         if (_scope != null) _scope.SetActive(false);
         if (_scopeCam != null) _scopeCam.enabled = false;

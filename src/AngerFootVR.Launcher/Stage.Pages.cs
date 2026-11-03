@@ -122,6 +122,20 @@ namespace AngerFootVR.Launcher
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
                     Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
+                    new Opt { Header = true, Label = "GORE" },
+                    new Opt
+                    {
+                        Label = "GORE", Help = "EXTRA: kicks splatter the walls, headshots pop heads, wounds and blood stay on bodies and on you. GAME: the game's own blood. (The game's SHOW BLOOD setting still decides if there's any.)",
+                        Value = () => Cfg("Gore", "Gore", "Extra").ToUpperInvariant(),
+                        Step = by => Set("Gore", "Gore", Cycle(Cfg("Gore", "Gore", "Extra"), new[] { "Off", "Game", "Extra" }, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
+                        Label = "BLOOD COLOUR", Help = "PINK is the game's own; RED for the classic look.",
+                        Value = () => Cfg("Gore", "BloodColour", "Pink").ToUpperInvariant(),
+                        Step = by => Set("Gore", "BloodColour", Cycle(Cfg("Gore", "BloodColour", "Pink"), new[] { "Pink", "Red" }, by)),
+                        Enabled = () => Mod() && Cfg("Gore", "Gore", "Extra") != "Off",
+                    },
                     new Opt { Header = true, Label = "FUN" },
                     Toggle("Fun", "FlipOff", "FLIP THEM OFF", "Enemies who see your middle finger (right stick click) come for you."),
                     new Opt { Header = true, Label = "LAUNCHER" },

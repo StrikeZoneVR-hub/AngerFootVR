@@ -11,6 +11,8 @@ namespace AngerFootVR.Rendering;
 /// window, from the flat game's view. Each VR eye sees from its own place with its own lens, so the splats looked the
 /// wrong depth up and were cut off or slid off the surfaces. Here that picture is drawn for each eye, from that eye's own
 /// view, just before the eye is drawn (the mod draws the eyes one after the other), and the splats use it.
+/// GORE EXTRA: the picture takes in enemies and bodies too (blood lands on them and stays on their wounds), and a second
+/// one, of your body alone, is drawn for the blood on you (it never paints the floor you stand on).
 /// </summary>
 internal static class BloodDecals
 {
@@ -19,7 +21,10 @@ internal static class BloodDecals
     private const float Scale = 0.5f; // of the eye's size (the game's own is half the window or less)
 
     private static readonly RenderTexture[] Depth = new RenderTexture[2];
+    private static readonly RenderTexture[] Own = new RenderTexture[2];
     private static readonly int[] DrawnFrame = { -1, -1 };
+    private const int Bodies = 1 << 11 | 1 << 29 | 1 << 30 | 1 << 31; // enemies (all their layers) and bodies
+    private static int _gameMask;
     private static bool _hooked, _rendering;
     private static Camera _prepass, _taken;
     private static RenderTexture _gameTarget;
@@ -49,6 +54,7 @@ internal static class BloodDecals
         {
             _taken = prepass;
             _gameTarget = prepass.targetTexture;
+            _gameMask = prepass.cullingMask;
         }
 
         if (!On)
@@ -57,6 +63,7 @@ internal static class BloodDecals
             if (!prepass.enabled)
             {
                 prepass.enabled = true;
+                prepass.cullingMask = _gameMask;
                 prepass.ResetWorldToCameraMatrix();
                 prepass.ResetProjectionMatrix();
                 prepass.targetTexture = _gameTarget;
@@ -70,28 +77,33 @@ internal static class BloodDecals
         if (prepass.enabled) prepass.enabled = false;
         _prepass = prepass;
         var eye = active == Camera.MonoOrStereoscopicEye.Right ? 1 : 0;
+        var own = Body.BloodOnYou.Any;
         if (DrawnFrame[eye] != Time.frameCount)
         {
             DrawnFrame[eye] = Time.frameCount;
-            Draw(cam, eye);
+            Draw(cam, eye, Depth, "", (Gore.Extra ? _gameMask | Bodies : _gameMask) | (Body.BloodOnYou.DevWorld ? 1 << UI.VrUi.Layer : 0));
+            if (own) Draw(cam, eye, Own, " (you)", 1 << UI.VrUi.Layer);
+            _prepass.cullingMask = _gameMask;
         }
 
         Shader.SetGlobalTexture(DepthId, Depth[eye]);
+        if (own) Body.BloodOnYou.UseDepth(Own[eye]);
     }
 
-    private static void Draw(Camera cam, int eye)
+    private static void Draw(Camera cam, int eye, RenderTexture[] into, string what, int mask)
     {
         var w = Mathf.Max(64, (int)(XRSettings.eyeTextureWidth * Scale));
         var h = Mathf.Max(64, (int)(XRSettings.eyeTextureHeight * Scale));
-        var rt = Depth[eye];
+        var rt = into[eye];
         if (rt == null || rt.width != w || rt.height != h)
         {
             if (rt != null) Object.Destroy(rt);
-            rt = Depth[eye] = new RenderTexture(w, h, 24, RenderTextureFormat.Depth) { name = "AngerFootVR blood depth " + (eye == 0 ? "L" : "R") };
+            rt = into[eye] = new RenderTexture(w, h, 24, RenderTextureFormat.Depth) { name = "AngerFootVR blood depth " + (eye == 0 ? "L" : "R") + what };
             rt.Create();
             Object.DontDestroyOnLoad(rt);
         }
 
+        _prepass.cullingMask = mask;
         var which = eye == 1 ? Camera.StereoscopicEye.Right : Camera.StereoscopicEye.Left;
         _prepass.stereoTargetEye = StereoTargetEyeMask.None;
         _prepass.worldToCameraMatrix = cam.GetStereoViewMatrix(which);
@@ -115,6 +127,6 @@ internal static class BloodDecals
     {
         var blood = SingletonBehaviour<BloodCamera>.HasInstance ? SingletonBehaviour<BloodCamera>.Instance : null;
         var prepass = blood != null && blood.DecalPrepassCamera != null ? blood.DecalPrepassCamera.Camera : null;
-        return $"BLOOD per-eye {On} | blood camera {(blood != null ? blood.name : "none")} prepass {(prepass != null ? $"enabled {prepass.enabled} mask {prepass.cullingMask:X} target {(prepass.targetTexture != null ? prepass.targetTexture.width + "x" + prepass.targetTexture.height : "none")}" : "none")} | eyes drawn L {DrawnFrame[0]} R {DrawnFrame[1]} (frame {Time.frameCount}) {(Depth[0] != null ? Depth[0].width + "x" + Depth[0].height : "")}";
+        return $"BLOOD per-eye {On} | blood camera {(blood != null ? blood.name : "none")} prepass {(prepass != null ? $"enabled {prepass.enabled} mask {prepass.cullingMask:X} target {(prepass.targetTexture != null ? prepass.targetTexture.width + "x" + prepass.targetTexture.height : "none")} game mask {_gameMask:X}" : "none")} | {Gore.Describe()} | eyes drawn L {DrawnFrame[0]} R {DrawnFrame[1]} (frame {Time.frameCount}) {(Depth[0] != null ? Depth[0].width + "x" + Depth[0].height : "")}";
     }
 }

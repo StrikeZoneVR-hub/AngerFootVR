@@ -23,6 +23,14 @@ internal static class HeroBody
     public static bool Ready => _skin != null && _skin.Ok;
     public static Skeleton Skeleton => Sk;
 
+    /// <summary>A hand's bone (0 left, 1 right) as the body draws it, or null.</summary>
+    public static Transform HandBone(int side) => Ready ? _skin.HandBone(side) : null;
+
+    /// <summary>A foot's bone (the ankle) and its toes' (0 left, 1 right) as the body draws them, or null.</summary>
+    public static Transform FootBone(int side) => Ready ? _skin.FootBone(side) : null;
+
+    public static Transform ToeBone(int side) => Ready ? _skin.ToeBone(side) : null;
+
     public static void Attach(Transform root, Animator animator, Transform twin)
     {
         _skin = new HeroSkin(root, animator, twin);
@@ -171,6 +179,23 @@ internal static class HeroBody
         }
 
         return new HeroSkin.HandPose { Valid = true, Wrist = pos, Rot = rot, Scale = 1f, Index = index, Grip = fist, Thumb = thumb, Flip = _flip[side] };
+    }
+
+    /// <summary>Dev: the hands as the body draws them (overrides, controller, hand bones), NaN flagged.</summary>
+    public static string HandDiag()
+    {
+        var sb = new System.Text.StringBuilder("HANDDIAG");
+        for (var i = 0; i < 2; i++)
+        {
+            var node = i == 0 ? XRNode.LeftHand : XRNode.RightHand;
+            var raw = VrHands.GetRaw(node);
+            var bone = Ready ? _skin.HandBone(i) : null;
+            var bp = bone != null ? bone.position : Vector3.zero;
+            var nan = float.IsNaN(bp.x) || float.IsInfinity(bp.x);
+            sb.Append($" | {(i == 0 ? "L" : "R")} raw {raw.Position} at {(VrHands.HoldAt[i].HasValue ? VrHands.HoldAt[i].Value.ToString() : "-")} rot {(VrHands.HoldRot[i].HasValue ? VrHands.HoldRot[i].Value.eulerAngles.ToString() : "-")} bone {bp}{(nan ? " NaN!" : "")} shown {(bone != null && bone.gameObject.activeInHierarchy)}");
+        }
+
+        return sb.ToString();
     }
 
     public static string Describe() => (Ready ? $"scale {_skin.Scale:F3} rest eyes {_skin.RestEyeHeight:F2} {_skin.DescribeArms()} | " : "no skin | ") + Sk.Describe();

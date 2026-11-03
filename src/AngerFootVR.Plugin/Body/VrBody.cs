@@ -56,6 +56,7 @@ internal static class VrBody
             foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.lightProbeUsage = probes;
             if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.lightProbeUsage = probes;
         }
+        ShadowFromTwin(!CinemaRig.Active);
         if (Time.unscaledTime >= _nextShoeCheck)
         {
             _nextShoeCheck = Time.unscaledTime + 0.5f;
@@ -191,6 +192,36 @@ internal static class VrBody
     }
 
     /// <summary>After posing: the twin wears what the body wears (the shoes, the socks).</summary>
+    private static bool? _twinShadow;
+
+    /// <summary>
+    /// Your shadow, head and all: the body you see has its head shrunk away (so it's never in front of your eyes), so
+    /// its shadow had no head. Out of the movie house the mirror twin (posed with you, head and all) casts your shadow
+    /// instead, shadow only, on the body's layer (the levels' lamps light that layer; some leave the mirror's out). In the
+    /// movie house it's the mirror's reflection again (and nothing there casts shadows).
+    /// </summary>
+    private static void ShadowFromTwin(bool twin)
+    {
+        if (_twinShadow == twin || _body == null || _twin == null) return;
+        _twinShadow = twin;
+        foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = twin ? UnityEngine.Rendering.ShadowCastingMode.Off : UnityEngine.Rendering.ShadowCastingMode.On;
+        foreach (var t in _twin.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = twin ? UI.VrUi.Layer : MirrorLayer;
+        foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = twin ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.Off;
+    }
+
+    /// <summary>Dev: who casts your shadow. 0: the body (as before); 1: the mirror twin on its own layer; 2: the twin on
+    /// the body's layer, shadow only.</summary>
+    public static string DevShadow(int mode)
+    {
+        if (_body == null || _twin == null) return "no body";
+        _twinShadow = mode == 2;
+        foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = mode == 0 ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+        foreach (var t in _twin.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = mode == 2 ? UI.VrUi.Layer : MirrorLayer;
+        foreach (var r in _twin.GetComponentsInChildren<Renderer>(true))
+            r.shadowCastingMode = mode == 0 ? UnityEngine.Rendering.ShadowCastingMode.Off : mode == 1 ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly;
+        return "shadow mode " + mode;
+    }
+
     public static void SyncTwinParts()
     {
         if (_twin == null || _bodyParts == null || _twinParts == null) return;
