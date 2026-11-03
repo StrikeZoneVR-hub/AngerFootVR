@@ -66,6 +66,11 @@
 - **Reach for (or point at)** drinks, bottles, the lizard, doors and buttons with your free hand and squeeze its grip.
   Looking at them still works too.
 - **Drink for real:** bring the bottle to your mouth.
+- **Swat it back** (new in 1.2): a grenade coming at you? Hit it with your hand, fast, and back it goes, just as a kick
+  would send it.
+- **Swing for real** (new in 1.2): a bat or a machete in your hand hits whatever you swing it through.
+- **A wrist watch** (new in 1.2) on your free hand in a level. Turn your wrist to look at it for the level's time, your
+  ammo and the star goals as you go.
 - Haptics for shots, kicks, doors, hits, throws and shoe powers.
 
 ### Gore (new in 1.1: The Gore Update)
@@ -88,11 +93,40 @@
   <img src="docs/images/gore-aftermath.jpg" alt="The aftermath: a body lying in its own pool, the blood staining it, splats up the wall beside it" width="49%">
 </p>
 
-### The Movie House
+### The Movie House (all new in 1.2: The Rage Room Update)
 - A neon picture palace built for the mod, where the game's menus and cutscenes play on the big screen. Point a laser
   from either hand to click them and to scroll lists (or hold the trigger and drag).
 - Walk the aisle and check the **Hall of Fame** on the back wall: your levels, stars and best time.
-- Kick open the padded doors into the **RAGE ROOM** and smash TVs, a jukebox, a fish tank and more. It keeps score.
+- **The lobby:**
+  - **Concessions:** popcorn and sodas to grab, fill and eat or drink, and a popcorn cart to kick over.
+  - **Take a seat:** squeeze your grip in the aisle by a row, and push the stick to get up again.
+  - **NOW SHOWING:** posters of the levels you've beaten. Point at one and pull the trigger twice to play it.
+  - **The shoe wall:** every pair in the game. Point at one of yours to wear it. The ones you haven't found yet stand
+    there in the dark.
+  - **A photo booth:** press the button and smile. A photo strip drops out of the slot, and the picture's saved in
+    `Pictures\Anger Foot VR`.
+  - The **house lights** switch, the **curtain cord** by the screen and a cardboard audience. Closed curtains open again
+    at your first click on the screen.
+- **The RAGE ROOM**, behind the padded doors:
+  - Smash TVs, a jukebox playing the game's own music, vases, plates, gnomes, crates, chairs, a vending machine (drinks
+    come out) and a water cooler.
+  - Break the **fish tank** and the water pours out, fish and all.
+  - Kick a **red barrel** and it flies, then blows. There's a **piñata** too.
+  - A **weapon rack** with the game's bat, machete, knife and claw, plus a sledgehammer, a pipe and a golf club. They
+    fly back to the rack when you're done with them.
+  - A **dummy** on a stand in the corner to kick about: one of the level's own goons when you pause in a level, a
+    cardboard one otherwise.
+  - **RAGE MODE:** kick the button for 60 seconds of smashing for points, with combos up to x8. It keeps your best
+    and your last runs. Pull the lever to put the room back.
+- **The ARCADE**, five games, each with its high score:
+  - **DOOR KICKER:** kick the doors as goons knock. Don't kick granny.
+  - **GOON GALLERY:** a light gun on a cable. Shoot the goons on the rails (pizza's worth more).
+  - **KICK-O-METER:** how angry are you? Kick (or punch) the pad when the light's at the top.
+  - **SHOE TOSS:** throw shoes into the rings.
+  - **GOON BOWLING:** kick (or throw) the ball at ten goon pins, five frames.
+- **The GUN RANGE**, every gun in the game on the table: paper targets on lanes you can move (and see where you hit),
+  steel plates that ring and swing, bottles and red barrels to burst. Then the **DRILL**: goons pop up for 30 seconds
+  (a granny or two too: don't).
 - A short VR opening where the lights bang on (first start only, or turn it off).
 
 <p align="center">
@@ -115,7 +149,9 @@
 - **A VR tab in the game's own SETTINGS** (the headset icon) with every VR option and what it does, and every option
   in the launcher too.
 - Snap or smooth turning, recenter any time (hold the left stick), gun hand right or left.
-- A steady spectator view on your monitor for streaming and recording, with its own field of view.
+- A steady spectator view on your monitor for streaming and recording, with its own field of view. New in 1.2:
+  **BEHIND YOU** shows you from over your shoulder, your whole body and all, for anyone watching (off by default; it
+  costs a few frames).
 - Tuned to run well on 6 GB laptop GPUs.
 
 <p align="center">
@@ -135,7 +171,7 @@
 
 ## Install
 
-1. Download `AngerFootVR-v1.1.0.zip` from the [latest release](../../releases/latest).
+1. Download `AngerFootVR-v1.2.0.zip` from the [latest release](../../releases/latest).
 2. Find your game folder: in Steam, right-click **Anger Foot**, **Manage**, **Browse local files**.
 3. Unzip the zip **into that folder**, so `Anger Foot VR.exe` sits next to `Anger Foot.exe`.
 4. Run **Anger Foot VR.exe**. If Windows says "Windows protected your PC", click **More info**, then **Run anyway**

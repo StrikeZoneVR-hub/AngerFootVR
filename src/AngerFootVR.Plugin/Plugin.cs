@@ -15,7 +15,7 @@ namespace AngerFootVR;
 /// built-in pipeline draw both eyes? It logs what it finds (VRCHECK / VRPERF lines) and takes dev commands from
 /// BepInEx/AngerFootVR/cmd.txt (one per line) so a test can be driven from outside.
 /// </summary>
-[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "1.1.0")]
+[BepInPlugin("com.strikezonevr.angerfootvr", "ANGER FOOT VR", "1.2.0")]
 public class Plugin : BaseUnityPlugin
 {
     /// <summary>A dev run (tools/game.sh: test saves, action log, no opening). Never when the launcher started the game
@@ -105,7 +105,7 @@ public class Plugin : BaseUnityPlugin
         UI.GunRange.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
-        L.LogInfo($"ANGER FOOT VR 1.1.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
+        L.LogInfo($"ANGER FOOT VR 1.2.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
         var displays = new System.Collections.Generic.List<XRDisplaySubsystemDescriptor>();
         SubsystemManager.GetSubsystemDescriptors(displays);
         L.LogInfo($"VRCHECK XR display descriptors: {displays.Count} [{string.Join(", ", displays.Select(d => d.id).ToArray())}]");
@@ -179,8 +179,11 @@ public class Plugin : BaseUnityPlugin
         Body.ViewModels.Update();
         UI.LauncherArt.Update();
         Rendering.SpectatorView.Update();
+        Rendering.BehindView.Update();
         Recentering();
         Input.MotionThrow.Update();
+        Input.Swat.Update();
+        Input.MotionMelee.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
         UI.Surprises.HallOfFame();
@@ -266,6 +269,7 @@ public class Plugin : BaseUnityPlugin
         CinemaRig.LateUpdate();
         MapRig.LateUpdate();
         UI.Laser.Update();
+        UI.WristWatch.Update();
     }
 
     private static void Watchdog()
@@ -729,8 +733,8 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "monitor":
                         if (arg == "dump") L.LogInfo("monitor eye picture: " + Rendering.SpectatorView.Dump(Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots/monitor_eye.png"))));
-                        if (arg == "eye" || arg == "steady") VrSettings.Monitor.Value = arg == "eye" ? VrSettings.MonitorView.Eye : VrSettings.MonitorView.Steady;
-                        L.LogInfo($"{Rendering.SpectatorView.State} | running={XrManager.IsRunning} setting={VrSettings.Monitor.Value} mode={XRSettings.gameViewRenderMode}");
+                        if (arg == "eye" || arg == "steady" || arg == "behind") VrSettings.Monitor.Value = arg == "eye" ? VrSettings.MonitorView.Eye : arg == "behind" ? VrSettings.MonitorView.Behind : VrSettings.MonitorView.Steady;
+                        L.LogInfo($"{Rendering.SpectatorView.State} | {Rendering.BehindView.State} | running={XrManager.IsRunning} setting={VrSettings.Monitor.Value} mode={XRSettings.gameViewRenderMode}");
                         break;
                     case "mirror":
                         // the desktop window shows: "both" (both eyes whole), "left" (cropped), "none"
@@ -755,6 +759,12 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "load":
                         Dev.DevPlay.Levels(arg);
+                        break;
+                    case "poke":
+                        L.LogInfo("poke: " + UI.FunWorld.DevPoke(arg));
+                        break;
+                    case "swattest":
+                        L.LogInfo("Swat test: " + Input.Swat.DevGrenade());
                         break;
                     case "givegun":
                         Dev.DevPlay.GiveGun(arg);
@@ -875,6 +885,38 @@ public class Plugin : BaseUnityPlugin
                         pl.Rigidbody.position = at;
                         pl.transform.position = at;
                         L.LogInfo("tp " + at);
+                        break;
+                    }
+                    case "goenemy":
+                    {
+                        // stand 1.1 m from the nearest living enemy, the play space facing it
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        if (pl == null) break;
+                        Enemy near = null;
+                        var nd = float.MaxValue;
+                        foreach (var e in UnityEngine.Object.FindObjectsOfType<Enemy>())
+                        {
+                            if (e == null || e.Health == null || !e.Health.IsAlive) continue;
+                            var d = (e.transform.position - pl.transform.position).sqrMagnitude;
+                            if (d < nd)
+                            {
+                                nd = d;
+                                near = e;
+                            }
+                        }
+
+                        if (near == null)
+                        {
+                            L.LogInfo("no enemies");
+                            break;
+                        }
+
+                        // (the enemy straight ahead the way the play space faces: the test runtime's controllers are placed in it)
+                        var away = -(Quaternion.Euler(0f, Core.VrRig.PlayYaw, 0f) * Vector3.forward);
+                        var at = near.transform.position + away * (arg.Length > 0 ? Dev.MockControllers.F(arg) : 1.1f) + Vector3.up * 0.05f;
+                        pl.Rigidbody.position = at;
+                        pl.transform.position = at;
+                        L.LogInfo($"goenemy: by {near.name} at {at:F2}");
                         break;
                     }
                     case "handdiag":

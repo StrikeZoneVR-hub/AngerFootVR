@@ -152,6 +152,14 @@ internal static class Laser
             ? VrControls.Up(XRNode.RightHand, VrButton.Primary) || VrControls.UpEither(VrButton.Grip) || VrControls.UpEither(VrButton.Trigger)
             : VrControls.Up(_hand, VrButton.Trigger) || VrControls.Up(_hand, VrButton.Grip);
         if (Opening.Playing) down = up = false;
+        // (the curtains drawn over the menu: the first click on the screen opens them, and only that, so the menu's
+        // never lost behind them and nothing's chosen unseen)
+        if (down && CinemaRig.Active && MovieHouse.CurtainsClosed)
+        {
+            MovieHouse.Curtains(false);
+            down = up = false;
+        }
+
         if (down && target != null)
         {
             _pointer.pressPosition = _pointer.position;

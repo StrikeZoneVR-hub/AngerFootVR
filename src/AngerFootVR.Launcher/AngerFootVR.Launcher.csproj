@@ -8,7 +8,7 @@
     <AssemblyName>Anger Foot VR</AssemblyName>
     <RootNamespace>AngerFootVR.Launcher</RootNamespace>
     <ApplicationIcon>Assets\angerfootvr.ico</ApplicationIcon>
-    <Version>1.1.0</Version>
+    <Version>1.2.0</Version>
     <Company>StrikeZoneVR</Company>
     <Product>Anger Foot VR</Product>
     <Description>Anger Foot VR - launcher for the Anger Foot VR mod</Description>

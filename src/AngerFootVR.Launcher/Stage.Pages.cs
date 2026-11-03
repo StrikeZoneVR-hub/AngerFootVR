@@ -107,9 +107,9 @@ namespace AngerFootVR.Launcher
                     },
                     new Opt
                     {
-                        Label = "MONITOR VIEW", Help = "What your monitor shows: STEADY is a level, smooth view for anyone watching or recording; EYE is your headset's view as it is.",
-                        Value = () => Cfg("Monitor", "MonitorView", "Steady").ToUpperInvariant(),
-                        Step = by => Set("Monitor", "MonitorView", Cycle(Cfg("Monitor", "MonitorView", "Steady"), new[] { "Steady", "Eye" }, by)), Enabled = Mod,
+                        Label = "MONITOR VIEW", Help = "What your monitor shows: STEADY is a level, smooth view for anyone watching or recording; EYE is your headset's view as it is; BEHIND YOU shows you from over your shoulder, your whole body.",
+                        Value = () => Cfg("Monitor", "MonitorView", "Steady") == "Behind" ? "BEHIND YOU" : Cfg("Monitor", "MonitorView", "Steady").ToUpperInvariant(),
+                        Step = by => Set("Monitor", "MonitorView", Cycle(Cfg("Monitor", "MonitorView", "Steady"), new[] { "Steady", "Eye", "Behind" }, by)), Enabled = Mod,
                     },
                     new Opt
                     {
@@ -120,8 +120,10 @@ namespace AngerFootVR.Launcher
                     },
                     Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
+                    Toggle("Controls", "HandSwat", "SWAT BACK", "A grenade coming at you: hit it with your hand, fast, and back it goes, as a kick sends it."),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
                     Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
+                    Toggle("Display", "WristWatch", "WRIST WATCH", "A watch on your free hand's wrist in a level: turn it to you for the time, your ammo and the star goals."),
                     new Opt { Header = true, Label = "GORE" },
                     new Opt
                     {

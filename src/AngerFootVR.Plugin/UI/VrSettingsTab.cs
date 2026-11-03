@@ -28,7 +28,7 @@ internal static class VrSettingsTab
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, SwatBack, Watch;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -84,15 +84,18 @@ internal static class VrSettingsTab
             "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
             "Grab a beer, an energy drink or the lizard and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
+        Toggle("SWAT BACK", nameof(SwatBack), VrSettings.HandSwat,
+            "A grenade coming at you: hit it with your hand, fast, and back it goes, as a kick sends it. (Kicking still works.)"),
         Toggle("LEVEL SELECT IN THE CAR", nameof(LevelSelectInCar), VrSettings.VrMap,
             "Sit in the car with the map book and point at a level (the trigger plays it). Off: the level select plays on the movie screen."),
         new Row { Header = "DISPLAY" },
         Toggle("AMMO COUNT", nameof(AmmoCount), VrSettings.AmmoCounter, "An ammo count on the back of your gun (EMPTY: time to throw it)."),
         Toggle("SNIPER SCOPE", nameof(SniperScope), VrSettings.SniperScope, "A scope on the sniper rifle that magnifies when you put your eye to it."),
+        Toggle("WRIST WATCH", nameof(Watch), VrSettings.WristWatch, "A watch on your free hand's wrist in a level: turn it to you for the time, your ammo and the star goals."),
         new Row
         {
-            Label = "MONITOR VIEW", Field = nameof(Monitor), Options = new[] { "STEADY", "EYE" },
-            Help = "What your monitor shows: STEADY is a level, smooth view for anyone watching or recording; EYE is your headset's view as it is.",
+            Label = "MONITOR VIEW", Field = nameof(Monitor), Options = new[] { "STEADY", "EYE", "BEHIND YOU" },
+            Help = "What your monitor shows: STEADY is a level, smooth view for anyone watching or recording; EYE is your headset's view as it is; BEHIND YOU shows you from over your shoulder, your whole body (STEADY where there's no body).",
             Load = () => Monitor = VrSettings.Monitor.Value, Save = () => VrSettings.Monitor.Value = Monitor,
         },
         new Row
@@ -457,7 +460,7 @@ internal static class VrSettingsTab
                      {
                          VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
-                         VrSettings.Gore, VrSettings.BloodColour,
+                         VrSettings.Gore, VrSettings.BloodColour, VrSettings.HandSwat, VrSettings.WristWatch,
                      })
                 e.BoxedValue = e.DefaultValue;
             VrSettings.NoteOwnSave();

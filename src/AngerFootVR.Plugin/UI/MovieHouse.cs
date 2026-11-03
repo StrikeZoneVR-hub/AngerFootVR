@@ -716,7 +716,7 @@ internal static class MovieHouse
         AddLight(new Vector3(mid.x, 3.5f, -3.8f), new Color(1f, 0.97f, 0.9f), 1.6f, 7f);
         AddLight(new Vector3(mid.x, 3.5f, 6f), new Color(0.9f, 0.95f, 1f), 1.0f, 10f);
         AddLight(new Vector3(mid.x, 3.5f, 13.5f), new Color(1f, 0.45f, 0.35f), 1.2f, 8f);
-        Text("GUN RANGE", new Vector3(-6.97f, 2.95f, (RangeDoorZ0 + RangeDoorZ1) / 2), Quaternion.Euler(0f, 90f, 0f), 0.5f, new Color(1f, 0.85f, 0.25f));
+        Text("GUN RANGE", new Vector3(-6.97f, 2.95f, (RangeDoorZ0 + RangeDoorZ1) / 2), Quaternion.Euler(0f, -90f, 0f), 0.5f, new Color(1f, 0.85f, 0.25f));
         Text("GUN RANGE", new Vector3(lo.x + 0.05f, 3.3f, -4f), Quaternion.Euler(0f, -90f, 0f), 0.55f, new Color(1f, 0.85f, 0.25f));
     }
 
@@ -863,14 +863,55 @@ internal static class MovieHouse
     {
         // the neon glow is a second copy of the letters just behind, thicker and faint (kept inside each letter's own
         // quad: a wide underlay spilled past it and showed the quad's square)
-        Letters(text, pos + rot * new Vector3(0f, 0f, 0.01f), rot, size, new Color(color.r, color.g, color.b, 0.35f), 0.3f);
-        return Letters(text, pos, rot, size, color, 0f);
+        // (the glow rides on the letters: moved, faded, hidden, rewritten and gone with them; a glow left behind had
+        // stayed for good after every score that popped up and faded)
+        var glow = Letters(text, pos + rot * new Vector3(0f, 0f, 0.01f), rot, size, new Color(color.r, color.g, color.b, 0.35f), 0.3f);
+        var main = Letters(text, pos, rot, size, color, 0f);
+        glow.transform.SetParent(main.transform, true);
+        main.gameObject.AddComponent<GlowSync>().Glow = glow;
+        return main;
+    }
+
+    private sealed class GlowSync : MonoBehaviour
+    {
+        public TextMeshPro Glow;
+        private TextMeshPro _main;
+
+        private void LateUpdate()
+        {
+            if (Glow == null) return;
+            if (_main == null) _main = GetComponent<TextMeshPro>();
+            if (!ReferenceEquals(Glow.text, _main.text)) Glow.text = _main.text;
+            if (Glow.enableWordWrapping != _main.enableWordWrapping) Glow.enableWordWrapping = _main.enableWordWrapping;
+            if (Glow.rectTransform.sizeDelta != _main.rectTransform.sizeDelta) Glow.rectTransform.sizeDelta = _main.rectTransform.sizeDelta;
+            var c = _main.color;
+            if (Mathf.Abs(Glow.color.r - c.r) + Mathf.Abs(Glow.color.g - c.g) + Mathf.Abs(Glow.color.b - c.b) > 0.01f) Glow.color = new Color(c.r, c.g, c.b, Glow.color.a);
+            var a = _main.alpha * 0.35f;
+            if (Mathf.Abs(Glow.alpha - a) > 0.004f) Glow.alpha = a;
+        }
+    }
+
+    private static TMP_FontAsset _font;
+
+    /// <summary>The game's header font (found once: a search of everything loaded is slow with a level loaded, and every
+    /// sign asked for it twice).</summary>
+    public static TMP_FontAsset Font
+    {
+        get
+        {
+            if (_font == null)
+            {
+                var all = Resources.FindObjectsOfTypeAll<TMP_FontAsset>();
+                _font = all.FirstOrDefault(f => f != null && f.name == "ANGERFONT-HEADER SDF") ?? all.FirstOrDefault();
+            }
+
+            return _font;
+        }
     }
 
     private static TextMeshPro Letters(string text, Vector3 pos, Quaternion rot, float size, Color color, float dilate)
     {
-        var font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(f => f.name == "ANGERFONT-HEADER SDF")
-                   ?? Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault();
+        var font = Font;
         var go = new GameObject("Sign " + text) { layer = _layer };
         go.transform.SetParent(Root, false);
         go.transform.localPosition = pos;

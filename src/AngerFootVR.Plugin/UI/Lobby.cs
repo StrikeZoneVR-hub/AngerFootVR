@@ -323,7 +323,7 @@ internal static class Lobby
 
         MovieHouse.SignFacing("NOW SHOWING", new Vector3(6.93f, 3.05f, 0.45f), 0.42f, new Color(1f, 0.2f, 0.3f), face, _root);
         _hint = MovieHouse.SignFacing("POINT AT A POSTER AND PULL THE TRIGGER TO PLAY IT", new Vector3(6.93f, 2.72f, 0.45f), 0.11f, new Color(0.15f, 0.95f, 1f), face, _root);
-        foreach (var (z, dir) in new[] { (-2.1f, -1), (3.0f, 1) })
+        foreach (var (z, dir) in new[] { (-1.9f, -1), (2.8f, 1) })
         {
             var at = new Vector3(6.93f, 1.85f, z);
             MovieHouse.SignFacing(dir < 0 ? "<" : ">", at, 0.6f, new Color(1f, 0.16f, 0.62f), face, _root);
@@ -428,7 +428,12 @@ internal static class Lobby
         MovieHouse.Block(at, 0.22f, 0.92f);
         FunWorld.Solid(at + new Vector3(0f, 1f, 0f), new Vector3(1.84f, 2f, 0.42f), -90f);
         MovieHouse.SignFacing("SHOES", new Vector3(6.93f, 2.45f, -3.6f), 0.4f, new Color(1f, 0.16f, 0.62f), Vector3.left, _root);
-        _shoeNote = MovieHouse.SignFacing("POINT AND PULL THE TRIGGER (OR GRIP) TO WEAR A PAIR", new Vector3(6.55f, 2.17f, -3.6f), 0.1f, new Color(0.15f, 0.95f, 1f), Vector3.left, _root);
+        _shoeNote = MovieHouse.SignFacing(ShoeHint, new Vector3(6.92f, 2.13f, -3.6f), 0.075f, new Color(0.15f, 0.95f, 1f), Vector3.left, _root);
+        if (_shoeNote != null)
+        {
+            _shoeNote.rectTransform.sizeDelta = new Vector2(1.8f, 0.3f);
+            _shoeNote.enableWordWrapping = true;
+        }
         var save = GameState.CurrentSave;
         var config = ScriptableObjectSingleton<GameConfig>.Instance;
         var template = Body.HeroModel.Template;
@@ -436,7 +441,9 @@ internal static class Lobby
         var slot = 0;
         foreach (var shoe in config.Shoes)
         {
-            if (shoe == null || !save.IsShoeUnlocked(shoe)) continue;
+            if (shoe == null) continue;
+            // (the ones you haven't found yet stand there in the dark: a pair to come back for)
+            var unlocked = save.IsShoeUnlocked(shoe);
             if (!Body.HeroModel.ShoeMeshes.TryGetValue(shoe, out var meshName)) continue;
             Mesh mesh = null;
             Material[] mats = null;
@@ -464,14 +471,23 @@ internal static class Lobby
             vis.transform.localScale = Vector3.one * scale;
             vis.transform.localPosition = new Vector3(-b.center.x, -b.min.y, -b.center.z) * scale;
             vis.AddComponent<MeshFilter>().sharedMesh = mesh;
-            vis.AddComponent<MeshRenderer>().sharedMaterials = mats;
+            vis.AddComponent<MeshRenderer>().sharedMaterials = unlocked ? mats : System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Repeat(Props.Mat("deco_dark"), Mathf.Max(1, mats.Length)));
             var box = go.AddComponent<BoxCollider>();
             box.center = new Vector3(0f, b.size.y * scale / 2, 0f);
             box.size = new Vector3(0.28f, Mathf.Max(0.08f, b.size.y * scale), 0.3f);
             var s = shoe;
-            FunWorld.MakePress(go, h => Wear(s), 0.01f);
-            FunWorld.Handles.Add(new FunWorld.Handle { Where = () => go.transform.position + Vector3.up * 0.06f, Reach = 0.16f, Begin = (h, p) => Wear(s) });
+            System.Action pick = unlocked ? () => Wear(s) : Locked;
+            FunWorld.MakePress(go, h => pick(), 0.01f);
+            FunWorld.Handles.Add(new FunWorld.Handle { Where = () => go.transform.position + Vector3.up * 0.06f, Reach = 0.16f, Begin = (h, p) => pick() });
         }
+    }
+
+    private const string ShoeHint = "WEAR A PAIR: POINT + TRIGGER (OR GRIP)";
+
+    private static void Locked()
+    {
+        if (_shoeNote != null) _shoeNote.text = "NOT YOURS YET: FIND THEM IN THE GAME";
+        GameSounds.PlayOr("UI Back", "step", CinemaRig.HeadPosition, 0.6f);
     }
 
     private static void Wear(ShoeType shoe)
@@ -711,7 +727,7 @@ internal static class Lobby
         MovieHouse.Obstacles.Clear();
     }
 
-    public static string Describe() => $"LOBBY built {_built} stock {Stock.Count} played {Played.Count} page {_page} seated {CinemaRig.Seated}";
+    public static string Describe() => $"LOBBY built {_built} stock {Stock.Count} played {Played.Count} page {_page} seated {CinemaRig.Seated} lights {(MovieHouse.LightsOn ? "on" : "off")} curtains {(MovieHouse.CurtainsClosed ? "closed" : "open")}";
 }
 
 /// <summary>The photo kiosk's camera: you as the mirror shows you (head and all), the movie house behind.</summary>

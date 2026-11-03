@@ -39,7 +39,7 @@ internal static class SpectatorView
 
     public static void Update()
     {
-        var want = XrManager.IsRunning && VrSettings.Monitor.Value == VrSettings.MonitorView.Steady && !_failed;
+        var want = XrManager.IsRunning && !_failed && (VrSettings.Monitor.Value == VrSettings.MonitorView.Steady || (VrSettings.Monitor.Value == VrSettings.MonitorView.Behind && !BehindView.Usable));
         if (want && !_on) Start();
         else if (!want && _on) Stop();
         if (!_on) return;
@@ -86,7 +86,7 @@ internal static class SpectatorView
             if (c != null && _copy != null)
                 c.RemoveCommandBuffer(CameraEvent.AfterEverything, _copy);
         Attached.Clear();
-        XRSettings.gameViewRenderMode = GameViewRenderMode.LeftEye;
+        if (!BehindView.Usable) XRSettings.gameViewRenderMode = GameViewRenderMode.LeftEye;
         _haveSmooth = false;
     }
 

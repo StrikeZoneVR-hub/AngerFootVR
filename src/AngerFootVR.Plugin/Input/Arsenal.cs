@@ -157,8 +157,7 @@ internal static class Arsenal
             var go = new GameObject("AngerFootVR Ammo");
             Object.DontDestroyOnLoad(go);
             _ammo = go.AddComponent<TextMeshPro>();
-            var font = Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault(f => f.name == "ANGERFONT-HEADER SDF")
-                       ?? Resources.FindObjectsOfTypeAll<TMP_FontAsset>().FirstOrDefault();
+            var font = UI.MovieHouse.Font;
             if (font != null) _ammo.font = font;
             _ammo.alignment = TextAlignmentOptions.Center;
             _ammo.enableWordWrapping = false;

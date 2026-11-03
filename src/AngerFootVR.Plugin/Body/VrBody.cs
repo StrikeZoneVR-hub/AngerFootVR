@@ -191,6 +191,39 @@ internal static class VrBody
         if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
     }
 
+    private static Renderer[] _bodyR, _twinR;
+    private static UnityEngine.Rendering.ShadowCastingMode[] _twinModes;
+    private static float _nextRenderers;
+
+    /// <summary>The monitor's BEHIND YOU camera: it draws the twin (head and all, posed with you, where you are), not the
+    /// body you see (its head is shrunk away); everything put back after.</summary>
+    public static void ForBehindView(bool on)
+    {
+        if (_body == null || _twin == null) return;
+        if (_bodyR == null || _twinR == null || (on && Time.unscaledTime > _nextRenderers))
+        {
+            _nextRenderers = Time.unscaledTime + 2f;
+            _bodyR = _body.GetComponentsInChildren<Renderer>(true);
+            _twinR = _twin.GetComponentsInChildren<Renderer>(true);
+            _twinModes = new UnityEngine.Rendering.ShadowCastingMode[_twinR.Length];
+        }
+
+        foreach (var r in _bodyR)
+            if (r != null)
+                r.forceRenderingOff = on || !_shown;
+        for (var i = 0; i < _twinR.Length; i++)
+        {
+            var r = _twinR[i];
+            if (r == null) continue;
+            if (on)
+            {
+                _twinModes[i] = r.shadowCastingMode;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
+            }
+            else r.shadowCastingMode = _twinModes[i];
+        }
+    }
+
     /// <summary>After posing: the twin wears what the body wears (the shoes, the socks).</summary>
     private static bool? _twinShadow;
 

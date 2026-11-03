@@ -32,14 +32,17 @@ internal static class Dummy
         if (_template != null || !SingletonBehaviour<Player>.HasInstance) return;
         try
         {
-            foreach (var e in Object.FindObjectsOfType<Enemy>())
-            {
-                if (e == null || e.IsNPC || e.IsBoss || e.Health == null || !e.Health.IsAlive || e.Rig is not HumanoidRig) continue;
-                if (e.GetComponentInChildren<SuicideBomber>() != null || e.Rig is WallClimbingRig) continue;
-                if (e.GetComponentsInChildren<Rigidbody>(true).Length < 6) continue; // (no ragdoll)
-                Capture(e);
-                if (_template != null) return;
-            }
+            // (a fighter first; the cops some levels have, who are "NPCs" to the game, when there's no one else)
+            var all = Object.FindObjectsOfType<Enemy>();
+            for (var pass = 0; pass < 2; pass++)
+                foreach (var e in all)
+                {
+                    if (e == null || (e.IsNPC != (pass == 1)) || e.IsBoss || e.Health == null || !e.Health.IsAlive || e.Rig is not HumanoidRig) continue;
+                    if (e.GetComponentInChildren<SuicideBomber>() != null || e.Rig is WallClimbingRig) continue;
+                    if (e.GetComponentsInChildren<Rigidbody>(true).Length < 6) continue; // (no ragdoll)
+                    Capture(e);
+                    if (_template != null) return;
+                }
         }
         catch (System.Exception ex)
         {

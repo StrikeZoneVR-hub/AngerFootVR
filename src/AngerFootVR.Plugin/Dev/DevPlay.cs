@@ -42,7 +42,7 @@ internal static class DevPlay
     public static void GiveGun(string match)
     {
         if (!SingletonBehaviour<Player>.HasInstance) return;
-        var guns = Resources.FindObjectsOfTypeAll<ProjectileWeapon>().Where(w => w != null && w.gameObject.scene.IsValid()).ToArray();
+        var guns = Resources.FindObjectsOfTypeAll<Weapon>().Where(w => w != null && w.gameObject.scene.IsValid()).ToArray();
         Plugin.L.LogInfo("GUNS in the level: " + string.Join(", ", guns.Select(g => g.name).Distinct().ToArray()));
         var gun = guns.FirstOrDefault(g => string.IsNullOrEmpty(match) || g.name.IndexOf(match, System.StringComparison.OrdinalIgnoreCase) >= 0);
         if (gun == null) return;

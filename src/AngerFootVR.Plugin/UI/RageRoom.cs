@@ -776,39 +776,52 @@ internal static class RageRoom
         Spots.Add(new Spot { Kind = "barrel", Pos = new Vector3(0.05f, 0f, -14.85f), Yaw = 160f, Respawn = 10f });
         Spots.Add(new Spot { Kind = "pinata", Pos = new Vector3(4f, 1.55f, -11.9f), Yaw = 30f, Respawn = 12f });
 
-        foreach (var s in Spots) Spawn(s);
-
-        // neon on the walls (throw something at them and they blow)
-        SignOn("SMASH", new Vector3(lo.x + 0.04f, 2.9f, -12.6f), Vector3.right, 0.55f, new Color(0.15f, 0.95f, 1f));
-        SignOn("NO REFUNDS", new Vector3(hi.x - 0.04f, 3.1f, -13.6f), Vector3.left, 0.34f, new Color(1f, 0.16f, 0.62f));
-        SignOn("BREAK IT", new Vector3(4f, 3.55f, lo.z + 0.04f), Vector3.forward, 0.42f, new Color(1f, 0.85f, 0.2f));
-
-        // the weapon rack by the door: the game's own bat, machete, knife and claw, and the mod's sledgehammer, pipe
-        // and golf club
-        FunWorld.Picture("weapon_rack", _root, new Vector3(lo.x + 0.04f, 0.6f, -7.9f), Quaternion.Euler(0f, 90f, 0f));
-        var slot = 0;
-        foreach (var name in new[] { "Bat", "Machete", "Knife", "Gimp Claw" })
-            if (Weapon.FromGame(name, _root, RackSlot(slot), out var w))
-            {
-                Rack.Add(w);
-                slot++;
-            }
-
-        foreach (var name in new[] { "sledge", "pipe", "golfclub", "bat" })
+        // (built over a few frames, a handful at a time: all at once was 20 ms in one frame, the moment the doors flew
+        // open; things not there yet are left alone by the respawning)
+        for (var i = 0; i < Spots.Count; i += 10)
         {
-            if (slot >= 7) break;
-            if (name == "bat" && Rack.Exists(w => w.Name == "Bat")) continue;
-            if (Weapon.FromProps(name, _root, RackSlot(slot), out var w))
+            var from = i;
+            FunWorld.Soon("rage things", () =>
             {
-                Rack.Add(w);
-                slot++;
-            }
+                for (var k = from; k < Mathf.Min(from + 10, Spots.Count); k++) Spawn(Spots[k]);
+            });
         }
 
-        Dummy.Build(_root, new Vector3(6.4f, 0f, -8.9f));
-        RageMode.Build(_root);
-        Plugin.L.LogInfo($"Rage room: {Spots.Count} things to break, {Rack.Count} weapons on the rack (built in {watch.Elapsed.TotalMilliseconds:F1} ms)");
-        Surprises.RageVisit();
+        FunWorld.Soon("rage signs", () =>
+        {
+            // neon on the walls (throw something at them and they blow)
+            SignOn("SMASH", new Vector3(lo.x + 0.04f, 2.9f, -12.6f), Vector3.right, 0.55f, new Color(0.15f, 0.95f, 1f));
+            SignOn("NO REFUNDS", new Vector3(hi.x - 0.04f, 3.1f, -13.6f), Vector3.left, 0.34f, new Color(1f, 0.16f, 0.62f));
+            SignOn("BREAK IT", new Vector3(6.4f, 2.55f, lo.z + 0.04f), Vector3.forward, 0.36f, new Color(1f, 0.85f, 0.2f));
+            // the weapon rack by the door: the game's own bat, machete, knife and claw, and the mod's sledgehammer,
+            // pipe and golf club
+            FunWorld.Picture("weapon_rack", _root, new Vector3(lo.x + 0.04f, 0.6f, -7.9f), Quaternion.Euler(0f, 90f, 0f));
+        });
+        foreach (var name in new[] { "Bat", "Machete", "Knife", "Gimp Claw" })
+        {
+            var n = name;
+            FunWorld.Soon("rage rack " + n, () =>
+            {
+                if (Weapon.FromGame(n, _root, RackSlot(Rack.Count), out var w)) Rack.Add(w);
+            });
+        }
+
+        FunWorld.Soon("rage rack props", () =>
+        {
+            foreach (var name in new[] { "sledge", "pipe", "golfclub", "bat" })
+            {
+                if (Rack.Count >= 7) break;
+                if (name == "bat" && Rack.Exists(w => w.Name == "Bat")) continue;
+                if (Weapon.FromProps(name, _root, RackSlot(Rack.Count), out var w)) Rack.Add(w);
+            }
+        });
+        FunWorld.Soon("rage dummy", () =>
+        {
+            Dummy.Build(_root, new Vector3(6.4f, 0f, -8.9f));
+            RageMode.Build(_root);
+            Plugin.L.LogInfo($"Rage room: {Spots.Count} things to break, {Rack.Count} weapons on the rack (started {watch.Elapsed.TotalMilliseconds:F0} ms ago)");
+            Surprises.RageVisit();
+        });
     }
 
     /// <summary>A place on the weapon rack (local to the world): along the board, hanging handle down.</summary>

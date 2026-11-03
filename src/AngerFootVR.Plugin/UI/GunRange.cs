@@ -36,6 +36,7 @@ internal static class GunRange
         public GameWeapons.GunInfo Info;
         public FunWorld.Grabbable Grab;
         public Vector3 Muzzle, Barrel;
+        public string Dev; // (how its barrel was found)
         public Pose Home;
         public float NextShot, SpinUp;
         public AudioSource Loop;
@@ -114,11 +115,15 @@ internal static class GunRange
         rb.mass = 2f;
         rb.isKinematic = true;
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-        // its barrel: along whichever flat axis runs from its middle to its muzzle (a muzzle point's own facing isn't
-        // always the barrel's), up its up
+        // its barrel: the way its muzzle point faces, when that's plainly along the gun; else whichever flat axis runs
+        // from its middle to its muzzle (the sniper's muzzle point sits half way along it: from its middle, that had
+        // pointed it backwards)
         var toMuzzle = muzzle - bounds.center;
-        var b = Mathf.Abs(toMuzzle.x) > Mathf.Abs(toMuzzle.z) ? new Vector3(Mathf.Sign(toMuzzle.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(toMuzzle.z));
-        if (toMuzzle.sqrMagnitude < 1e-4f) b = barrel.sqrMagnitude > 0.01f ? barrel.normalized : Vector3.forward;
+        Vector3 b;
+        if (Mathf.Abs(barrel.z) > 0.8f) b = new Vector3(0f, 0f, Mathf.Sign(barrel.z));
+        else if (Mathf.Abs(barrel.x) > 0.8f) b = new Vector3(Mathf.Sign(barrel.x), 0f, 0f);
+        else if (toMuzzle.sqrMagnitude > 1e-4f) b = Mathf.Abs(toMuzzle.x) > Mathf.Abs(toMuzzle.z) ? new Vector3(Mathf.Sign(toMuzzle.x), 0f, 0f) : new Vector3(0f, 0f, Mathf.Sign(toMuzzle.z));
+        else b = Vector3.forward;
         // where it's held: its grip under the back of its barrel, a two-handed one's front further along
         var along = Vector3.Dot(bounds.extents, new Vector3(Mathf.Abs(b.x), Mathf.Abs(b.y), Mathf.Abs(b.z)));
         var rear = muzzle - b * Mathf.Max(0.08f, Vector3.Dot(muzzle - (bounds.center - b * along), b));
@@ -131,7 +136,7 @@ internal static class GunRange
         Vector3? fore = two ? rear + b * (len * 0.66f) + Vector3.down * (h * 0.08f) : (Vector3?)null;
         var grab = FunWorld.MakeGrabbable(go, grip, Quaternion.Inverse(Quaternion.LookRotation(b, Vector3.up)), fore);
         grab.Reach = 0.2f;
-        var gun = new Gun { Info = info, Grab = grab, Muzzle = muzzle, Barrel = b, Home = home };
+        var gun = new Gun { Info = info, Grab = grab, Muzzle = muzzle, Barrel = b, Home = home, Dev = $"facing {barrel:F2} bounds {bounds.center:F2}+-{bounds.extents:F2}" };
         grab.OnTrigger = (x, hand) => Pull(gun, hand, true);
         grab.OnTriggerHeld = (x, hand) => Pull(gun, hand, false);
         grab.OnGrabbed = (x, hand) => GameSounds.Play(info.Name + " Pickup", x.transform.position, 0.7f);
@@ -488,10 +493,23 @@ internal static class GunRange
 
     private static void Targets()
     {
+        // (a lane a frame: all three at once was 9 ms)
+        for (var k = 0; k < 3; k++)
+        {
+            var lane = k;
+            FunWorld.Soon("range lane " + k, () => MakeLane(lane));
+        }
+
+        FunWorld.Soon("range plates", Plates_);
+        FunWorld.Soon("range bottles", Shelf);
+        FunWorld.Soon("range drill", Drill);
+    }
+
+    private static void MakeLane(int k)
+    {
         var lo = MovieHouse.RangeMin;
         var hi = MovieHouse.RangeMax;
         var w = (hi.x - lo.x) / 3f;
-        for (var k = 0; k < 3; k++)
         {
             var x = lo.x + w * (k + 0.5f);
             var lane = new Lane { X = x, Distance = 5f + k * 3f, Shown = 5f + k * 3f };
@@ -539,10 +557,6 @@ internal static class GunRange
             Lanes.Add(lane);
             ShowLane(lane, "");
         }
-
-        FunWorld.Soon("range plates", Plates_);
-        FunWorld.Soon("range bottles", Shelf);
-        FunWorld.Soon("range drill", Drill);
     }
 
     private static void Plates_()
@@ -844,7 +858,7 @@ internal static class GunRange
     public static string Describe()
     {
         var names = new List<string>();
-        foreach (var g in Guns) names.Add($"{g.Info.Name}({g.Info.Fires}{(g.Info.Auto ? " auto" : "")} x{g.Info.Projectiles} {g.Info.Cooldown:F2}s {(g.Grab.ForeLocal.HasValue ? "2h" : "1h")} '{g.Info.FireBank}' muzzle {g.Muzzle:F2} barrel {g.Barrel:F1} grip {g.Grab.GripLocal:F2})");
+        foreach (var g in Guns) names.Add($"{g.Info.Name}({g.Info.Fires}{(g.Info.Auto ? " auto" : "")} x{g.Info.Projectiles} {g.Info.Cooldown:F2}s {(g.Grab.ForeLocal.HasValue ? "2h" : "1h")} '{g.Info.FireBank}' muzzle {g.Muzzle:F2} barrel {g.Barrel:F1} grip {g.Grab.GripLocal:F2}{(Plugin.DevRun ? " " + g.Dev : "")})");
         return $"RANGE built {_built} guns {Guns.Count}: {string.Join(", ", names)} | lanes {Lanes.Count} plates {Plates.Count} bottles {Bottles.Count} drill {(_drillEnds > 0f ? "on" : "off")} best {_drillBest}";
     }
 }

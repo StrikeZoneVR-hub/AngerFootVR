@@ -580,12 +580,26 @@ internal static class FunWorld
     }
     private static readonly Collider[] Near = new Collider[24];
 
+    /// <summary>Dev: press the first button whose object's name has this in it, or begin and end the first handle
+    /// near the named object ("handle &lt;name&gt;").</summary>
+    public static string DevPoke(string name)
+    {
+        foreach (var p in Presses)
+            if (p != null && p.gameObject.name.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                p.Fire(XRNode.RightHand);
+                return "pressed " + p.gameObject.name;
+            }
+
+        return "no button like '" + name + "' (" + Presses.Count + " buttons)";
+    }
+
     public static bool Holding(XRNode hand) => Grabbing.ContainsKey(hand);
 
     public static Grabbable Held(XRNode hand) => Grabbing.TryGetValue(hand, out var h) ? h.Thing : null;
 
     /// <summary>Whether a hand is busy with the world (holding a thing): the laser leaves it be.</summary>
-    public static bool Busy(XRNode hand) => Ready && (Holding(hand) || IsFore(hand));
+    public static bool Busy(XRNode hand) => Ready && (Holding(hand) || IsFore(hand) || Dragging.ContainsKey(hand)); // (a hand on the cord under the screen had clicked the menu with the same squeeze)
 
     private static bool IsFore(XRNode hand)
     {
@@ -647,20 +661,14 @@ internal static class FunWorld
             if (!pose.Tracked || !VrControls.Down(hand, VrButton.Grip)) continue;
             if (TryFore(hand, pose.Position)) continue;
             var thing = Nearest(pose.Position);
-            var pulled = false;
-            if (thing == null)
-            {
-                thing = Pointed(pose.Position, pose.Aim * Vector3.forward);
-                pulled = thing != null;
-            }
-
             if (thing != null)
             {
-                Grab(hand, thing, pulled);
+                Grab(hand, thing, false);
                 continue;
             }
 
-            // a lever, a switch, a cord: worked where it is
+            // a lever, a switch, a cord in your hand: worked where it is (before anything pointed at further off, which
+            // had come flying to the hand instead when the hand was on the cord)
             Handle best = null;
             var bestD = float.MaxValue;
             foreach (var h in Handles)
@@ -679,7 +687,11 @@ internal static class FunWorld
                 Dragging[hand] = best;
                 VrControls.Rumble(hand, 0.3f, 0.04f);
                 best.Begin?.Invoke(hand, pose.Position);
+                continue;
             }
+
+            thing = Pointed(pose.Position, pose.Aim * Vector3.forward);
+            if (thing != null) Grab(hand, thing, true);
         }
     }
 

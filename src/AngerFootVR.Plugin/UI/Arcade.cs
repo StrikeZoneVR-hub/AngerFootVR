@@ -103,7 +103,7 @@ internal static class Arcade
 
     private static void Score(string game, int score)
     {
-        if (!Best.TryGetValue(game, out var b) || score > b)
+        if (score > 0 && (!Best.TryGetValue(game, out var b) || score > b)) // (a round below nothing is no best)
         {
             Best[game] = score;
             SaveScores();
@@ -279,7 +279,7 @@ internal static class Arcade
                 running = false;
                 foreach (var d in Doors) Shut(d);
                 Score("DOOR KICKER", _score);
-                Pop(Doors[2].Centre + Vector3.up * 1.4f, $"SCORE {_score}", new Color(0.15f, 0.95f, 1f));
+                Pop(Doors[2].Centre + Vector3.up * 0.55f, $"SCORE {_score}", new Color(0.15f, 0.95f, 1f));
             }
 
             if (running && now >= _next)
@@ -338,14 +338,14 @@ internal static class Arcade
                 if (d.State == 1)
                 {
                     _score += d.Grandma ? -200 : 150;
-                    Pop(d.Centre + Vector3.up * 0.9f, d.Grandma ? "NOT GRANNY!" : "DOOR KICK! +150", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
+                    Pop(d.Centre + Vector3.up * 0.55f, d.Grandma ? "NOT GRANNY!" : "DOOR KICK! +150", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
                     Open(d, true);
                     if (!d.Grandma) GameSounds.Play(Random.value < 0.5f ? "Voice Growly" : "Voice Deep", d.Centre, 0.8f);
                 }
                 else if (d.State == 2)
                 {
                     _score += d.Grandma ? -200 : 100;
-                    Pop(d.Centre + Vector3.up * 0.9f, d.Grandma ? "NOT GRANNY!" : "KICKED! +100", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
+                    Pop(d.Centre + Vector3.up * 0.55f, d.Grandma ? "NOT GRANNY!" : "KICKED! +100", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
                     GameSounds.PlayOr("Body impacts", "thud", d.Centre, 1f);
                     Shut(d);
                 }
@@ -362,7 +362,7 @@ internal static class Arcade
                 if (d.State == 2 && (d.Centre + Vector3.up * 0.5f - at).magnitude < 0.45f)
                 {
                     _score += d.Grandma ? -200 : 75;
-                    Pop(d.Centre + Vector3.up * 0.9f, d.Grandma ? "NOT GRANNY!" : "PUNCHED! +75", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
+                    Pop(d.Centre + Vector3.up * 0.55f, d.Grandma ? "NOT GRANNY!" : "PUNCHED! +75", d.Grandma ? new Color(1f, 0.2f, 0.3f) : new Color(1f, 0.85f, 0.25f));
                     GameSounds.PlayOr("Body impacts", "thud", at, 1f);
                     Shut(d);
                     return;
@@ -376,6 +376,7 @@ internal static class Arcade
         }
 
         public static void Clear() => Doors.Clear();
+        public static string State => $"door kicker {(_endsAt > 0f ? $"on {_endsAt - Time.unscaledTime:F0}s" : "off")} score {_score}";
     }
 
     // ================================================================================== GOON GALLERY
@@ -565,6 +566,7 @@ internal static class Arcade
             _gun = null;
             _cable = null;
         }
+        public static string State => $"gallery {(_endsAt > 0f ? $"on {_endsAt - Time.unscaledTime:F0}s" : "off")} score {_score} shots {_shots} hits {_hits} gun {(_gun != null && _gun.Holder.HasValue ? "held" : "racked")}";
     }
 
     // ================================================================================== KICK-O-METER
@@ -698,6 +700,7 @@ internal static class Arcade
             _pad = null;
             _rating = null;
         }
+        public static string State => $"meter power {_power:F2} swing {_swing:F2}";
     }
 
     // ================================================================================== SHOE TOSS
@@ -885,6 +888,7 @@ internal static class Arcade
             Last.Clear();
             _lane = null;
         }
+        public static string State => $"shoe toss {(_playing ? "on" : "off")} score {_score} thrown {_thrown}";
     }
 
     // ================================================================================== GOON BOWLING
@@ -943,8 +947,8 @@ internal static class Arcade
                 g.OnReleased = (x, h) => Rolled();
             }
 
-            Marquee(R(new Vector3(0f, 1.6f, len + 0.55f)), Vector3.forward, 0.3f, new Color(1f, 0.16f, 0.62f), "GOON BOWLING");
-            _board = Marquee(R(new Vector3(0f, 1.3f, len + 0.55f)), Vector3.forward, 0.13f, new Color(1f, 0.85f, 0.25f));
+            Marquee(R(new Vector3(0f, 1.65f, len + 0.55f)), Vector3.forward, 0.24f, new Color(1f, 0.16f, 0.62f), "GOON BOWLING");
+            _board = Marquee(R(new Vector3(0f, 1.3f, len + 0.55f)), Vector3.forward, 0.09f, new Color(1f, 0.85f, 0.25f));
             Show();
         }
 
@@ -1087,7 +1091,8 @@ internal static class Arcade
         private static void Show()
         {
             if (_board == null) return;
-            _board.text = $"FRAME {Mathf.Min(_frame + 1, Frames)}/{Frames}  ROLL {_roll + 1}   {string.Join(" ", Marks)}   TOTAL {_total}\nKICK (OR THROW) THE BALL AT THE GOONS";
+            // (three short lines: the lane's by the wall, and one long line ran into it)
+            _board.text = $"FRAME {Mathf.Min(_frame + 1, Frames)}/{Frames}  ROLL {_roll + 1}  TOTAL {_total}\n{(Marks.Count > 0 ? string.Join(" ", Marks) : "-")}\nKICK (OR THROW) THE BALL";
         }
 
         public static void Clear()
@@ -1097,6 +1102,7 @@ internal static class Arcade
             _board = null;
             _rolledAt = -1f;
         }
+        public static string State => $"bowling frame {_frame} roll {_roll} standing {_standing} total {_total}";
     }
 
     /// <summary>A hand through Door Kicker's doorways (the punches), every frame.</summary>
@@ -1122,5 +1128,5 @@ internal static class Arcade
         Bowling.Clear();
     }
 
-    public static string Describe() => $"ARCADE built {_built} best {string.Join(", ", Best)}";
+    public static string Describe() => $"ARCADE built {_built} best {string.Join(", ", Best)}" + (_built ? $" | {DoorKicker.State} | {Gallery.State} | {Meter.State} | {ShoeToss.State} | {Bowling.State}" : "");
 }
