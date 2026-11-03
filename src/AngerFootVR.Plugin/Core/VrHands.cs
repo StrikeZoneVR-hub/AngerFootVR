@@ -36,11 +36,15 @@ internal static class VrHands
     /// hand goes there; null: where the controller is.</summary>
     public static readonly Vector3?[] HoldAt = new Vector3?[2];
 
+    /// <summary>The way a hand is turned while it holds something (the gun hand round its gun's grip).</summary>
+    public static readonly Quaternion?[] HoldRot = new Quaternion?[2];
+
     public static Pose Get(XRNode hand)
     {
         var p = hand == XRNode.LeftHand ? Left : Right;
-        var at = HoldAt[hand == XRNode.LeftHand ? 0 : 1];
-        if (at.HasValue && p.Tracked) p.Position = at.Value;
+        var i = hand == XRNode.LeftHand ? 0 : 1;
+        if (HoldAt[i].HasValue && p.Tracked) p.Position = HoldAt[i].Value;
+        if (HoldRot[i].HasValue && p.Tracked) p.Rotation = HoldRot[i].Value;
         return p;
     }
 

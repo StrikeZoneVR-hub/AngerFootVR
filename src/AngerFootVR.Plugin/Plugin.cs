@@ -28,6 +28,10 @@ public class Plugin : BaseUnityPlugin
     private static bool IsDevRun()
     {
         if (Environment.GetEnvironmentVariable("AFVR_DEVSAVES") != "1" || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AFVR_MODE"))) return false;
+        // the launcher leaves launch.txt for the run it starts (it survives Steam restarting the game; the environment
+        // doesn't): a run the launcher started is the player's, whatever its environment says (one of theirs logged
+        // "Dev run"). tools/game.sh deletes the file before a dev run.
+        if (File.Exists(Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "launch.txt")))) return false;
         var token = Environment.GetEnvironmentVariable("AFVR_DEVTOKEN");
         var file = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "dev-run.token"));
         try
@@ -38,6 +42,35 @@ public class Plugin : BaseUnityPlugin
         {
             return false;
         }
+    }
+
+    private static System.Collections.IEnumerator SavePage(Camera mc, string tag)
+    {
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        var rt = mc.targetTexture;
+        if (rt == null) yield break;
+        var copy = RenderTexture.GetTemporary(rt.width, rt.height, 0, RenderTextureFormat.ARGB32);
+        Graphics.Blit(rt, copy);
+        var was = RenderTexture.active;
+        RenderTexture.active = copy;
+        var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        RenderTexture.active = was;
+        RenderTexture.ReleaseTemporary(copy);
+        var dir = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots"));
+        var file = Path.Combine(dir, $"mappage_{(tag.Length > 0 ? tag : "as-is")}_{DateTime.Now:HHmmss}.png");
+        File.WriteAllBytes(file, tex.EncodeToPNG());
+        UnityEngine.Object.Destroy(tex);
+        L.LogInfo("MAPDIAG page -> " + file);
+    }
+
+    private static System.Collections.IEnumerator AirKick(int frames)
+    {
+        Core.VrControls.DevPress(XRNode.RightHand, Core.VrButton.Primary, 6);
+        for (var i = 0; i < frames; i++) yield return null;
+        Dev.LegRecorder.Start(60);
+        Core.VrControls.DevPress(XRNode.RightHand, Core.VrButton.Secondary, 3);
     }
 
     internal static ManualLogSource L;
@@ -60,6 +93,7 @@ public class Plugin : BaseUnityPlugin
             CinemaRig.BeforeRender();
             VrRig.BeforeRender();
             MapRig.BeforeRender();
+            Dev.LegRecorder.Tick();
         };
         VrSettings.Init(Config);
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
@@ -139,7 +173,6 @@ public class Plugin : BaseUnityPlugin
         UI.LauncherArt.Update();
         Rendering.SpectatorView.Update();
         Recentering();
-        Input.MotionThrow.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
         UI.Surprises.HallOfFame();
@@ -515,13 +548,6 @@ public class Plugin : BaseUnityPlugin
                         XRSettings.eyeTextureResolutionScale = float.Parse(arg, System.Globalization.CultureInfo.InvariantCulture);
                         L.LogInfo($"eye scale {XRSettings.eyeTextureResolutionScale} -> {XRSettings.eyeTextureWidth}x{XRSettings.eyeTextureHeight}");
                         break;
-                    case "flick":
-                        // flick [speed]: a throw from the gun hand along its aim (with a swing of this speed, m/s)
-                        Input.MotionThrow.DevFlick(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0f);
-                        break;
-                    case "slowmo":
-                        UI.Surprises.SlowMo(0.3f, 1.5f);
-                        break;
                     case "eyes":
                     {
                         // where each stereo camera is, and where its eyes are drawn from (the view matrices)
@@ -727,6 +753,71 @@ public class Plugin : BaseUnityPlugin
                     case "vrtab":
                         // vrtab [n]: open SETTINGS and the VR tab (n: the n-th tab)
                         L.LogInfo(UI.VrSettingsTab.Open(arg.Length > 0 ? int.Parse(arg) : -1));
+                        break;
+                    case "laser":
+                        L.LogInfo(UI.Laser.Describe());
+                        break;
+                    case "focus":
+                    {
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        L.LogInfo($"FOCUS {(pl != null && pl.FocusedInteractable != null ? pl.FocusedInteractable.name + " at " + pl.FocusedInteractable.transform.position : "nothing")} | left hand {Core.VrHands.GetRaw(XRNode.LeftHand).Position} right hand {Core.VrHands.GetRaw(XRNode.RightHand).Position}");
+                        break;
+                    }
+                    case "mapdiag":
+                    {
+                        // mapdiag [pp|ao|aa|lights]: the map camera's page saved as a PNG; pp/ao/aa: its post-processing,
+                        // its occlusion or its anti-aliasing switched off first
+                        if (!Framework.SingletonBehaviour<WorldMapCamera>.HasInstance) break;
+                        var wmc = Framework.SingletonBehaviour<WorldMapCamera>.Instance;
+                        var mc = wmc.Camera;
+                        var ppl = mc.GetComponent<UnityEngine.Rendering.PostProcessing.PostProcessLayer>();
+                        if (arg == "pp" && ppl != null) ppl.enabled = false;
+                        if (arg == "ao")
+                            foreach (var v in UnityEngine.Object.FindObjectsOfType<UnityEngine.Rendering.PostProcessing.PostProcessVolume>())
+                                if (v.profile != null && v.profile.TryGetSettings(out UnityEngine.Rendering.PostProcessing.AmbientOcclusion ao)) { ao.enabled.Override(false); ao.active = false; }
+                        foreach (var b in mc.GetComponents<Behaviour>()) L.LogInfo($"MAPDIAG map camera component {b.GetType().Name} enabled {b.enabled}");
+                        L.LogInfo($"MAPDIAG target {(mc.targetTexture != null ? mc.targetTexture.width + "x" + mc.targetTexture.height + " aa" + mc.targetTexture.antiAliasing + " fmt " + mc.targetTexture.format : "none")} clear {mc.clearFlags} bg {mc.backgroundColor} hdr {mc.allowHDR} msaa {mc.allowMSAA} stereo {mc.stereoEnabled} pages {wmc.MapBookRenderTextures?.Count}");
+                        L.LogInfo($"MAPDIAG projection ortho {mc.orthographic} size {mc.orthographicSize} fov {mc.fieldOfView} aspect {mc.aspect} eye {mc.stereoTargetEye} pos {mc.transform.position} rot {mc.transform.eulerAngles} m00 {mc.projectionMatrix.m00:F3} m11 {mc.projectionMatrix.m11:F3} near {mc.nearClipPlane} far {mc.farClipPlane} usePhysical {mc.usePhysicalProperties} focal {mc.focalLength}");
+                        if (arg == "reset") { mc.ResetProjectionMatrix(); mc.ResetAspect(); }
+                        StartCoroutine(SavePage(mc, arg));
+                        break;
+                    }
+                    case "airkick":
+                        // airkick [frames]: jump (A), then kick (B) that many frames later, recording the game's legs
+                        StartCoroutine(AirKick(arg.Length > 0 ? int.Parse(arg) : 12));
+                        break;
+                    case "interactables":
+                    case "gonear":
+                    {
+                        // interactables: what can be used, nearest first; gonear <n>: stand 0.7 m in front of the n-th
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        if (pl == null) break;
+                        var all = System.Linq.Enumerable.ToList(System.Linq.Enumerable.OrderBy(System.Linq.Enumerable.Where(UnityEngine.Object.FindObjectsOfType<Interactable>(), x => x != null && x.enabled), x => (x.transform.position - pl.transform.position).sqrMagnitude));
+                        if (cmd == "interactables")
+                        {
+                            for (var i = 0; i < Math.Min(8, all.Count); i++)
+                                L.LogInfo($"INTERACTABLE {i}: {all[i].name} at {all[i].transform.position} ({(all[i].transform.position - pl.transform.position).magnitude:F1} m) range {all[i].InteractionRange}");
+                            break;
+                        }
+
+                        var n = arg.Length > 0 ? int.Parse(arg) : 0;
+                        if (n >= all.Count) break;
+                        var target = all[n].transform.position;
+                        var flat = target - pl.transform.position;
+                        flat.y = 0f;
+                        var at = target - flat.normalized * 0.7f;
+                        at.y = pl.transform.position.y;
+                        pl.Rigidbody.position = at;
+                        pl.transform.position = at;
+                        L.LogInfo($"GONEAR {all[n].name}: standing at {at}, it is {(target - Core.VrRig.HeadPosition)} from the head");
+                        break;
+                    }
+                    case "legrec":
+                        Dev.LegRecorder.Start(arg.Length > 0 ? int.Parse(arg) : 60);
+                        break;
+                    case "laserscroll":
+                        // laserscroll <-1..1|off>: push the right stick for the laser's list scrolling
+                        UI.Laser.DevScroll = arg == "off" ? (float?)null : Dev.MockControllers.F(arg);
                         break;
                     case "vrset":
                         // vrset <row label part>: change that VR tab row through its own control (a click on it)

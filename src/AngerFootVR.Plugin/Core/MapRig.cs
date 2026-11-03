@@ -2,6 +2,7 @@ using System.Reflection;
 using Framework;
 using HarmonyLib;
 using UnityEngine;
+using UnityEngine.Rendering.PostProcessing;
 using UnityEngine.SceneManagement;
 using UnityEngine.XR;
 
@@ -18,6 +19,125 @@ namespace AngerFootVR.Core;
 /// </summary>
 internal static class MapRig
 {
+    /// <summary>
+    /// The map on the book's pages: the game draws each region from above into a picture for its page (its own map
+    /// camera, and one for the region's labels). Those cameras were marked for the headset, so in VR they drew with the
+    /// headset's wide view: the pages showed the whole city small and far off, dark, instead of one region filling the
+    /// page. They draw only into their pictures, as in the flat game.
+    /// </summary>
+    [HarmonyPatch]
+    private static class MapPages
+    {
+        private static readonly FieldInfo Overlay = AccessTools.Field(typeof(WorldMapCamera), "_overlayCamera");
+
+        // the cameras' own lens, as the scene has it (VR overwrites a headset camera's field of view with the headset's
+        // 103 degrees, and it stays so)
+        private static readonly System.Collections.Generic.Dictionary<Camera, float> Lens = new System.Collections.Generic.Dictionary<Camera, float>();
+
+        private const float MapLens = 10f;
+
+        public static void OffTheHeadset(WorldMapCamera map)
+        {
+            if (map == null) return;
+            foreach (var cam in new[] { map.Camera, Overlay?.GetValue(map) as Camera })
+            {
+                if (cam == null) continue;
+                if (cam.stereoTargetEye != StereoTargetEyeMask.None) cam.stereoTargetEye = StereoTargetEyeMask.None;
+                if (Lens.TryGetValue(cam, out var fov) && !Mathf.Approximately(cam.fieldOfView, fov)) cam.fieldOfView = fov;
+            }
+        }
+
+        /// <summary>As the level select's scene comes up, before anything draws: the lens taken, the headset off.</summary>
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(WorldMapCamera), "Awake")]
+        private static void AsItWakes(WorldMapCamera __instance)
+        {
+            var dead = new System.Collections.Generic.List<Camera>();
+            foreach (var c in Lens.Keys)
+                if (c == null)
+                    dead.Add(c);
+            foreach (var c in dead) Lens.Remove(c);
+            // (with VR on, the headset's view is already in it as the scene loads: the game's map cameras are a 10 degree
+            // lens, as its scene file has them)
+            foreach (var cam in new[] { __instance.Camera, Overlay?.GetValue(__instance) as Camera })
+                if (cam != null)
+                    Lens[cam] = cam.fieldOfView < 60f ? cam.fieldOfView : MapLens;
+            if (XrManager.IsRunning) OffTheHeadset(__instance);
+            Plugin.L.LogInfo($"Level select: the map's lens {(__instance.Camera != null ? __instance.Camera.fieldOfView.ToString("F1") : "-")} degrees");
+        }
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(WorldMapCamera), nameof(WorldMapCamera.SetupRenderTextures))]
+        private static void BeforeThePages(WorldMapCamera __instance) => OffTheHeadset(__instance);
+    }
+
+    /// <summary>
+    /// The level's card (its name, its picture, its stars) on the floating panel, to the right: the game puts it beside
+    /// the level on the book by the desktop window's pixels, which in VR (the menus drawn into the VR picture) was far off
+    /// the panel, so the card never showed. Its arrow (pointing at the level on a flat screen) stays away.
+    /// </summary>
+    [HarmonyPatch]
+    private static class LevelCard
+    {
+        private static readonly FieldInfo ButtonAt = AccessTools.Field(typeof(WorldMapLevelPreview), "_selectedButtonScreenPosition");
+        private static readonly FieldInfo PositionSpring = AccessTools.Field(typeof(WorldMapLevelPreview), "_panelPositionSpring");
+        private static readonly FieldInfo SizeSpring = AccessTools.Field(typeof(WorldMapLevelPreview), "_panelSizeSpring");
+        private static readonly FieldInfo RotationSpring = AccessTools.Field(typeof(WorldMapLevelPreview), "_panelRotationSpring");
+        private static readonly FieldInfo ArrowSpring = AccessTools.Field(typeof(WorldMapLevelPreview), "_arrowScaleSpring");
+        private static readonly FieldInfo DefaultSize = AccessTools.Field(typeof(WorldMapLevelPreview), "_defaultPanelSize");
+        private static readonly FieldInfo Placed = AccessTools.Field(typeof(WorldMapLevelPreview), "_hasBeenPositionedOnce");
+        private static readonly FieldInfo Enlarged = AccessTools.Field(typeof(WorldMapLevelPreview), "_isEnlarged");
+        private static readonly FieldInfo Slime = AccessTools.Field(typeof(WorldMapLevelPreview), "_slime");
+        private static readonly FieldInfo CloseButton = AccessTools.Field(typeof(WorldMapLevelPreview), "_closeButton");
+        private static readonly FieldInfo Panel = AccessTools.Field(typeof(WorldMapLevelPreview), "_panel");
+
+        private static bool InVr(WorldMapLevelPreview card, out Canvas root)
+        {
+            root = null;
+            if (!Active || Panel.GetValue(card) is not RectTransform panel) return false;
+            var canvas = panel.GetComponentInParent<Canvas>();
+            root = canvas != null ? canvas.rootCanvas : null;
+            return root != null && root.renderMode == RenderMode.ScreenSpaceCamera && root.worldCamera != null && root.worldCamera.targetTexture != null;
+        }
+
+        [HarmonyPrefix]
+        [HarmonyPatch(typeof(WorldMapLevelPreview), "PositionAtSelectedLevelButton")]
+        private static bool OnThePanel(WorldMapLevelPreview __instance, bool mouseSelection)
+        {
+            if (!InVr(__instance, out var root)) return true;
+            var button = SingletonBehaviour<WorldMap>.Instance.SelectedLevelButton;
+            if (button != null)
+            {
+                var cam = root.worldCamera;
+                var spot = new Vector2(cam.pixelWidth * 0.74f, cam.pixelHeight * 0.55f);
+                if (!RectTransformUtility.ScreenPointToWorldPointInRectangle((RectTransform)root.transform, spot, cam, out var at)) return true;
+                ButtonAt.SetValue(__instance, at);
+                if (SizeSpring.GetValue(__instance) is Spring2 size) size.TargetValue = (Vector2)DefaultSize.GetValue(__instance);
+                if (RotationSpring.GetValue(__instance) is Spring3 turn) turn.TargetValue = new Vector3(0f, 0f, button.Level.UIPanelRotation);
+                if (PositionSpring.GetValue(__instance) is Spring3 move)
+                {
+                    move.TargetValue = at;
+                    if (mouseSelection || !(bool)Placed.GetValue(__instance)) move.CurrentValue = at;
+                }
+
+                Placed.SetValue(__instance, true);
+            }
+
+            (Slime.GetValue(__instance) as Transform)?.gameObject.SetActive(false);
+            (CloseButton.GetValue(__instance) as GameObject)?.SetActive(false);
+            Enlarged.SetValue(__instance, false);
+            return false;
+        }
+
+        [HarmonyPostfix]
+        [HarmonyPatch(typeof(WorldMapLevelPreview), nameof(WorldMapLevelPreview.Show))]
+        private static void NoArrow(WorldMapLevelPreview __instance)
+        {
+            if (!InVr(__instance, out _) || ArrowSpring.GetValue(__instance) is not Spring3 arrow) return;
+            arrow.TargetValue = arrow.CurrentValue = Vector3.zero;
+        }
+    }
+
     /// <summary>The level select is up and in VR.</summary>
     public static bool Active { get; private set; }
 
@@ -95,7 +215,63 @@ internal static class MapRig
         }
 
         EnsureLaser();
+        CarLooks();
+        if (SingletonBehaviour<WorldMapCamera>.HasInstance) MapPages.OffTheHeadset(SingletonBehaviour<WorldMapCamera>.Instance);
         Plugin.L.LogInfo($"Level select in VR: the car's camera '{_cam.name}', the book {(_bookRoot != null ? "re-anchored ('" + _bookRoot.name + "')" : "not on the camera")}");
+    }
+
+    /// <summary>
+    /// The car's picture for a head that moves: the game's depth of field (only a thin slice round 0.65 m sharp, made
+    /// for its fixed camera) blurred the car, the street, and the floating menu panel too as your head moved; its
+    /// vignette darkened the panel. Both off in VR (this scene's copies of its profiles only: the game's own stay as they
+    /// are); the colour grading and bloom stay. Ambient occlusion off, as in the levels; the map's pages sharper seen at
+    /// an angle on your lap.
+    /// </summary>
+    private static void CarLooks()
+    {
+        try
+        {
+            if (!SingletonBehaviour<WorldMapFeet>.HasInstance) return;
+            var feet = SingletonBehaviour<WorldMapFeet>.Instance;
+            var n = 0;
+            foreach (var name in new[] { "_mapPostProcess", "_feetPostProcess" })
+            {
+                if (AccessTools.Field(typeof(WorldMapFeet), name)?.GetValue(feet) is not PostProcessVolume vol || vol == null) continue;
+                var profile = vol.profile; // (an instance of its own for this volume)
+                if (profile.TryGetSettings(out DepthOfField dof))
+                {
+                    dof.enabled.Override(false);
+                    dof.active = false;
+                    n++;
+                }
+
+                if (profile.TryGetSettings(out Vignette vignette))
+                {
+                    vignette.enabled.Override(false);
+                    vignette.active = false;
+                }
+            }
+
+            if (AccessTools.Field(typeof(WorldMapFeet), "_occlusionEffect")?.GetValue(feet) is Behaviour ao && ao != null) ao.enabled = false;
+            if (SingletonBehaviour<WorldMapCamera>.HasInstance)
+            {
+                var mapCam = SingletonBehaviour<WorldMapCamera>.Instance;
+                foreach (var list in new[] { mapCam.MapBookRenderTextures, mapCam.MapBookOverlayRenderTextures })
+                    if (list != null)
+                        foreach (var rt in list)
+                            if (rt != null)
+                            {
+                                rt.anisoLevel = 16;
+                                rt.filterMode = FilterMode.Trilinear;
+                            }
+            }
+
+            Plugin.L.LogInfo($"Level select in VR: the car's depth of field off ({n} profiles), vignette and ambient occlusion off");
+        }
+        catch (System.Exception e)
+        {
+            Plugin.L.LogWarning("Level select: the car's looks: " + e.Message);
+        }
     }
 
     private static void Leave()
@@ -119,6 +295,7 @@ internal static class MapRig
             return;
         }
 
+        if (SingletonBehaviour<WorldMapCamera>.HasInstance) MapPages.OffTheHeadset(SingletonBehaviour<WorldMapCamera>.Instance);
         _basePos = _cam.transform.position;
         _baseRot = _cam.transform.rotation;
         if (_anchor != null) _anchor.SetPositionAndRotation(_basePos, _baseRot);
@@ -228,7 +405,12 @@ internal static class MapRig
         var mapCam = SingletonBehaviour<WorldMapCamera>.Instance.Camera;
         var r = mapCam.NormalizedScreenPointToRay(hit.textureCoord);
         if (!new Plane(Vector3.up, Vector3.zero).Raycast(r, out var d)) return;
-        map.SetMapBookRaycastPosition(r.GetPoint(d));
+        var spot = r.GetPoint(d);
+        // (only a level under the laser picks: off a level the pick stays, as with the stick. The game's mouse rule let
+        // go off a level while its stick rule picked one again the next frame, so the card and its sound flickered)
+        var from = mapCam.transform.position;
+        if (!Physics.Raycast(new Ray(from, (spot - from).normalized), out var onMap, 1000f, LayerMasks.UI) || onMap.collider.GetComponentInParent<WorldMapLevelButton>() == null) return;
+        map.SetMapBookRaycastPosition(spot);
         MouseSelection.Invoke(map, null);
     }
 

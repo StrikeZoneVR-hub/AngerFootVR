@@ -11,9 +11,7 @@ using UnityEngine.XR;
 namespace AngerFootVR.UI;
 
 /// <summary>
-/// The 1.0 surprises:
-/// - SLOW MOTION, the game's own way (its time scale, as its bullet-time shoes use it; your head is never slowed):
-///   the last enemy standing goes down in slow motion, and kicking a door open into enemies holds the moment;
+/// The 1.0 surprises (slow motion was tried and taken out at the player's word):
 /// - FLIP THEM OFF: enemies who see your middle finger (right stick click) come for you (the game's own alert, as a
 ///   gunshot nearby does);
 /// - the HALL OF FAME on the movie house's back wall: your levels, stars and fastest time (read from your save), and
@@ -24,58 +22,6 @@ namespace AngerFootVR.UI;
 internal static class Surprises
 {
     private static bool InPlay => XrManager.IsRunning && !CinemaRig.Active && SingletonBehaviour<Player>.HasInstance;
-
-    // ------------------------------------------------------------------ slow motion
-
-    private static float _slowFrom = -10f, _slowFor, _slowScale = 1f;
-
-    /// <summary>The time scale slow motion asks for now (1: none): eased in over 0.08 s, out over a third of a second.</summary>
-    public static float SlowFactor
-    {
-        get
-        {
-            var t = Time.unscaledTime - _slowFrom;
-            if (t < 0f || t > _slowFor + 0.35f) return 1f;
-            var k = t < 0.08f ? t / 0.08f : t > _slowFor ? 1f - (t - _slowFor) / 0.35f : 1f;
-            return Mathf.Lerp(1f, _slowScale, Mathf.Clamp01(k));
-        }
-    }
-
-    public static void SlowMo(float scale, float seconds)
-    {
-        if (Time.unscaledTime - _slowFrom < _slowFor) return; // (one at a time)
-        _slowFrom = Time.unscaledTime;
-        _slowFor = seconds;
-        _slowScale = scale;
-        Plugin.L.LogInfo($"Slow motion {scale:F2} for {seconds:F1} s");
-    }
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(GameState), "GetTimeScale")]
-    private static void SlowTime(ref float __result)
-    {
-        var f = SlowFactor;
-        if (f < 1f && __result > 0f) __result *= f;
-    }
-
-    private static int AliveEnemies() => Object.FindObjectsOfType<Enemy>().Count(e => e != null && e.Health != null && e.Health.IsAlive);
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(Enemy), nameof(Enemy.OnDeath))]
-    private static void EnemyDown()
-    {
-        if (!InPlay || VrSettings.LastKillSlowMo == null || !VrSettings.LastKillSlowMo.Value) return;
-        if (AliveEnemies() == 0) SlowMo(0.25f, 1.3f);
-    }
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(Door), nameof(Door.OnKicked))]
-    private static void DoorKicked(Vector3 position)
-    {
-        if (!InPlay || VrSettings.DoorKickSlowMo == null || !VrSettings.DoorKickSlowMo.Value) return;
-        var near = Object.FindObjectsOfType<Enemy>().Any(e => e != null && e.Health != null && e.Health.IsAlive && (e.transform.position - position).sqrMagnitude < 7f * 7f);
-        if (near) SlowMo(0.4f, 0.7f);
-    }
 
     // ------------------------------------------------------------------ flip them off
 

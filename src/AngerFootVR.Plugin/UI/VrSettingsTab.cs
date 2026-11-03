@@ -28,7 +28,7 @@ internal static class VrSettingsTab
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, SwingThrow, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, LastKillSlowMo, DoorKickSlowMo, FlipOff;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -78,8 +78,6 @@ internal static class VrSettingsTab
             Help = "The hand that holds your gun: its trigger shoots and its grip throws. The other hand's grip interacts.",
             Load = () => GunHand = VrSettings.GunHand.Value, Save = () => VrSettings.GunHand.Value = GunHand,
         },
-        Toggle("SWING THROW", nameof(SwingThrow), VrSettings.SwingThrow,
-            "Hold the gun hand's grip, swing and let go: it flies the way and as hard as you threw it. Off: the grip throws straight away."),
         Toggle("TWO-HAND GUNS", nameof(TwoHandGuns), VrSettings.TwoHandAim,
             "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
@@ -102,8 +100,6 @@ internal static class VrSettingsTab
             Load = () => MonitorFov = VrSettings.MonitorFov.Value, Save = () => VrSettings.MonitorFov.Value = Mathf.Clamp(MonitorFov, 70, 110),
         },
         new Row { Header = "FUN" },
-        Toggle("LAST KILL SLOW-MO", nameof(LastKillSlowMo), VrSettings.LastKillSlowMo, "The last enemy standing goes down in slow motion."),
-        Toggle("DOOR KICK SLOW-MO", nameof(DoorKickSlowMo), VrSettings.DoorKickSlowMo, "A moment of slow motion when you kick a door open into enemies."),
         Toggle("FLIP THEM OFF", nameof(FlipOff), VrSettings.FlipOff, "Enemies who see your middle finger (right stick click) come for you."),
         new Row { Header = "OPENING" },
         new Row
@@ -444,8 +440,8 @@ internal static class VrSettingsTab
             if (!SingletonBehaviour<SettingsMenu>.HasInstance || SingletonBehaviour<SettingsMenu>.Instance.TabbedMenu.CurrentTab is not SettingsMenuTab t || t.SettingsCategory != Category) return true;
             foreach (var e in new ConfigEntryBase[]
                      {
-                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.SwingThrow, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
-                         VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.LastKillSlowMo, VrSettings.DoorKickSlowMo, VrSettings.FlipOff, VrSettings.Opening,
+                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
+                         VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                      })
                 e.BoxedValue = e.DefaultValue;
             VrSettings.NoteOwnSave();

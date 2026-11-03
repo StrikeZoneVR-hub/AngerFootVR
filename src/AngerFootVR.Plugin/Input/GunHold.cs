@@ -42,6 +42,16 @@ internal static class GunHold
     private static readonly System.Reflection.FieldInfo MuzzleField = AccessTools.Field(typeof(HandRigGunObject), "_muzzlePosition");
     private static float _barrelOff, _heldSince;
     private static Vector3 _palmRest, _muzzleRest, _axisRest;
+    private static Quaternion? _fpsFrame;
+    private static Vector3 _palmNow;
+
+    /// <summary>Where the gun hand is drawn while it holds a gun (null: where the controller is).</summary>
+    private static void HoldHand(Vector3? at, Quaternion? rot)
+    {
+        var i = Hand == XRNode.LeftHand ? 0 : 1;
+        VrHands.HoldRot[i] = rot;
+        VrHands.HoldAt[i] = at; // (the other hand's is the two-hand grip's: only the gun hand's here)
+    }
     private static string _axisObj = "";
 
     private static Vector3 GripFor(HoldableObjectType t)
@@ -61,17 +71,35 @@ internal static class GunHold
 
     private static bool Aiming(out VrHands.Pose pose)
     {
-        pose = VrHands.Get(Hand);
+        pose = VrHands.GetRaw(Hand);
         return XrManager.IsRunning && !CinemaRig.Active && pose.Tracked;
     }
 
     /// <summary>Where the barrel points: the controller's aim pose.</summary>
     public static Quaternion Aim(VrHands.Pose pose) => pose.Aim;
 
+    private static int _placedFrame = -1;
+
+    /// <summary>The body asks before it poses: the gun placed this frame, so the hand holding it is drawn with it (the
+    /// game's hand rig and the body may update in either order).</summary>
+    public static void EnsurePlaced()
+    {
+        if (_placedFrame == Time.frameCount || _rig == null) return;
+        try
+        {
+            PlaceRig(_rig);
+        }
+        catch (System.Exception e)
+        {
+            Plugin.L.LogWarning("Gun placing early: " + e.Message);
+        }
+    }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(HandRig), "LateUpdate")]
     private static void PlaceRig(HandRig __instance)
     {
+        _placedFrame = Time.frameCount;
         Holding = false;
         if (!Aiming(out var pose) || !SingletonBehaviour<Player>.HasInstance)
         {
@@ -81,6 +109,7 @@ internal static class GunHold
 
         var player = SingletonBehaviour<Player>.Instance;
         if (player.HandRig != __instance) return;
+        HoldHand(null, null);
         if (!player.HasWeapon)
         {
             Arsenal.Nothing();
@@ -140,6 +169,7 @@ internal static class GunHold
         if (!Mathf.Approximately(ls.x, wantX)) rig.localScale = new Vector3(wantX, ls.y, ls.z);
 
         // the game's own first-person hand, in the same kind of frame (it holds the thing as the game animates it)
+        _fpsFrame = null;
         Quaternion rigRot;
         Vector3 anchorInRig, anchor;
         if (_middle != null && _thumb != null)
@@ -150,6 +180,7 @@ internal static class GunHold
             var mirrored = rig.lossyScale.x < 0f;
             var back = (DevMode == 1 ? s < 0 : mirrored) ? Vector3.Cross(along, thumb) : Vector3.Cross(thumb, along);
             var fpsFrame = Quaternion.Inverse(rig.rotation) * Quaternion.LookRotation(along, back);
+            _fpsFrame = fpsFrame;
             rigRot = handRot * Quaternion.Inverse(fpsFrame);
             // a gun: its barrel on your aim, rolled with your controller (matched hand to hand, the game's pistol
             // grip points it at the floor); held things (bats, boxes, bottles) sit in your hand as the game's hand holds them
@@ -167,6 +198,7 @@ internal static class GunHold
                 // the rig is taken once the thing is in hand, so the game's own recoil and reloads still move it
                 var palm = _wrist.position + along * 0.5f - back.normalized * (along.magnitude * 0.12f);
                 anchorInRig = rig.InverseTransformPoint(palm);
+                _palmNow = anchorInRig; // (the game's hand as it is this frame: your drawn hand goes there)
                 if (Time.unscaledTime - _heldSince < 0.6f || _palmRest == Vector3.zero)
                 {
                     _palmRest = anchorInRig;
@@ -262,6 +294,19 @@ internal static class GunHold
         rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
         _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;
+
+        // a gun: your hand round its grip, as the game's own first-person hand holds it, recoil and reloads included
+        // (the gun goes where your controller aims; the hand had stayed at the controller's grip angle, beside the gun
+        // rather than holding it)
+        if (IsGun && DevMode != 1 && _fpsFrame.HasValue)
+        {
+            var heldRot = rigRot * _fpsFrame.Value;
+            var poseRot = heldRot * Quaternion.Inverse(local);
+            // its palm on the game's hand's palm as the game animates it (the gun's own rest point was taken while
+            // the gun was still coming up into the hand: a hand put there held the air beside the grip)
+            var wristAt = rig.TransformPoint(_palmNow) - heldRot * new Vector3(0f, 0f, PalmAlong);
+            HoldHand(wristAt - poseRot * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f)), poseRot);
+        }
         Arsenal.AfterPlace(__instance, rig, anchorInRig, _muzzleRest, player.Weapon, type, IsGun);
     }
 
@@ -285,7 +330,7 @@ internal static class GunHold
 
     public static string Describe()
     {
-        var pose = VrHands.Get(Hand);
+        var pose = VrHands.GetRaw(Hand);
         var line = "";
         if (_rig != null && _muzzle != null)
         {

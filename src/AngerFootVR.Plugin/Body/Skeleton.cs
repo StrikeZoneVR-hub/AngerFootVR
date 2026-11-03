@@ -53,8 +53,16 @@ internal sealed class Skeleton
 
     private readonly Foot[] _feet = new Foot[2];
     private bool _init;
-    private float _yaw, _phase, _kickT = 1f;
-    private int _nextFoot, _kickLeg = 1;
+    private float _yaw, _phase;
+    private int _nextFoot;
+
+    /// <summary>How a leg kicks (the game's kicks, as its first-person legs do them).</summary>
+    public enum KickStyle { High, Sweep, Stomp, Low }
+
+    // each leg's kick: its time (0..1, 1: none), its wait before it starts (s), its kind
+    private readonly float[] _kickT = { 1f, 1f };
+    private readonly float[] _kickWait = { 0f, 0f };
+    private readonly KickStyle[] _kickStyle = { KickStyle.High, KickStyle.High };
     private Vector3 _lastPelvis, _velocity;
     private bool _running;
 
@@ -65,8 +73,10 @@ internal sealed class Skeleton
 
     private const float KickTime = 0.42f;
 
-    // the kick's height above the hip and its reach (of the leg's length): tunable from the dev console (kick lift reach)
-    public static float KickLift = 0.3f, KickReach = 0.84f;
+    // the kick's height above the hip and its reach (of the leg's length): tunable from the dev console (kick lift reach).
+    // The game's own first-person kick puts the foot out level with your eyes; a body's leg kicks head-high: the foot
+    // ends about 15 cm under your eyes, the leg nearly straight (0.55 up, 0.68 of the leg out)
+    public static float KickLift = 0.55f, KickReach = 0.68f;
 
     /// <summary>Dev: the kick held at full stretch (for looking at it).</summary>
     public static bool DevKickFreeze;
@@ -77,11 +87,16 @@ internal sealed class Skeleton
     /// <summary>Forget the feet (a level load, a teleport, the movie house): they plant afresh under you.</summary>
     public void Reset() => _init = false;
 
-    /// <summary>The game kicked: the right leg swings out and back (the left if the right is mid-step).</summary>
-    public void Kick()
+    /// <summary>The game kicked: the left leg swings out and back, as the game's own leg does (the right if the left is
+    /// mid-step).</summary>
+    public void Kick() => Kick(_feet[0].Stepping ? 1 : 0, KickStyle.High, 0f);
+
+    /// <summary>A leg kicks (0 left, 1 right), after a wait (the flying kick's second leg).</summary>
+    public void Kick(int leg, KickStyle style, float wait)
     {
-        _kickLeg = _feet[1].Stepping ? 0 : 1;
-        _kickT = 0f;
+        _kickT[leg] = 0f;
+        _kickWait[leg] = wait;
+        _kickStyle[leg] = style;
     }
 
     /// <param name="eye">Your eyes (world).</param>
@@ -207,8 +222,17 @@ internal sealed class Skeleton
             }
             else Step(pelvis, rFlat, eye.y, k, speed, groundAt, dt);
 
-            _kickT = Mathf.Min(1f, _kickT + dt / KickTime);
-            if (DevKickFreeze && _kickT > 0.4f && _kickT < 1f) _kickT = 0.4f;
+            for (var leg = 0; leg < 2; leg++)
+            {
+                if (_kickWait[leg] > 0f)
+                {
+                    _kickWait[leg] -= dt;
+                    continue;
+                }
+
+                _kickT[leg] = Mathf.Min(1f, _kickT[leg] + dt / KickTime);
+                if (DevKickFreeze && _kickT[leg] > 0.4f && _kickT[leg] < 1f) _kickT[leg] = 0.4f;
+            }
         }
 
         for (var i = 0; i < 2; i++)
@@ -231,15 +255,38 @@ internal sealed class Skeleton
                 ground = ankleTarget - up * (Ankle(1).y * k);
             }
 
-            if (i == _kickLeg && _kickT < 1f)
+            if (_kickT[i] < 1f && _kickWait[i] <= 0f)
             {
-                // the kick: snapped out in front, up past hip height (where you can see it), sole first, held a moment,
-                // and back
-                var w = _kickT < 0.28f ? Smooth(_kickT / 0.28f) : _kickT < 0.55f ? 1f : 1f - Smooth((_kickT - 0.55f) / 0.45f);
-                var kickAt = hip + ft * ((ThighLen + ShinLen) * KickReach * k) + tu * (KickLift * k);
+                // the kick: snapped out in front, head-high (where you can see it), sole first, held a moment, and back
+                var t = _kickT[i];
+                var w = t < 0.28f ? Smooth(t / 0.28f) : t < 0.55f ? 1f : 1f - Smooth((t - 0.55f) / 0.45f);
+                var legLen = (ThighLen + ShinLen) * k;
+                var dir = ft;
+                var kickAt = hip + ft * (legLen * KickReach) + tu * (KickLift * k);
+                switch (_kickStyle[i])
+                {
+                    case KickStyle.Sweep:
+                    {
+                        // the roundhouse: out in front, then swept round to the kicking leg's side and down
+                        var sweep = Smooth(Mathf.Clamp01((t - 0.22f) / 0.5f));
+                        dir = Quaternion.AngleAxis(s * 60f * sweep, up) * ft;
+                        kickAt = hip + dir * (legLen * Mathf.Lerp(KickReach, 0.8f, sweep)) + tu * (Mathf.Lerp(KickLift, 0.15f, sweep) * k);
+                        break;
+                    }
+                    case KickStyle.Stomp:
+                        // looking down: the foot stamps the ground in front
+                        kickAt = new Vector3(hip.x, ground.y, hip.z) + ft * (legLen * 0.38f) + up * (Ankle(1).y * k);
+                        break;
+                    case KickStyle.Low:
+                        // the slide: the leg out low, along the ground
+                        kickAt = hip + ft * (legLen * 0.92f) - tu * (0.12f * k);
+                        break;
+                }
+
                 ankleTarget = Vector3.Lerp(ankleTarget, kickAt, w);
-                sole = Quaternion.Slerp(sole, Quaternion.LookRotation(Vector3.Slerp(ft, tu, 0.65f), -ft), w);
-                footFwd = Vector3.Slerp(footFwd, ft, w);
+                var soleWay = _kickStyle[i] == KickStyle.Stomp ? ft : Vector3.Slerp(dir, tu, 0.65f);
+                sole = Quaternion.Slerp(sole, Quaternion.LookRotation(soleWay, _kickStyle[i] == KickStyle.Stomp ? up : -dir), w);
+                footFwd = Vector3.Slerp(footFwd, dir, w);
             }
 
             var knee = SolveLeg(hip, ankleTarget, footFwd, k, out var ankle);

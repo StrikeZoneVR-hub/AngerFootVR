@@ -118,14 +118,11 @@ namespace AngerFootVR.Launcher
                         Step = by => Set("Monitor", "MonitorFov", Math.Max(70, Math.Min(110, Int("Monitor", "MonitorFov", 90) + by * 5)).ToString(CultureInfo.InvariantCulture)),
                         Enabled = () => Mod() && Cfg("Monitor", "MonitorView", "Steady") == "Steady",
                     },
-                    Toggle("Controls", "SwingThrow", "SWING THROW", "Hold the gun hand's grip, swing and let go: it flies the way and as hard as you threw it. Off: the grip throws straight away."),
                     Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
                     Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
                     new Opt { Header = true, Label = "FUN" },
-                    Toggle("Fun", "LastKillSlowMo", "LAST KILL SLOW-MO", "The last enemy standing goes down in slow motion."),
-                    Toggle("Fun", "DoorKickSlowMo", "DOOR KICK SLOW-MO", "A moment of slow motion when you kick a door open into enemies."),
                     Toggle("Fun", "FlipOff", "FLIP THEM OFF", "Enemies who see your middle finger (right stick click) come for you."),
                     new Opt { Header = true, Label = "LAUNCHER" },
                     new Opt
@@ -335,10 +332,10 @@ namespace AngerFootVR.Launcher
             var rows = new (string L, string LDo, string R, string RDo)[]
             {
                 ("STICK", "move (walk the movie house)", "STICK", "turn (snap or smooth)"),
-                ("X", "KICK", "A", "KICK"),
-                ("Y", "shoe power", "B", "jump"),
+                ("X", "KICK", "B", "KICK"),
+                ("Y", "shoe power", "A", "jump"),
                 (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
-                (left ? "GRIP" : "", left ? "swing + let go: throw" : "", left ? "" : "GRIP", left ? "" : "swing + let go: throw"),
+                (left ? "GRIP" : "", left ? "throw your gun" : "", left ? "" : "GRIP", left ? "" : "throw your gun"),
                 ("MENU", "pause", "CLICK STICK", "the middle finger"),
                 ("HOLD STICK", "recenter", "", ""),
             };

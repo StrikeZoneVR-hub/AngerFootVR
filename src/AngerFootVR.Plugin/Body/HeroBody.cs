@@ -31,6 +31,22 @@ internal static class HeroBody
 
     public static void Kick() => Sk.Kick();
 
+    /// <summary>The game's kick, as its first-person legs do it: the normal kick with the left leg, the flying kick (in
+    /// the air, moving) right then left, the roundhouse (in the air, standing) the right leg swept round, the stomp
+    /// (looking down) a stamp, the slide low.</summary>
+    public static void Kick(PlayerMeleeAttack attack)
+    {
+        if (attack == PlayerMeleeAttack.FlyingKick)
+        {
+            Sk.Kick(1, Skeleton.KickStyle.High, 0f);
+            Sk.Kick(0, Skeleton.KickStyle.High, 0.16f);
+        }
+        else if (attack == PlayerMeleeAttack.RoundhouseKick) Sk.Kick(1, Skeleton.KickStyle.Sweep, 0f);
+        else if (attack == PlayerMeleeAttack.StompKick || attack == PlayerMeleeAttack.AOEStompKick) Sk.Kick(0, Skeleton.KickStyle.Stomp, 0f);
+        else if (attack == PlayerMeleeAttack.SlidingKick) Sk.Kick(0, Skeleton.KickStyle.Low, 0f);
+        else Sk.Kick();
+    }
+
     /// <summary>Dev: draw the head too (for pictures of the whole body).</summary>
     public static void ShowHead(bool show) => _showHead = show;
 
@@ -44,6 +60,7 @@ internal static class HeroBody
     {
         if (!Ready || !VrBody.Active || !SingletonBehaviour<Player>.HasInstance || CinemaRig.Active) return;
         VrHands.Update();
+        Input.GunHold.EnsurePlaced();
         var player = SingletonBehaviour<Player>.Instance;
         var feet = player.transform.position;
         var gameEye = player.GetEyePosition(alive: true).y - feet.y;

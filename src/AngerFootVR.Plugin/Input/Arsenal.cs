@@ -349,6 +349,7 @@ internal static class Arsenal
         Dual = false;
         TwoHands = false;
         VrHands.HoldAt[0] = VrHands.HoldAt[1] = null;
+        VrHands.HoldRot[0] = VrHands.HoldRot[1] = null;
         if (_ammo != null) _ammo.gameObject.SetActive(false);
         if (_scope != null) _scope.SetActive(false);
         if (_scopeCam != null) _scopeCam.enabled = false;
@@ -363,7 +364,7 @@ internal static class Arsenal
     private static void HookFromTheHand(ref Ray ray, bool guideAim)
     {
         if (!guideAim || !InPlay) return;
-        var pose = VrHands.Get(GunHand);
+        var pose = VrHands.GetRaw(GunHand);
         if (!pose.Tracked) return;
         GunHold.BarrelRay(pose, out var from, out var dir);
         ray = new Ray(from, dir);

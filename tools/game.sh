@@ -41,6 +41,8 @@ case "$1" in
     [ "$AFVR_REALSAVES" = 1 ] || export AFVR_DEVSAVES=1
     # the dev run's token: the mod treats a run as a dev run only while this file holds the token it was started with
     # (a dev setting once leaked into Steam's environment, and the player's own runs came up on the test saves)
+    # (a launcher run's launch.txt makes any run the player's: never left for a dev run)
+    rm -f "$DATA/launch.txt"
     mkdir -p "$DATA"; export AFVR_DEVTOKEN="$RANDOM$RANDOM$RANDOM"; printf '%s' "$AFVR_DEVTOKEN" > "$DATA/dev-run.token"
     args=""; [ -n "$2" ] && args="-ArgumentList '$2'"
     mkdir -p "$(dirname "$PIDFILE")"

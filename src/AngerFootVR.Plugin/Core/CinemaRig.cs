@@ -117,12 +117,13 @@ internal static class CinemaRig
 
     private static Vector3 _lastStep;
 
-    /// <summary>Kicks (A/X: your leg swings; at the padded doors they burst open, in the rage room things break) and
+    /// <summary>Kicks (B/X: your leg swings; at the padded doors they burst open, in the rage room things break) and
     /// footsteps (soft on the carpet, harder on the rage room's concrete).</summary>
     private static void Interact()
     {
         var gazing = !VrHands.Get(XRNode.LeftHand).Tracked && !VrHands.Get(XRNode.RightHand).Tracked;
-        if (VrControls.DownEither(VrButton.Primary) && !(gazing && UI.Laser.OnScreen))
+        var kick = VrControls.Down(XRNode.LeftHand, VrButton.Primary) || VrControls.Down(XRNode.RightHand, VrButton.Secondary) && !UI.Laser.OnScreen;
+        if (kick && !(gazing && UI.Laser.OnScreen))
         {
             Body.HeroBody.Kick();
             var facing = HeadRotation * Vector3.forward;
@@ -188,6 +189,7 @@ internal static class CinemaRig
     private static void Enter()
     {
         if (!UI.MovieHouse.Build(UI.VrUi.Layer)) return;
+        UI.MovieHouse.Root.gameObject.SetActive(true);
         if (Camera == null)
         {
             var go = new GameObject("AngerFootVR Cinema Camera");
@@ -244,9 +246,21 @@ internal static class CinemaRig
     {
         Active = false;
         if (Camera != null) Camera.gameObject.SetActive(false);
+        // (it shares the menu panel's layer, 5 km under the world: the car's camera, drawing the panel, showed it out of
+        // the windows. Only there while you are)
+        if (UI.MovieHouse.Root != null) UI.MovieHouse.Root.gameObject.SetActive(false);
         foreach (var kv in Parked)
         {
             if (kv.Key == null) continue;
+            // a camera the game has given a picture of its own to draw into while it was parked (the level select's
+            // map, drawn onto the book's pages) keeps it, and stays off the headset: given the headset back, VR drew it
+            // with the headset's view, and the book showed the whole city small and dark
+            if (kv.Key.targetTexture != _sink)
+            {
+                kv.Key.stereoTargetEye = StereoTargetEyeMask.None;
+                continue;
+            }
+
             kv.Key.targetTexture = kv.Value.target;
             kv.Key.stereoTargetEye = kv.Value.eye;
         }

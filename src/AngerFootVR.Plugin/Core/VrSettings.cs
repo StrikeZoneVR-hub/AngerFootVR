@@ -18,9 +18,8 @@ internal static class VrSettings
     public static ConfigEntry<int> SnapAngle;
     public static ConfigEntry<int> SmoothSpeed;
     public static ConfigEntry<Hand> GunHand;
-    public static ConfigEntry<bool> MotionThrow;
     public static ConfigEntry<bool> VrMap;
-    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, SwingThrow, MotionDrink, LastKillSlowMo, DoorKickSlowMo, FlipOff;
+    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff;
     public static ConfigEntry<OpeningMode> Opening;
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
@@ -32,14 +31,10 @@ internal static class VrSettings
         SnapAngle = cfg.Bind("Comfort", "SnapAngle", 30, new ConfigDescription("Degrees a snap turns.", new AcceptableValueRange<int>(15, 90)));
         SmoothSpeed = cfg.Bind("Comfort", "SmoothTurnSpeed", 150, new ConfigDescription("Smooth turning speed at full stick (degrees a second).", new AcceptableValueRange<int>(60, 360)));
         GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand that holds the guns (its trigger shoots, its grip throws). The other hand's grip interacts.");
-        MotionThrow = cfg.Bind("Controls", "MotionThrow", true, "Flick your gun hand forward to throw your gun (the gun hand's grip throws too).");
         TwoHandAim = cfg.Bind("Controls", "TwoHandAim", true, "Two-handed guns: your other hand on the front (grip squeezed) holds the gun there and steers the barrel.");
-        SwingThrow = cfg.Bind("Controls", "SwingThrow", true, "Throws: hold the gun hand's grip, swing and let go; it flies the way and as hard as you threw. (A tap of the grip still throws where the gun points.)");
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");
         SniperScope = cfg.Bind("Display", "SniperScope", true, "The sniper rifle's scope magnifies when you put your eye to it.");
-        LastKillSlowMo = cfg.Bind("Fun", "LastKillSlowMo", true, "The last enemy standing goes down in slow motion.");
-        DoorKickSlowMo = cfg.Bind("Fun", "DoorKickSlowMo", true, "A moment of slow motion when you kick a door open into enemies.");
         FlipOff = cfg.Bind("Fun", "FlipOff", true, "Enemies who see your middle finger come for you.");
         VrMap = cfg.Bind("Controls", "LevelSelectInVR", true, "The level select in VR: sit in the car with the map book and point at the levels. Off: it plays on the movie screen.");
         Opening = cfg.Bind("Opening", "Opening", OpeningMode.FirstLaunchOnly, "The VR opening when the game starts: On, FirstLaunchOnly or Off (A, B or the menu button skips it).");

@@ -7,7 +7,7 @@ namespace AngerFootVR.Input;
 /// <summary>
 /// The VR controllers as the game's own kind of input (IInputProvider, beside its keyboard and gamepad ones).
 ///
-/// Play: trigger (gun hand) shoots, A or X kicks, B jumps, Y uses your shoes' power, the gun hand's grip throws your
+/// Play: trigger (gun hand) shoots, B or X kicks, A jumps, Y uses your shoes' power, the gun hand's grip throws your
 /// gun, the other grip interacts; left stick moves, right stick turns, the menu button pauses. Your head does the
 /// looking. Menus: either stick moves, A accepts, B goes back, the grips change tabs.
 /// </summary>
@@ -20,7 +20,6 @@ internal class VrInputProvider : IInputProvider
 
     private static XRNode OffHand => GunHand == XRNode.RightHand ? XRNode.LeftHand : XRNode.RightHand;
 
-    private static XRNode JumpHand => XRNode.RightHand; // B
 
     private static XRNode PowerHand => XRNode.LeftHand; // Y
 
@@ -31,13 +30,19 @@ internal class VrInputProvider : IInputProvider
     // (dual pistols: either trigger, each fires its own pistol: Arsenal)
     public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger) || Arsenal.Dual && VrControls.HeldEither(VrButton.Trigger);
     public bool WasShootReleased() => Arsenal.Dual ? VrControls.UpEither(VrButton.Trigger) && !VrControls.HeldEither(VrButton.Trigger) : VrControls.Up(GunHand, VrButton.Trigger);
-    public bool IsThrowPressed() => MotionThrow.GripThrows || MotionThrow.Held; // (SWING THROW: on the grip's release)
-    public bool IsKickPressed() => VrControls.HeldEither(VrButton.Primary);
-    public bool WasKickPressed() => VrControls.DownEither(VrButton.Primary);
-    public bool WasKickReleased() => VrControls.UpEither(VrButton.Primary);
-    public bool IsJumpPressed() => VrControls.Held(JumpHand, VrButton.Secondary);
-    public bool WasJumpPressed() => VrControls.Down(JumpHand, VrButton.Secondary);
-    public bool WasJumpReleased() => VrControls.Up(JumpHand, VrButton.Secondary);
+    public bool IsThrowPressed() => MotionThrow.Held;
+    // (the player's choice: B kicks and A jumps; X kicks too, so either hand can)
+    public bool IsKickPressed() => KickHeld;
+    public bool WasKickPressed() => KickDown;
+    public bool WasKickReleased() => VrControls.Up(XRNode.RightHand, VrButton.Secondary) || VrControls.Up(XRNode.LeftHand, VrButton.Primary);
+    public bool IsJumpPressed() => VrControls.Held(XRNode.RightHand, VrButton.Primary);
+    public bool WasJumpPressed() => VrControls.Down(XRNode.RightHand, VrButton.Primary);
+    public bool WasJumpReleased() => VrControls.Up(XRNode.RightHand, VrButton.Primary);
+
+    /// <summary>The kick buttons: B (right) and X (left).</summary>
+    public static bool KickHeld => VrControls.Held(XRNode.RightHand, VrButton.Secondary) || VrControls.Held(XRNode.LeftHand, VrButton.Primary);
+
+    public static bool KickDown => VrControls.Down(XRNode.RightHand, VrButton.Secondary) || VrControls.Down(XRNode.LeftHand, VrButton.Primary);
     public bool IsShoePowerPressed() => VrControls.Held(PowerHand, VrButton.Secondary);
     public bool WasShoePowerReleased() => VrControls.Up(PowerHand, VrButton.Secondary);
     public bool WasInteractPressed() => VrControls.Down(OffHand, VrButton.Grip);
@@ -55,13 +60,15 @@ internal class VrInputProvider : IInputProvider
     public bool IsDeceleratePressed() => VrControls.Held(XRNode.LeftHand, VrButton.Trigger);
 
     // menus
-    // (in the movie house the laser clicks the menus, and A/X kicks: only with no controllers to point does A/X accept)
+    // (in the movie house the laser clicks the menus: only with no controllers to point does A accept)
     public bool WasMenuAcceptPressed() => Live && (CinemaRig.Active
         ? !VrHands.Get(XRNode.LeftHand).Tracked && !VrHands.Get(XRNode.RightHand).Tracked && VrControls.DownEither(VrButton.Primary)
         : VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger));
-    // (B goes back, as on a gamepad: Y is the car's SHOES, and as a back too it opened the shoes and left them at once;
-    // in the movie house B or Y)
-    public bool WasMenuCancelPressed() => Live && (CinemaRig.Active ? VrControls.DownEither(VrButton.Secondary) : VrControls.Down(XRNode.RightHand, VrButton.Secondary));
+    // (B goes back, as on a gamepad: Y is the car's SHOES, and as a back too it opened the shoes and left them at once.
+    // In the movie house B kicks, so there it goes back only while you point at the screen; Y goes back there too)
+    public bool WasMenuCancelPressed() => Live && (CinemaRig.Active
+        ? VrControls.Down(XRNode.LeftHand, VrButton.Secondary) || VrControls.Down(XRNode.RightHand, VrButton.Secondary) && UI.Laser.OnScreen
+        : VrControls.Down(XRNode.RightHand, VrButton.Secondary));
     public bool WasMenuNextTabPressed() => Live && VrControls.Down(XRNode.RightHand, VrButton.Grip);
     public bool WasMenuPreviousTabPressed() => Live && VrControls.Down(XRNode.LeftHand, VrButton.Grip);
     public bool WasMenuCancelInputRemappingPressed() => VrControls.DownEither(VrButton.Menu);
