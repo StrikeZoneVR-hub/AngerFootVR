@@ -894,6 +894,32 @@ public class Plugin : BaseUnityPlugin
                         if (arg == "on" || arg == "off") Rendering.BloodDecals.On = arg == "on";
                         L.LogInfo(Rendering.BloodDecals.Describe());
                         break;
+                    case "gunoff":
+                    {
+                        // gunoff: how far the hand drawn on the gun is from where the gun was placed for your hand
+                        var t = typeof(Input.GunHold);
+                        var rig = HarmonyLib.AccessTools.Field(t, "_rig").GetValue(null) as HandRig;
+                        if (rig == null) break;
+                        var now = (Vector3)HarmonyLib.AccessTools.Field(t, "_palmNow").GetValue(null);
+                        var rest = (Vector3)HarmonyLib.AccessTools.Field(t, "_palmRest").GetValue(null);
+                        var an = rig.Animator;
+                        var si = an.GetCurrentAnimatorStateInfo(0);
+                        var clips = an.GetCurrentAnimatorClipInfo(0);
+                        var idleField = HarmonyLib.AccessTools.Field(typeof(HandRig), "_isInIdleState");
+                        L.LogInfo($"GUNOFF hand off its rest {(rig.transform.TransformPoint(now) - rig.transform.TransformPoint(rest)).magnitude:F3} m (now {now:F3} rest {rest:F3}) | state {si.shortNameHash} (Idle {Animator.StringToHash("Idle")}) t {si.normalizedTime:F2} len {si.length:F2} loop {si.loop} transition {an.IsInTransition(0)} rig idle {idleField?.GetValue(rig)} clips {string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(clips, c => c.clip.name + " " + c.weight.ToString("F2"))))} speed {an.speed} timescale {Time.timeScale} layers {an.layerCount}");
+                        break;
+                    }
+                    case "stall":
+                        // stall <ms>: the game stops for that long, as a slow PC's hitch would (tests the timing of things)
+                        System.Threading.Thread.Sleep(Mathf.Clamp(arg.Length > 0 ? int.Parse(arg) : 500, 0, 3000));
+                        break;
+                    case "pause":
+                        // pause | resume: the game's own pause, as its menu button and CONTINUE do it
+                        GameState.PauseGame();
+                        break;
+                    case "resume":
+                        GameState.ResumeGame();
+                        break;
                     case "playcard":
                         // playcard <level name part>: the map's play card raised for that level (its star goals)
                         L.LogInfo(UI.MenuFixes.DevPlayCard(arg));

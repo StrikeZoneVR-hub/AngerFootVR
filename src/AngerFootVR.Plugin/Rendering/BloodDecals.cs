@@ -75,6 +75,8 @@ internal static class BloodDecals
 
         // the game's own mono drawing stops: this draws it per eye instead
         if (prepass.enabled) prepass.enabled = false;
+        // (no blood shown, or Effect Quality Low: the game hides every splat then, so nothing to draw for them)
+        if (!GameSettings.ShowBlood || GameSettings.EffectQuality <= QualityLevel.Low) return;
         _prepass = prepass;
         var eye = active == Camera.MonoOrStereoscopicEye.Right ? 1 : 0;
         var own = Body.BloodOnYou.Any;

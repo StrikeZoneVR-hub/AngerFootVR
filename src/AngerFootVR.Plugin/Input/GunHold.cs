@@ -40,7 +40,30 @@ internal static class GunHold
     private static Transform _muzzle;
     private static HoldableObjectType _held;
     private static readonly System.Reflection.FieldInfo MuzzleField = AccessTools.Field(typeof(HandRigGunObject), "_muzzlePosition");
-    private static float _barrelOff, _heldSince;
+    private static float _barrelOff, _nextRest, _strayFor;
+    private static bool _idleSeen;
+    private static readonly int IdleHash = Animator.StringToHash("Idle");
+    private static readonly System.Text.RegularExpressions.Regex IdleName = new System.Text.RegularExpressions.Regex(@"Idle(_\d+)?$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    private static readonly System.Collections.Generic.Dictionary<int, bool> IdleStates = new System.Collections.Generic.Dictionary<int, bool>();
+    private static readonly System.Collections.Generic.List<AnimatorClipInfo> Clips = new System.Collections.Generic.List<AnimatorClipInfo>();
+
+    /// <summary>Whether the game's first-person hand is in its idle pose: each held thing has its own idle (the rifle's
+    /// Hands_AK_Idle, the dual pistols' A_DualPistol_Idle_02, the minigun's Hands_GattlingGun_Idle), a clip named so
+    /// (worked out once a state; not all of them are set to loop).</summary>
+    private static bool InIdle(Animator a)
+    {
+        if (a == null || !a.isActiveAndEnabled || a.IsInTransition(0)) return false;
+        var state = a.GetCurrentAnimatorStateInfo(0);
+        if (state.shortNameHash == IdleHash) return true;
+        if (IdleStates.TryGetValue(state.shortNameHash, out var idle)) return idle;
+        a.GetCurrentAnimatorClipInfo(0, Clips);
+        idle = false;
+        foreach (var c in Clips)
+            if (c.clip != null && c.weight > 0.5f && IdleName.IsMatch(c.clip.name))
+                idle = true;
+        IdleStates[state.shortNameHash] = idle;
+        return idle;
+    }
     private static Vector3 _palmRest, _muzzleRest, _axisRest;
     private static Quaternion? _fpsFrame;
     private static HoldableObjectType _layered;
@@ -176,8 +199,9 @@ internal static class GunHold
         {
             if (type != _held)
             {
-                _heldSince = Time.unscaledTime;
                 _palmRest = Vector3.zero;
+                _idleSeen = false;
+                _strayFor = 0f;
             }
 
             _held = type;
@@ -228,8 +252,25 @@ internal static class GunHold
                 var palm = _wrist.position + along * 0.5f - back.normalized * (along.magnitude * 0.12f);
                 anchorInRig = rig.InverseTransformPoint(palm);
                 _palmNow = anchorInRig; // (the game's hand as it is this frame: your drawn hand goes there)
-                if (Time.unscaledTime - _heldSince < 0.6f || _palmRest == Vector3.zero)
+                // where its palm rests is taken while the game's hand is in its idle pose, every frame (until it first
+                // gets there: as it is, so the thing comes up in your hand). It was taken for 0.6 s of real time after
+                // a pickup: mid-way through the game's unholster (the rifle's runs 1.33 s), longer still in slow motion,
+                // a pause or a hitch just after it, and every gun of that kind then sat away from your hand, the arm
+                // stretched out to it
+                var idle = InIdle(__instance.Animator);
+                // (and should the hand ever stay far off its rest for long, the rest is wrong: taken again)
+                var stray = IsGun && _muzzle != null && _palmRest != Vector3.zero && (rig.TransformPoint(anchorInRig) - rig.TransformPoint(_palmRest)).magnitude > 0.35f;
+                _strayFor = stray ? _strayFor + Time.unscaledDeltaTime : 0f;
+                if (_palmRest == Vector3.zero || !_idleSeen || idle && (_muzzle != null || Time.unscaledTime >= _nextRest) || _strayFor > 1f)
                 {
+                    if (_strayFor > 1f) Plugin.L.LogInfo($"Gun: the hand's rest was {_strayFor:F1} s off the gun; taken again");
+                    _strayFor = 0f;
+                    if (idle)
+                    {
+                        _idleSeen = true;
+                        _nextRest = Time.unscaledTime + 0.2f;
+                    }
+
                     _palmRest = anchorInRig;
                     _muzzleRest = _muzzle != null ? rig.InverseTransformPoint(_muzzle.position) : Vector3.zero;
                     // no muzzle (the plunger): its length, from your palm to its middle, is what points
@@ -370,7 +411,7 @@ internal static class GunHold
             line = $" barrel line {Vector3.Angle(rigT.forward, _muzzle.position - palmW):F0} deg (rig {rigT.InverseTransformDirection(_muzzle.position - palmW).normalized}) muzzle fwd {Vector3.Angle(rigT.forward, _muzzle.forward):F0} deg idle={(anim != null && anim.GetCurrentAnimatorStateInfo(0).IsName("Idle"))} muzzleRest {_muzzleRest} palmRest {_palmRest}";
         }
 
-        line += $" axis {_axisRest} from '{_axisObj}'";
+        line += $" axis {_axisRest} from '{_axisObj}' idle seen {_idleSeen}";
 
         var b = new System.Text.StringBuilder(line + $" GUN holding={Holding} mode={DevMode} held={(_held != null ? _held.ToString() : "none")} grip={HeldGrip} barrel off aim {_barrelOff:F1} deg muzzle={(_muzzle != null ? _muzzle.position.ToString() : "none")} hand={pose.Tracked} {pose.Position} rig={(_rig != null ? _rig.transform.position + " " + _rig.transform.eulerAngles + " scale " + _rig.transform.localScale : "none")} wrist={(_wrist != null ? _wrist.position.ToString() : "none")}");
         if (_rig != null)
