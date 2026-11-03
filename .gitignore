@@ -6,3 +6,10 @@ obj/
 tools/local.sh
 vendor/
 __pycache__/
+# Unity project (build output and caches)
+unity/*/Library/
+unity/*/Logs/
+unity/*/Temp/
+unity/*/obj/
+unity/*/UserSettings/
+unity/*/Bundles/

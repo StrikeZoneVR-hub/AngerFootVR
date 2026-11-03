@@ -760,6 +760,85 @@ public class Plugin : BaseUnityPlugin
                     case "load":
                         Dev.DevPlay.Levels(arg);
                         break;
+                    case "meshprobe":
+                        L.LogInfo(Dev.MeshProbe.Probe());
+                        break;
+                    case "modshaders":
+                        L.LogInfo(Rendering.Shaders.Describe());
+                        break;
+                    case "toontest":
+                    {
+                        // toontest [on|off]: the body (and its mirror twin) in the cartoon shader, its own texture kept
+                        var toon = Rendering.Shaders.Get("AngerFootVR/Toon");
+                        var root = Body.VrBody.Root;
+                        if (toon == null || root == null)
+                        {
+                            L.LogInfo("toontest: no shader or no body");
+                            break;
+                        }
+
+                        var info = new System.Text.StringBuilder("toontest");
+                        foreach (var r in Body.VrBody.AllRenderers())
+                        {
+                            var mats = r.materials;
+                            for (var i = 0; i < mats.Length; i++)
+                            {
+                                var m = mats[i];
+                                if (m == null) continue;
+                                if (info.Length < 900) info.Append($" | {r.name}: '{m.shader.name}' tex [{string.Join(",", m.GetTexturePropertyNames())}] main {(m.mainTexture != null ? m.mainTexture.name : "-")}");
+                                var tex = m.mainTexture;
+                                var col = m.HasProperty("_Color") ? m.color : Color.white;
+                                m.shader = toon;
+                                if (tex != null) m.mainTexture = tex;
+                                m.color = col;
+                            }
+
+                            r.materials = mats;
+                        }
+
+                        L.LogInfo(info.ToString());
+                        break;
+                    }
+                    case "heroexport":
+                        L.LogInfo(Dev.MeshProbe.ExportHero());
+                        break;
+                    case "baketest":
+                    {
+                        // can a locked goon mesh be baked into a readable snapshot? (the true surface, for the holes)
+                        var sb = new System.Text.StringBuilder("BAKETEST");
+                        foreach (var e in UnityEngine.Object.FindObjectsOfType<Enemy>())
+                        {
+                            foreach (var smr in e.GetComponentsInChildren<SkinnedMeshRenderer>())
+                            {
+                                var baked = new Mesh();
+                                var t0 = System.Diagnostics.Stopwatch.StartNew();
+                                try
+                                {
+                                    smr.BakeMesh(baked);
+                                    sb.Append($" | '{smr.name}' baked {baked.vertexCount} verts {baked.triangles.Length / 3} tris readable={baked.isReadable} in {t0.Elapsed.TotalMilliseconds:F2} ms");
+                                }
+                                catch (Exception ex)
+                                {
+                                    sb.Append($" | '{smr.name}' FAILED {ex.Message}");
+                                }
+
+                                UnityEngine.Object.Destroy(baked);
+                            }
+
+                            break;
+                        }
+
+                        L.LogInfo(sb.ToString());
+                        break;
+                    }
+                    case "holeinfo":
+                        foreach (var mr in UnityEngine.Object.FindObjectsOfType<MeshRenderer>())
+                            if (mr.name.StartsWith("AngerFootVR hole"))
+                                L.LogInfo($"HOLEINFO '{mr.name}' active={mr.gameObject.activeInHierarchy} enabled={mr.enabled} visible={mr.isVisible} layer={mr.gameObject.layer} at {mr.transform.position:F2} scale {mr.transform.lossyScale:F3} bounds {mr.bounds.size:F2} shader '{mr.sharedMaterial?.shader.name}' queue {mr.sharedMaterial?.renderQueue} parent '{mr.transform.parent?.name}' camMask {(Camera.main != null ? Camera.main.cullingMask.ToString("X") : "-")}");
+                        break;
+                    case "holetest":
+                        L.LogInfo(Dev.MeshProbe.HoleTest(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0.06f));
+                        break;
                     case "poke":
                         L.LogInfo("poke: " + UI.FunWorld.DevPoke(arg));
                         break;

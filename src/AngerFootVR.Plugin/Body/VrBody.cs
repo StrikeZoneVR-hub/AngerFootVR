@@ -191,6 +191,13 @@ internal static class VrBody
         if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
     }
 
+    /// <summary>Every renderer of the body and its twin (dev, and the wardrobe's styles).</summary>
+    public static System.Collections.Generic.IEnumerable<Renderer> AllRenderers()
+    {
+        if (_body != null) foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) yield return r;
+        if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) yield return r;
+    }
+
     private static Renderer[] _bodyR, _twinR;
     private static UnityEngine.Rendering.ShadowCastingMode[] _twinModes;
     private static float _nextRenderers;

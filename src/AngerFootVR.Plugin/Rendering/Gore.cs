@@ -77,6 +77,7 @@ internal static class Gore
 
         // bullet wounds spurt (the game's own spurt, on every enemy it hits): on with EXTRA, the game's way otherwise
         Spurts(Extra);
+        Holes.Update();
 
         // the extras due, a few a frame
         for (var i = 0; i < PerFrame && Pending.Count > 0; i++)
@@ -273,6 +274,7 @@ internal static class Gore
         var m = __instance.Rig.GetWorldMaterial();
         if (m != null && !m.SpawnsBlood) return;
         Spray(__instance.transform.position + Vector3.up * 1.1f, 3);
+        Holes.Bite(__instance.gameObject, position);
     }
 
     [HarmonyPrefix]
@@ -318,12 +320,14 @@ internal static class Gore
         var m = enemy.Health != null && enemy.Health.IsDead ? enemy.Rig.GetCorpseWorldMaterial() : enemy.Rig.GetWorldMaterial();
         if (m == null || !m.SpawnsBlood) return;
         Wound(enemy, impactCollider, impactPosition, impactDirection);
+        Holes.Queue(enemy.gameObject, impactCollider, impactPosition, impactDirection);
         if ((impactPosition - VrRig.HeadPosition).sqrMagnitude < 2.2f * 2.2f) Body.BloodOnYou.Close(impactPosition);
     }
 
     /// <summary>A level's start: forget the last one's bodies.</summary>
     public static void NewLevel()
     {
+        Holes.NewLevel();
         Smears.Clear();
         Wounds.Clear();
         Alive.Clear();
