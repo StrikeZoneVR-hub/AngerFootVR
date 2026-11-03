@@ -33,6 +33,9 @@ internal static class VrBody
 
     public static Transform Root => _body != null ? _body.transform : null;
     public static Animator Animator => _animator;
+
+    /// <summary>The mirror twin's animator (its bones are the body's, never shrunk).</summary>
+    public static Animator TwinAnimator => _twin != null ? _twin.GetComponent<Animator>() : null;
     public static bool Active => _body != null && _body.activeSelf;
 
     public static void Update()
@@ -190,6 +193,9 @@ internal static class VrBody
         foreach (var r in _body.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
         if (_twin != null) foreach (var r in _twin.GetComponentsInChildren<Renderer>(true)) r.forceRenderingOff = !shown;
     }
+
+    /// <summary>The body's root and its twin's (the wardrobe dresses both).</summary>
+    public static Transform[] Roots => new[] { _body != null ? _body.transform : null, _twin != null ? _twin.transform : null };
 
     /// <summary>Every renderer of the body and its twin (dev, and the wardrobe's styles).</summary>
     public static System.Collections.Generic.IEnumerable<Renderer> AllRenderers()

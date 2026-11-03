@@ -206,6 +206,12 @@ internal static class Props
             "barrel_red" => (new Color(0.72f, 0.08f, 0.05f), 0.45f, 0.35f, Color.black),
             "hazard_yellow" => (new Color(1f, 0.78f, 0.08f), 0.5f, 0f, Color.black),
             "steel" => (new Color(0.62f, 0.62f, 0.64f), 0.65f, 1f, Color.black),
+            // (metallic but not wholly: lit by the lamps as well as showing the room, so it never goes black in a dark one)
+            "endo_chrome" => (new Color(0.8f, 0.82f, 0.86f), 0.86f, 0.72f, Color.black),
+            "endo_gold" => (new Color(0.98f, 0.72f, 0.28f), 0.84f, 0.75f, Color.black),
+            "endo_dark" => (new Color(0.2f, 0.2f, 0.23f), 0.6f, 0.6f, Color.black),
+            "endo_teeth" => (new Color(0.92f, 0.93f, 0.95f), 0.75f, 0.6f, Color.black),
+            "endo_eye" => (new Color(1f, 0.12f, 0.06f), 0.9f, 0f, new Color(5f, 0.3f, 0.15f)),
             "steel_dark" => (new Color(0.25f, 0.25f, 0.27f), 0.5f, 0.9f, Color.black),
             "rubber_black" => (new Color(0.035f, 0.035f, 0.04f), 0.3f, 0f, Color.black),
             "button_red" => (new Color(0.95f, 0.08f, 0.08f), 0.8f, 0f, new Color(1.4f, 0.05f, 0.05f)),

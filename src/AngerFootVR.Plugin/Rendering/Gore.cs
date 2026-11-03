@@ -213,6 +213,7 @@ internal static class Gore
             WallBehind(position, direction, 1.15f);
             Burst(position, direction);
             Wound(__instance, collider, position, direction);
+            if (__instance.Health.IsDead) Body.BloodOnYou.Splash(position, 0.6f); // (a kick that killed: a little on your legs and front)
         }
         else Burst(position, direction); // a body bleeds when you kick it
 
@@ -247,7 +248,12 @@ internal static class Gore
     [HarmonyPatch(typeof(GameplayManager), nameof(GameplayManager.OnEnemyKilled))]
     private static void Killed(Enemy enemy, IEnemyPart hitPart, Damage damage)
     {
-        if (!Extra || enemy == null || hitPart == null || damage.Type == null) return;
+        if (!Extra || enemy == null || damage.Type == null) return;
+        // any bloody kill close by spatters the side of you that faced it (1.1 only ever stained your shoe: the
+        // hand's needed a bloody hit within 2.2 m of your eyes, which shooting hardly ever is)
+        if (enemy.Rig != null && enemy.Rig.GetWorldMaterial() is { SpawnsBlood: true } && damage.Type != DamageType.Explosion)
+            Body.BloodOnYou.Splash(enemy.Rig.GetCenterPosition(), 0.8f);
+        if (hitPart == null) return;
         if (!hitPart.IsHead() || !damage.Type.CanHeadshot) return;
         if (enemy.IsBoss || enemy.Rig is not HumanoidRig rig || rig is WallClimbingRig) return;
         if (enemy.GetComponentInChildren<SuicideBomber>() != null || enemy.GetComponentInChildren<AssaultRifleEnemy>() != null || enemy.GetComponentInChildren<GrenadeLauncherEnemy>() != null) return;
@@ -261,6 +267,7 @@ internal static class Gore
         if (rig.HeadPart.Collider != null) SingletonBehaviour<BloodCamera>.Instance.DoExtraSpurts(rig.HeadPart.Collider, 4, 0.25f);
         WallBehind(at, at - VrRig.HeadPosition, 1.2f); // (the way the shot went, near enough)
         if ((at - VrRig.HeadPosition).sqrMagnitude < 2.2f * 2.2f) Body.BloodOnYou.Close(at);
+        Body.BloodOnYou.Splash(at, 1.2f);
         _pops++;
     }
 
@@ -275,6 +282,7 @@ internal static class Gore
         if (m != null && !m.SpawnsBlood) return;
         Spray(__instance.transform.position + Vector3.up * 1.1f, 3);
         Holes.Bite(__instance.gameObject, position);
+        Body.BloodOnYou.Splash(__instance.transform.position + Vector3.up * 1.1f, 1.5f);
     }
 
     [HarmonyPrefix]

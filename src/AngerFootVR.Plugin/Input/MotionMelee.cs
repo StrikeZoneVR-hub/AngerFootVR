@@ -54,7 +54,13 @@ internal static class MotionMelee
         }
 
         if (list.Count == 0) return;
-        DamageManager.TryDealMaxDamage(list);
+        if (DamageManager.TryDealMaxDamage(list))
+            foreach (var hitOn in list)
+                if (hitOn.Collider != null && hitOn.Collider.GetComponentInParent<Enemy>() is Enemy e && e.Rig != null && e.Rig.GetWorldMaterial() is { SpawnsBlood: true })
+                {
+                    Body.BloodOnYou.Close(hitOn.Position);
+                    break;
+                }
         VrControls.Rumble(VrInputProvider.GunHand, 0.9f, 0.1f);
         Plugin.L.LogInfo($"Motion melee: {weapon.name} swung through {list.Count} ({pose.Velocity.magnitude:F1} m/s)");
     }

@@ -282,6 +282,10 @@ if '--no-fun' not in sys.argv:
     import build_fun
     build_fun.build(models, keep)
 
+if '--no-wardrobe' not in sys.argv:
+    import build_wardrobe
+    build_wardrobe.build(models, keep)
+
 # (the rage room's wooden and cardboard things are long planks and flaps held at their ends; the big new pieces of
 # furniture are long boxes too)
 A.densify([ob for ob, g, o in models if ob.name in ("chair", "crate", "box", "table", "jukebox", "fishtank", "vending", "concession_counter",
@@ -316,6 +320,10 @@ if PREVIEW:
                     ("soda_fountain", (0.9, 1.2, 0.8), (0, 0, 0.3)), ("soda_cup", (0.3, 0.4, 0.3), (0, 0, 0.12)), ("popcorn_bucket", (0.4, 0.55, 0.4), (0, 0, 0.14)),
                     ("concession_counter", (2.5, 3.0, 1.8), (0, 0, 0.5)), ("photo_kiosk", (1.4, 2.2, 1.4), (0, 0, 1.1)), ("rage_button", (0.8, 1.2, 1.4), (0, 0, 0.6)),
                     ("cooler", (0.9, 1.2, 1.0), (0, 0, 0.7)), ("kickball", (0.4, 0.5, 0.3), (0, 0, 0.0)), ("lightgun", (0.4, 0.4, 0.3), (0, 0.05, 0.08))):
+        show(n, v, t)
+    for n, v, t in (("kb_skull", (0.35, 0.5, 0.1), (0, 0, -0.02)), ("kb_upper", (0.6, 0.9, 0.7), (0, 0, 0.5)), ("kb_lower", (0.6, -0.9, 0.7), (0, 0, 0.5)),
+                    ("kb_ribcage", (0.5, 0.75, 0.25), (0, 0, 0)), ("kb_pelvis", (0.4, 0.6, 0.3), (0, 0, 0)), ("kb_palm", (0.2, 0.3, 0.2), (0, 0, 0.05)),
+                    ("kb_foot", (0.35, 0.45, 0.2), (0, 0.07, -0.05)), ("kb_joint", (0.25, 0.35, 0.15), (0, 0, 0))):
         show(n, v, t)
     # the pieces of a few, spread out
     for n in ("tv", "gnome", "crate"):

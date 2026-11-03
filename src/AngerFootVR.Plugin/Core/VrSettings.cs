@@ -28,6 +28,8 @@ internal static class VrSettings
     public static ConfigEntry<int> MonitorFov;
     public static ConfigEntry<GoreLevel> Gore;
     public static ConfigEntry<BloodTint> BloodColour;
+    public static ConfigEntry<string> BodyStyle, Gloves;
+    public static ConfigEntry<int> SeenUnlocks;
 
     public static void Init(ConfigFile cfg)
     {
@@ -49,6 +51,9 @@ internal static class VrSettings
         MonitorFov = cfg.Bind("Monitor", "MonitorFov", 90, new ConfigDescription("How wide the Steady view is (degrees across); never wider than the headset's eye sees.", new AcceptableValueRange<int>(70, 110)));
         Gore = cfg.Bind("Gore", "Gore", GoreLevel.Extra, "Blood: Off (none), Game (the game's own) or Extra (more: kicks splatter the walls, headshots pop heads, wounds and blood stay on bodies and on you). Follows the game's own Show Blood setting.");
         BloodColour = cfg.Bind("Gore", "BloodColour", BloodTint.Pink, "The blood's colour: Pink (the game's own) or Red.");
+        BodyStyle = cfg.Bind("Wardrobe", "BodyStyle", "classic", "Your body's style (chosen at the movie house's wardrobe; beat levels to open more).");
+        Gloves = cfg.Bind("Wardrobe", "Gloves", "bare", "Your gloves (chosen at the movie house's wardrobe; beat levels to open more).");
+        SeenUnlocks = cfg.Bind("Wardrobe", "SeenUnlocks", 0, "How many of each kind were open when the wardrobe last showed you (for its NEW! card).");
         _cfg = cfg;
         ApplyHand();
         GunHand.SettingChanged += (s, e) => ApplyHand();

@@ -5,15 +5,17 @@ using UnityEngine;
 namespace AngerFootVR.Body;
 
 /// <summary>
-/// GORE EXTRA: blood on you. A kick that draws blood leaves it on your shoe, a bloody hit up close on your gun hand; it
-/// dries away after a while. They're the game's own blood splats (the ones it puts on walls), carried by your foot or
+/// GORE EXTRA: blood on you. A kick that draws blood leaves it on your shoe, a bloody hit up close on your gun hand, a
+/// kill close by (a head popped, a goon blown up, a bat swung) spatters the side of you that faced it, your chest and
+/// arms; it dries away and is gone after 15 seconds. It lands on whatever you're wearing (the wardrobe's gloves, suits
+/// and the killbot's chrome are drawn into the same picture of your body). They're the game's own blood splats (the ones it puts on walls), carried by your foot or
 /// hand, and drawn only on you: they paint from a depth picture of your body alone (see BloodDecals), so they never
 /// stain the floor you stand on.
 /// </summary>
 internal static class BloodOnYou
 {
     private const float Life = 15f, DryFrom = 9f;
-    private const int Max = 6;
+    private const int Max = 10;
     private static readonly int CutoutId = Shader.PropertyToID("_Cutout");
     private static readonly int DepthId = Shader.PropertyToID("_LayerDecalDepthTexture");
 
@@ -66,6 +68,36 @@ internal static class BloodOnYou
         var dir = hand.position - Core.VrRig.HeadPosition;
         if (dir.sqrMagnitude < 0.0001f) dir = Core.VrRig.HeadRotation * Vector3.forward;
         Add(hand, hand.position, dir.normalized, 0.14f);
+    }
+
+    /// <summary>A kill close by (within 3 m): a spatter on the parts of you facing it, more the closer it was.</summary>
+    public static void Splash(Vector3 kill, float strength = 1f)
+    {
+        var head = Core.VrRig.HeadPosition;
+        var dist = (kill - head).magnitude;
+        if (dist > 3f) return;
+        var anim = VrBody.Animator;
+        if (anim == null) return;
+        var parts = new List<(Transform bone, float score)>();
+        foreach (var b in new[] { HumanBodyBones.Chest, HumanBodyBones.Spine, HumanBodyBones.LeftUpperArm, HumanBodyBones.RightUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.RightLowerArm, HumanBodyBones.LeftUpperLeg, HumanBodyBones.RightUpperLeg })
+        {
+            var t = anim.GetBoneTransform(b);
+            if (t == null) continue;
+            // (nearer the kill and facing it: the front of you if it was in front)
+            parts.Add((t, (t.position - kill).magnitude + Random.Range(0f, 0.25f)));
+        }
+
+        parts.Sort((a, b) => a.score.CompareTo(b.score));
+        var n = Mathf.Clamp(Mathf.RoundToInt((3.2f - dist) * strength), 1, 3);
+        for (var i = 0; i < n && i < parts.Count; i++)
+        {
+            var t = parts[i].bone;
+            var dir = t.position - kill;
+            if (dir.sqrMagnitude < 0.0001f) continue;
+            dir.Normalize();
+            // (the splat paints what faces back along it: on the bone's side toward the kill)
+            Add(t, t.position - dir * 0.08f, dir, Random.Range(0.13f, 0.2f));
+        }
     }
 
     private static void Add(Transform bone, Vector3 at, Vector3 dir, float scale)

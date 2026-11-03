@@ -103,6 +103,7 @@ public class Plugin : BaseUnityPlugin
         UI.Lobby.Init();
         UI.Arcade.Init();
         UI.GunRange.Init();
+        Wardrobe.Wardrobe.Init();
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.2.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -187,6 +188,8 @@ public class Plugin : BaseUnityPlugin
         Input.MotionDrink.Update();
         UI.Surprises.Update();
         UI.Surprises.HallOfFame();
+        Wardrobe.HeroShell.Update();
+        Wardrobe.Wardrobe.Update();
         VrSettings.Poll();
         Rendering.VrQuality.Update();
         Rendering.Gore.Update();
@@ -831,6 +834,101 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo(sb.ToString());
                         break;
                     }
+                    case "portrait":
+                    {
+                        // portrait [name] [side|back]: the mirror twin photographed from in front, close (dev)
+                        var a = arg.Split(' ');
+                        var twin = Body.VrBody.Roots[1];
+                        if (twin == null) break;
+                        var head = Body.VrBody.TwinAnimator?.GetBoneTransform(HumanBodyBones.Head);
+                        var hips = Body.VrBody.TwinAnimator?.GetBoneTransform(HumanBodyBones.Hips);
+                        if (head == null || hips == null) break;
+                        var mid = (head.position + hips.position) * 0.5f;
+                        var fwd = Vector3.ProjectOnPlane(twin.forward, Vector3.up).normalized;
+                        if (a.Length > 1 && a[1] == "side") fwd = Vector3.Cross(Vector3.up, fwd);
+                        if (a.Length > 1 && a[1] == "back") fwd = -fwd;
+                        var go = new GameObject("AngerFootVR portrait");
+                        var cam = go.AddComponent<Camera>();
+                        cam.enabled = false;
+                        cam.stereoTargetEye = StereoTargetEyeMask.None;
+                        cam.fieldOfView = 40f;
+                        cam.nearClipPlane = 0.05f;
+                        cam.clearFlags = CameraClearFlags.SolidColor;
+                        cam.backgroundColor = new Color(0.12f, 0.1f, 0.14f);
+                        cam.cullingMask = 1 << twin.gameObject.layer;
+                        go.transform.position = mid + fwd * 2.6f + Vector3.up * 0.1f;
+                        go.transform.rotation = Quaternion.LookRotation(mid - go.transform.position);
+                        var rt = new RenderTexture(900, 1200, 24);
+                        cam.targetTexture = rt;
+                        cam.Render();
+                        RenderTexture.active = rt;
+                        var tex = new Texture2D(900, 1200, TextureFormat.RGB24, false);
+                        tex.ReadPixels(new Rect(0, 0, 900, 1200), 0, 0);
+                        RenderTexture.active = null;
+                        var dir = Path.Combine(Paths.BepInExRootPath, Path.Combine("AngerFootVR", "shots"));
+                        Directory.CreateDirectory(dir);
+                        var file = Path.Combine(dir, $"portrait_{(a[0].Length > 0 ? a[0] : "p")}.png");
+                        File.WriteAllBytes(file, tex.EncodeToPNG());
+                        UnityEngine.Object.Destroy(tex);
+                        rt.Release();
+                        UnityEngine.Object.Destroy(go);
+                        L.LogInfo("portrait -> " + file);
+                        break;
+                    }
+                    case "bodyparts":
+                    {
+                        var sb = new System.Text.StringBuilder("BODYPARTS");
+                        var root = Body.VrBody.Root;
+                        if (root != null)
+                            foreach (var r in root.GetComponentsInChildren<Renderer>(true))
+                                if (r.gameObject.activeInHierarchy && r.enabled && !r.forceRenderingOff)
+                                    sb.Append($" | {r.name} layer {r.gameObject.layer} shadows {r.shadowCastingMode} mat {(r.sharedMaterial != null ? r.sharedMaterial.name : "-")}");
+                        foreach (var c in Camera.allCameras)
+                            sb.Append($" || cam {c.name} mask {c.cullingMask:X}");
+                        L.LogInfo(sb.ToString());
+                        break;
+                    }
+                    case "wardrobe":
+                        L.LogInfo(Wardrobe.Wardrobe.Describe());
+                        break;
+                    case "wear":
+                    {
+                        // wear <id>: dress in a body style or gloves now (dev: open or not)
+                        var item = Wardrobe.Wardrobe.Bodies.Find(i => i.Id == arg);
+                        var glove = Wardrobe.Wardrobe.Gloves.Find(i => i.Id == arg);
+                        if (item != null) Wardrobe.Wardrobe.DevBody = item;
+                        else if (glove != null) Wardrobe.Wardrobe.DevGlove = glove;
+                        else if (arg == "off") Wardrobe.Wardrobe.DevBody = Wardrobe.Wardrobe.DevGlove = null;
+                        else L.LogInfo("wear: no " + arg + " (bodies: " + string.Join(", ", Wardrobe.Wardrobe.Bodies.ConvertAll(i => i.Id).ToArray()) + "; gloves: " + string.Join(", ", Wardrobe.Wardrobe.Gloves.ConvertAll(i => i.Id).ToArray()) + ")");
+                        break;
+                    }
+                    case "shellbuild":
+                        Wardrobe.HeroShell.Request(arg.Length > 0 ? arg.Split(' ') : new[] { "AngerfootBody" });
+                        L.LogInfo(Wardrobe.HeroShell.Describe());
+                        break;
+                    case "glovetest":
+                    {
+                        // glovetest [outward m]: a plain glove shell on both hands (after shellbuild)
+                        var shell = Wardrobe.HeroShell.Get("AngerfootBody");
+                        if (shell == null)
+                        {
+                            L.LogInfo("glovetest: no shell yet (" + Wardrobe.HeroShell.Describe() + ")");
+                            break;
+                        }
+
+                        Wardrobe.Fit.TakeOff();
+                        var anim = Body.VrBody.Animator;
+                        var hands = Wardrobe.Fit.Under(anim, HumanBodyBones.LeftHand, HumanBodyBones.RightHand);
+                        var mesh = shell.Shell(n => hands.Contains(n), arg.Length > 0 ? Dev.MockControllers.F(arg) : 0.004f, out var cov);
+                        var toon = Rendering.Shaders.Get("AngerFootVR/Toon");
+                        var mat = new Material(toon) { color = new Color(0.25f, 0.13f, 0.07f) };
+                        mat.SetFloat("_Outline", 0.003f);
+                        Wardrobe.Fit.WearShell("AngerfootBody", mesh, mat);
+                        var tpl = Body.HeroModel.Template.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                        var src = System.Array.Find(tpl, x => x.name == "AngerfootBody");
+                        L.LogInfo($"glovetest: {mesh.vertexCount} points ({cov:P0} of the skin), {hands.Count} hand bones, worn {Wardrobe.Fit.Count}; template smr scale {src.transform.lossyScale:F3} active {src.gameObject.activeInHierarchy}; {Wardrobe.HeroShell.Describe()}");
+                        break;
+                    }
                     case "holeinfo":
                         foreach (var mr in UnityEngine.Object.FindObjectsOfType<MeshRenderer>())
                             if (mr.name.StartsWith("AngerFootVR hole"))
@@ -1091,6 +1189,12 @@ public class Plugin : BaseUnityPlugin
                         // gore [off|game|extra|pink|red|you]: the VR gore setting (this run only, not saved) and how it stands
                         if (arg == "off" || arg == "game" || arg == "extra") VrSettings.Gore.BoxedValue = (VrSettings.GoreLevel)System.Enum.Parse(typeof(VrSettings.GoreLevel), arg, true);
                         if (arg == "you") Rendering.Gore.DevOnYou();
+                        if (arg == "splash")
+                        {
+                            var f = Core.VrRig.HeadRotation * Vector3.forward;
+                            f.y = 0f;
+                            Body.BloodOnYou.Splash(Core.VrRig.HeadPosition + f.normalized * 1.0f + Vector3.down * 0.5f, 1.5f);
+                        }
                         if (arg == "youworld") Body.BloodOnYou.DevWorld = !Body.BloodOnYou.DevWorld;
                         if (arg == "pink" || arg == "red") VrSettings.BloodColour.BoxedValue = (VrSettings.BloodTint)System.Enum.Parse(typeof(VrSettings.BloodTint), arg, true);
                         L.LogInfo(Rendering.Gore.Describe());
