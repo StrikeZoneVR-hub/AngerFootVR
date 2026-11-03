@@ -27,7 +27,7 @@ cp "$XR/RuntimeLoaders/windows/x64/openxr_loader.dll" "$DATA/Plugins/x86_64/"
 
 # the plugin
 mkdir -p "$GAME/BepInEx/plugins/AngerFootVR" "$GAME/BepInEx/AngerFootVR"
-cp src/AngerFootVR.Plugin/bin/Release/netstandard2.0/AngerFootVR.dll "$GAME/BepInEx/plugins/AngerFootVR/"
+cp src/AngerFootVR.Plugin/bin/Release/netstandard2.0/AngerFootVR.dll assets/props.afvp "$GAME/BepInEx/plugins/AngerFootVR/"
 
 cat > "$GAME/BepInEx/AngerFootVR/installed.txt" <<EOF
 winhttp.dll

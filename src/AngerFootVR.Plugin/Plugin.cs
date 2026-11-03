@@ -499,6 +499,49 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo(b.ToString());
                         break;
                     }
+                    case "shaders":
+                    {
+                        var names = new[] { "Standard", "Standard (Specular setup)", "Particles/Standard Surface", "Particles/Standard Unlit", "Legacy Shaders/Diffuse", "Legacy Shaders/VertexLit", "Legacy Shaders/Bumped Diffuse", "Nature/Tree Soft Occlusion Bark", "Sprites/Default", "Unlit/Texture", "Unlit/Color", "UI/Default", "Mobile/Diffuse", "Legacy Shaders/Particles/Additive", "Legacy Shaders/Particles/Alpha Blended", "Particles/Additive", "Legacy Shaders/Self-Illumin/Diffuse" };
+                        L.LogInfo("SHADERS " + string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(names, n => n + "=" + (Shader.Find(n) != null ? "yes" : "no")))));
+                        var all = Resources.FindObjectsOfTypeAll<Shader>();
+                        L.LogInfo("SHADERS loaded: " + string.Join(", ", System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(all, x => x.name))));
+                        break;
+                    }
+                    case "props":
+                    {
+                        // the game's prefabs that are always loaded (GlobalAssets), with what each is
+                        var b = new System.Text.StringBuilder("PROPS");
+                        var pairs = Framework.ScriptableObjectSingleton<GlobalAssets>.Instance.PrefabGUIDPairs;
+                        foreach (var pair in pairs)
+                        {
+                            var go = pair.Prefab;
+                            if (go == null) continue;
+                            var brk = go.GetComponentInChildren<BreakableProp>(true);
+                            var rb = go.GetComponent<Rigidbody>();
+                            var r = go.GetComponentInChildren<Renderer>(true);
+                            b.Append($" | {go.name} L{go.layer}{(brk != null ? $" BREAK({brk.Sturdiness},{brk.BrokenObjects.Length})" : "")}{(rb != null ? $" rb{rb.mass:F1}" : "")}{(r != null ? $" {r.bounds.size:F1}" : "")}");
+                        }
+
+                        L.LogInfo(b.ToString());
+                        var layers = new System.Text.StringBuilder("LAYERS");
+                        for (var i = 0; i < 32; i++)
+                            if (!string.IsNullOrEmpty(LayerMask.LayerToName(i)))
+                                layers.Append($" {i}={LayerMask.LayerToName(i)}");
+                        L.LogInfo(layers.ToString());
+                        break;
+                    }
+                    case "go":
+                    {
+                        // go x z [yaw]: stand at this spot of the movie house (local metres)
+                        var a = arg.Split(' ');
+                        CinemaRig.DevGo(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), a.Length > 2 ? Dev.MockControllers.F(a[2]) : 0f);
+                        break;
+                    }
+                    case "rage":
+                        if (arg == "open") UI.MovieHouse.TryKickDoor(UI.MovieHouse.Root.TransformPoint(new Vector3(UI.MovieHouse.DoorX, 1.6f, -5.0f)), Vector3.back);
+                        else if (arg == "kick") UI.RageRoom.Kick(CinemaRig.HeadPosition, CinemaRig.HeadRotation * Vector3.forward);
+                        L.LogInfo(UI.RageRoom.Describe());
+                        break;
                     case "ctl":
                     {
                         var a = arg.Split(' ');

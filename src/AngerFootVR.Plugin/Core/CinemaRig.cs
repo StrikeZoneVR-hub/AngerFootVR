@@ -40,18 +40,8 @@ internal static class CinemaRig
     /// <summary>Walking speed in the movie house (metres a second at full stick).</summary>
     public const float WalkSpeed = 2.0f;
 
-    /// <summary>
-    /// The movie house's open floor, relative to its origin: inside the walls, off the stage, not through the seat blocks
-    /// (the centre aisle and the side aisles are open), and round the lobby mirror.
-    /// </summary>
-    private static bool Walkable(Vector3 p)
-    {
-        const float r = 0.25f; // your body's radius
-        if (p.x < -6.9f + r || p.x > 6.9f - r || p.z < -5.9f + r || p.z > 14.3f - r) return false;
-        if (p.z > 2.9f - r && p.z < 12.4f + r && Mathf.Abs(p.x) > 0.75f - r && Mathf.Abs(p.x) < 5.95f + r) return false;
-        var m = new Vector2(p.x + 2.15f, p.z - (UI.MovieHouse.Standing.z - UI.MovieHouse.Origin.z));
-        return !(Mathf.Abs(m.x) < 0.35f + r && Mathf.Abs(m.y) < 0.65f + r);
-    }
+    private static bool Walkable(Vector3 p) => UI.MovieHouse.Walkable(p);
+
     private static bool _savedFog;
     private static Color _savedAmbient;
     private static UnityEngine.Rendering.AmbientMode _savedMode;
@@ -69,6 +59,7 @@ internal static class CinemaRig
         {
             _nextScan = Time.unscaledTime + 0.25f;
             ParkGameCameras();
+            Listen(true); // (a scene load brings its own listener)
         }
     }
 
@@ -83,10 +74,19 @@ internal static class CinemaRig
             _centered = true;
         }
 
-        // (the right stick works the menu here; you turn yourself)
-        var yawRot = Quaternion.Euler(0f, Yaw, 0f);
         var height = tracked.y > 0.5f ? tracked.y : 1.62f; // the test runtime's head sits on the floor
         var local = new Vector3(tracked.x - _center.x, height, tracked.z - _center.z);
+
+        // the right stick turns you (snap or smooth, as in play), round where you stand: the menus are the laser's
+        var turn = VrRig.TurnDelta(VrControls.DevTurn ?? VrControls.Stick(XRNode.RightHand).x, ref _snapHeld);
+        if (turn != 0f)
+        {
+            var flatLocal = new Vector3(local.x, 0f, local.z);
+            _walk += Quaternion.Euler(0f, Yaw, 0f) * flatLocal - Quaternion.Euler(0f, Yaw + turn, 0f) * flatLocal;
+            Yaw += turn;
+        }
+
+        var yawRot = Quaternion.Euler(0f, Yaw, 0f);
 
         // walking: the left stick, the way you look, on the open floor (the aisles, the lobby; not through the seats)
         var stick = VrControls.DevMove != Vector2.zero ? VrControls.DevMove : VrControls.Stick(XRNode.LeftHand);
@@ -108,9 +108,67 @@ internal static class CinemaRig
         // your standing eye height: the highest your head has been since you came in (or recentred)
         if (tracked.y > 0.5f) _standingEye = Mathf.Max(_standingEye, tracked.y);
         Body.HeroBody.PoseCinema(HeadPosition, HeadRotation, UI.MovieHouse.Standing.y, _standingEye > 0.5f ? _standingEye : height);
+
+        UI.MovieHouse.Animate();
+        UI.RageRoom.Prepare();
+        UI.RageRoom.Update();
+        Interact();
+    }
+
+    private static Vector3 _lastStep;
+
+    /// <summary>Kicks (A/X: your leg swings; at the padded doors they burst open, in the rage room things break) and
+    /// footsteps (soft on the carpet, harder on the rage room's concrete).</summary>
+    private static void Interact()
+    {
+        var gazing = !VrHands.Get(XRNode.LeftHand).Tracked && !VrHands.Get(XRNode.RightHand).Tracked;
+        if (VrControls.DownEither(VrButton.Primary) && !(gazing && UI.Laser.OnScreen))
+        {
+            Body.HeroBody.Kick();
+            var facing = HeadRotation * Vector3.forward;
+            if (!UI.MovieHouse.TryKickDoor(HeadPosition, facing)) UI.RageRoom.Kick(HeadPosition, facing);
+        }
+
+        var feet = new Vector3(HeadPosition.x, UI.MovieHouse.Standing.y, HeadPosition.z);
+        if ((feet - _lastStep).magnitude > 0.7f)
+        {
+            if (_lastStep != Vector3.zero && (feet - _lastStep).magnitude < 3f)
+                UI.Sounds.Play(feet.z - UI.MovieHouse.Origin.z < -6.1f ? "step_hard" : "step", feet, 0.3f);
+            _lastStep = feet;
+        }
+    }
+
+    private static readonly List<AudioListener> Silenced = new List<AudioListener>();
+
+    /// <summary>The movie house listens from your head (its sounds come from where they happen); the game's own listener
+    /// rests meanwhile (its music and menu sounds are flat, they play the same).</summary>
+    private static void Listen(bool here)
+    {
+        if (Camera == null) return;
+        var mine = Camera.GetComponent<AudioListener>() ?? Camera.gameObject.AddComponent<AudioListener>();
+        if (here)
+        {
+            foreach (var l in Object.FindObjectsOfType<AudioListener>())
+                if (l != mine && l.enabled)
+                {
+                    l.enabled = false;
+                    Silenced.Add(l);
+                }
+
+            mine.enabled = true;
+        }
+        else
+        {
+            mine.enabled = false;
+            foreach (var l in Silenced)
+                if (l != null)
+                    l.enabled = true;
+            Silenced.Clear();
+        }
     }
 
     private static float _height = 1.62f, _standingEye;
+    private static bool _snapHeld;
 
     /// <summary>Just before the frame is drawn: the camera again, from the newest head pose (the one Unity draws the
     /// eyes with), as Unity's own tracked pose driver does.</summary>
@@ -153,9 +211,23 @@ internal static class CinemaRig
         Camera.gameObject.SetActive(true);
         _centered = false;
         _walk = Vector3.zero; // back to your spot facing the screen
+        Yaw = 0f;
         Active = true;
+        UI.MovieHouse.CloseDoors();
         ParkGameCameras();
+        Listen(true);
         Plugin.L.LogInfo("Cinema: in the movie house");
+    }
+
+    /// <summary>Dev: you stand at this spot of the movie house (local metres), facing this way (degrees).</summary>
+    public static void DevGo(float x, float z, float yaw)
+    {
+        if (!Active) return;
+        VrRig.TryGetTrackedHead(out var tracked, out _);
+        Yaw = yaw;
+        var local = Quaternion.Euler(0f, yaw, 0f) * new Vector3(tracked.x - _center.x, 0f, tracked.z - _center.z);
+        _walk = UI.MovieHouse.Origin + new Vector3(x, 0f, z) - UI.MovieHouse.Standing - local;
+        _walk.y = 0f;
     }
 
     /// <summary>Back to your spot facing the screen, centred on where you stand now.</summary>
@@ -163,6 +235,7 @@ internal static class CinemaRig
     {
         _centered = false;
         _walk = Vector3.zero;
+        Yaw = 0f;
         _standingEye = 0f;
         Body.HeroBody.Replant();
     }
@@ -179,6 +252,8 @@ internal static class CinemaRig
         }
 
         Parked.Clear();
+        Listen(false);
+        UI.RageRoom.Clear();
         Plugin.L.LogInfo("Cinema: back to the game");
     }
 

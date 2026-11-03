@@ -151,7 +151,8 @@ internal static class Opening
         var on = new[] { House, House + 0.3f, Projector + 0.4f, House + 0.6f, Lobby };
         for (var i = 0; i < lights.Count && i < _base.Length; i++)
         {
-            var k = i < on.Length ? (i == 2 ? Mathf.Clamp01((t - on[i]) / 1.2f) : i == 4 ? Mathf.Clamp01((t - on[i]) / 0.8f) : SnapOn(t - on[i])) : 1f;
+            // (the rest, the sconces' pools, the sign's glow, the rage room's: on with the house, one after another)
+            var k = i < on.Length ? (i == 2 ? Mathf.Clamp01((t - on[i]) / 1.2f) : i == 4 ? Mathf.Clamp01((t - on[i]) / 0.8f) : SnapOn(t - on[i])) : SnapOn(t - House - 0.9f - 0.15f * (i - on.Length));
             lights[i].intensity = _base[i] * k;
         }
 

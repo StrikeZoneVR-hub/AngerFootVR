@@ -165,21 +165,21 @@ internal static class VrRig
 
     private static bool _snapHeld;
 
-    private static void Turn(float stick)
+    private static void Turn(float stick) => PlayYaw += TurnDelta(stick, ref _snapHeld);
+
+    /// <summary>How far the right stick turns you this frame (degrees): snap (one jump a push, the stick back to the
+    /// middle before the next) or smooth, as set in OPTIONS. Used in play and in the movie house.</summary>
+    public static float TurnDelta(float stick, ref bool snapHeld)
     {
         if (VrSettings.Turn == null || VrSettings.Turn.Value == VrSettings.TurnStyle.Smooth)
+            return Mathf.Abs(stick) < 0.15f ? 0f : stick * (VrSettings.SmoothSpeed?.Value ?? SmoothTurnSpeed) * Time.unscaledDeltaTime;
+        if (Mathf.Abs(stick) < 0.35f) snapHeld = false;
+        else if (!snapHeld && Mathf.Abs(stick) > 0.7f)
         {
-            if (Mathf.Abs(stick) < 0.15f) return;
-            PlayYaw += stick * (VrSettings.SmoothSpeed?.Value ?? SmoothTurnSpeed) * Time.unscaledDeltaTime;
-            return;
+            snapHeld = true;
+            return Mathf.Sign(stick) * VrSettings.SnapAngle.Value;
         }
 
-        // snap: one jump a push (the stick goes back to the middle before the next)
-        if (Mathf.Abs(stick) < 0.35f) _snapHeld = false;
-        else if (!_snapHeld && Mathf.Abs(stick) > 0.7f)
-        {
-            _snapHeld = true;
-            PlayYaw += Mathf.Sign(stick) * VrSettings.SnapAngle.Value;
-        }
+        return 0f;
     }
 }

@@ -7,9 +7,10 @@ using UnityEngine.XR;
 namespace AngerFootVR.UI;
 
 /// <summary>
-/// The laser pointer in the movie house (as InkVR's): point at the big screen with either hand and pull the trigger
-/// (or press A/X or grip) to click the game's menus. The hand you last clicked with points; without controllers your
-/// gaze points (and A/X/grip click), so the menus always work. The hit point on the screen becomes a pointer on the
+/// The laser pointer in the movie house (as InkVR's): point at the big screen with either hand, from anywhere in the
+/// room, and pull the trigger (or press grip) to click the game's menus. The laser is only there while a hand points at
+/// the screen (pointing anywhere else, your hands are your own); if both do, the one you last clicked with. Without
+/// controllers your gaze points (and A/X/grip click), so the menus always work. The hit point on the screen becomes a pointer on the
 /// game's own UI (its canvases draw through the VR UI camera), so its buttons light up and click the way the mouse
 /// makes them.
 /// </summary>
@@ -35,42 +36,74 @@ internal static class Laser
         }
 
         EnsureVisuals();
-        foreach (var h in new[] { XRNode.LeftHand, XRNode.RightHand })
-            if (VrControls.Down(h, VrButton.Trigger))
-                _hand = h;
 
-        // the ray: the hand's aim, or your gaze
-        var pose = VrHands.Get(_hand);
+        // which hand points at the screen: the laser is only there while a hand points at it (from anywhere in the
+        // room), and off the screen your hands are free; with no controllers, your gaze points
+        var left = Aim(XRNode.LeftHand, out var lo, out var ld, out var luv, out var ldist);
+        var right = Aim(XRNode.RightHand, out var ro, out var rd, out var ruv, out var rdist);
+        var anyHand = VrHands.Get(XRNode.LeftHand).Tracked || VrHands.Get(XRNode.RightHand).Tracked;
+        if (left && right)
+        {
+            if (VrControls.Down(XRNode.LeftHand, VrButton.Trigger)) _hand = XRNode.LeftHand;
+            else if (VrControls.Down(XRNode.RightHand, VrButton.Trigger)) _hand = XRNode.RightHand;
+        }
+        else if (left) _hand = XRNode.LeftHand;
+        else if (right) _hand = XRNode.RightHand;
+
+        var gaze = !anyHand;
         Vector3 origin, dir;
-        var gaze = !pose.Tracked;
+        Vector2 uv;
+        float dist;
+        bool hit;
         if (gaze)
         {
             origin = CinemaRig.HeadPosition;
             dir = CinemaRig.HeadRotation * Vector3.forward;
+            hit = OnTheScreen(origin, dir, out uv, out dist);
         }
         else
         {
-            origin = pose.Position;
-            dir = pose.Aim * Vector3.forward; // the controller's pointing way (its aim pose)
-        }
-
-        // where it meets the screen (a quad facing the room)
-        var screen = MovieHouse.Screen.transform;
-        var plane = new Plane(-screen.forward, screen.position);
-        var ray = new Ray(origin, dir);
-        Vector2 uv = default;
-        var hit = plane.Raycast(ray, out var dist) && dist > 0f && dist < 30f;
-        var end = origin + dir * (hit ? dist : 3f);
-        if (hit)
-        {
-            var local = screen.InverseTransformPoint(end);
-            hit = Mathf.Abs(local.x) <= 0.5f && Mathf.Abs(local.y) <= 0.5f;
-            uv = new Vector2(local.x + 0.5f, local.y + 0.5f);
+            var useLeft = _hand == XRNode.LeftHand;
+            hit = useLeft ? left : right;
+            origin = useLeft ? lo : ro;
+            dir = useLeft ? ld : rd;
+            uv = useLeft ? luv : ruv;
+            dist = useLeft ? ldist : rdist;
         }
 
         OnScreen = hit;
-        Draw(origin, end, hit, gaze);
-        Point(hit, uv, gaze);
+        if (!hit)
+        {
+            Show(false);
+            Leave();
+            return;
+        }
+
+        Draw(origin, origin + dir * dist, true, gaze);
+        Point(true, uv, gaze);
+    }
+
+    /// <summary>A hand's pointing ray, and where it meets the screen (false: it doesn't, or the hand isn't tracked).</summary>
+    private static bool Aim(XRNode hand, out Vector3 origin, out Vector3 dir, out Vector2 uv, out float dist)
+    {
+        var pose = VrHands.Get(hand);
+        origin = pose.Position;
+        dir = pose.Aim * Vector3.forward; // the controller's pointing way (its aim pose)
+        uv = default;
+        dist = 0f;
+        return pose.Tracked && OnTheScreen(origin, dir, out uv, out dist);
+    }
+
+    private static bool OnTheScreen(Vector3 origin, Vector3 dir, out Vector2 uv, out float dist)
+    {
+        uv = default;
+        var screen = MovieHouse.Screen.transform;
+        var plane = new Plane(-screen.forward, screen.position);
+        if (!plane.Raycast(new Ray(origin, dir), out dist) || dist <= 0f || dist > 200f) return false;
+        var local = screen.InverseTransformPoint(origin + dir * dist);
+        if (Mathf.Abs(local.x) > 0.5f || Mathf.Abs(local.y) > 0.5f) return false;
+        uv = new Vector2(local.x + 0.5f, local.y + 0.5f);
+        return true;
     }
 
     private static void Point(bool hit, Vector2 uv, bool gaze)

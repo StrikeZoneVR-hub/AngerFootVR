@@ -54,7 +54,10 @@ internal class VrInputProvider : IInputProvider
     public bool IsDeceleratePressed() => VrControls.Held(XRNode.LeftHand, VrButton.Trigger);
 
     // menus
-    public bool WasMenuAcceptPressed() => Live && (VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger));
+    // (in the movie house the laser clicks the menus, and A/X kicks: only with no controllers to point does A/X accept)
+    public bool WasMenuAcceptPressed() => Live && (CinemaRig.Active
+        ? !VrHands.Get(XRNode.LeftHand).Tracked && !VrHands.Get(XRNode.RightHand).Tracked && VrControls.DownEither(VrButton.Primary)
+        : VrControls.DownEither(VrButton.Primary) || VrControls.DownEither(VrButton.Trigger));
     public bool WasMenuCancelPressed() => Live && VrControls.DownEither(VrButton.Secondary);
     public bool WasMenuNextTabPressed() => Live && VrControls.Down(XRNode.RightHand, VrButton.Grip);
     public bool WasMenuPreviousTabPressed() => Live && VrControls.Down(XRNode.LeftHand, VrButton.Grip);
@@ -68,8 +71,8 @@ internal class VrInputProvider : IInputProvider
     public Vector2 GetMenuDelta()
     {
         if (!Live) return Vector2.zero;
-        // in the movie house the left stick walks: the menu goes by the right stick (and the laser)
-        if (CinemaRig.Active) return Deadzone(VrControls.Stick(XRNode.RightHand), MenuDeadzone);
+        // in the movie house the sticks walk and turn you: the menus go by the laser
+        if (CinemaRig.Active) return Vector2.zero;
         var left = VrControls.Stick(XRNode.LeftHand);
         var right = VrControls.Stick(XRNode.RightHand);
         return Deadzone(left.sqrMagnitude > right.sqrMagnitude ? left : right, MenuDeadzone);
