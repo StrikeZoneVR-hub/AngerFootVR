@@ -59,10 +59,20 @@
 - **Dual pistols:** one in each hand, each trigger fires its own.
 - **The sniper rifle has a working scope:** put your eye to it.
 - An **ammo count** on the back of every gun, flashing EMPTY when it's time to throw it.
-- **Throw for real:** hold the gun hand's grip, swing and let go. It flies the way your hand was going (steadied by
-  where you look), as hard as you threw it, spinning off your wrist, with a gentle aim assist. Let go without a swing
-  and it goes where it points. Waving your hands about never throws it. New in 1.2: the swing is read more steadily,
-  soft lobs stay soft, and a throw you let go of mid-reload goes as soon as the game can throw.
+- **Throw for real** (new in 1.2, PLAY MODE STANDING): hold the gun hand's grip, swing and let go. The gun leaves your
+  hand right then, from where it was in your hand and turned as it was. It goes the way your hand went (running, it
+  carries your speed too) and spins the way your wrist turned. A gentle toss goes exactly as gently as you tossed it.
+  A real throw flies as hard as the game's own throw, harder if you put your arm into it. **THROW HELP** puts a hard
+  throw that's nearly on an enemy onto them; a toss is never helped. Let go with your hand still and the gun stays in
+  your hand. Waving your hands about never throws it.
+- **Toss it hand to hand** (new in 1.2): toss your gun to your other hand and squeeze that grip as it comes (or have it
+  squeezed as it gets there) and you've caught it. It's in that hand now: its trigger shoots and its grip throws.
+  Catch your own toss, catch a gun bouncing back off a goon, or reach down and grab a gun lying within reach (the
+  game's own pick-up). A toss you catch was never a throw, so a level's "no throwing" star still stands.
+- **Hand it over** (new in 1.2): with your other hand on the gun too (TWO-HAND GUNS), let go with the gun hand and the
+  other hand has it.
+- **Seated play** (new in 1.2, PLAY MODE SEATED): press the gun hand's grip and your gun flies at the enemy you point it
+  at. To swap hands, hold the gun with both and press the grip. GUN HAND picks the hand your guns start in.
 - **Set the grip yourself** (new in 1.2): turn on **GUN GRIP ADJUST** (VR tab or the launcher),
   hold a gun and set how it sits in your hand, live. The gun hand's stick tilts and turns it (click the stick for
   height, then depth and roll; hold the click to put it back), or squeeze your other hand's grip on the gun and place
@@ -141,7 +151,7 @@
 ### Settings and comfort
 - **A VR tab in the game's own SETTINGS** (the headset icon) with every VR option and what it does, and every option
   in the launcher too.
-- Snap or smooth turning, recenter any time (hold the left stick), gun hand right or left.
+- Snap or smooth turning, recenter any time (hold the left stick), gun hand right or left, standing or seated play.
 - A steady spectator view on your monitor for streaming and recording, with its own field of view. New in 1.2:
   **BEHIND YOU** shows you from over your shoulder, your whole body and all, for anyone watching (off by default; it
   costs a few frames).
@@ -186,14 +196,15 @@ Quest / Touch controllers; Index, Vive and Windows Mixed Reality controllers are
 | X / B | kick | kick |
 | Y / A | shoe power (in the car: shoes) | jump |
 | Trigger | second pistol | shoot |
-| Grip | grab or use what your hand is on; hold the front of a two-handed gun | hold and let go: throw your gun |
+| Grip | grab or use what your hand is on; hold the front of a two-handed gun; catch | hold and let go mid-swing: throw or toss your gun (seated: press it) |
 | Menu | pause | |
 
 **Menus:** in the movie house, point at the screen and pull the trigger; lists scroll with the right stick while you
 point at them. In the car, point at the map. Elsewhere, the stick moves, A selects and B goes back; the grips change
 settings tabs.
 
-The gun hand can be switched to the left in the settings.
+The gun hand can be switched to the left in the settings, and a gun you toss or hand over is in the other hand until
+the next level (the grips' roles swap with it).
 
 ## If something looks wrong
 

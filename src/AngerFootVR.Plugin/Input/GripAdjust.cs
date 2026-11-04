@@ -44,6 +44,9 @@ internal static class GripAdjust
     /// <summary>Dev: on for now (the player's settings file untouched).</summary>
     public static bool DevOn;
 
+    /// <summary>Dev: every gun as the mod first placed it (no offsets).</summary>
+    public static bool DevZero;
+
     public static bool On => DevOn || VrSettings.GripAdjust != null && VrSettings.GripAdjust.Value;
 
     private static bool _loaded, _dirty;
@@ -74,12 +77,19 @@ internal static class GripAdjust
         return key != null && Defaults.TryGetValue(key, out var d) ? d : default;
     }
 
-    /// <summary>The offset as a pose in the gun hand's aim (position, rotation).</summary>
-    public static Pose PoseOf(string key)
+    /// <summary>The offset as a pose in the gun hand's aim (position, rotation). Each gun's is kept as it sits in a right
+    /// hand; in a left hand it's mirrored (sideways and the turns round the barrel and round the vertical the other way),
+    /// so a gun tossed to your other hand sits there as it did in the first.</summary>
+    public static Pose PoseOf(string key, XRNode hand = XRNode.RightHand)
     {
-        var o = Get(key);
+        if (DevZero) return Pose.identity;
+        var o = ForHand(Get(key), hand);
         return o.IsZero ? Pose.identity : new Pose(o.Move, Quaternion.Euler(o.Turn));
     }
+
+    /// <summary>A right hand's offset as it is in this hand (and back: mirroring twice is none).</summary>
+    private static Offset ForHand(Offset o, XRNode hand) =>
+        hand == XRNode.LeftHand ? new Offset { Move = new Vector3(-o.Move.x, o.Move.y, o.Move.z), Turn = new Vector3(o.Turn.x, -o.Turn.y, -o.Turn.z) } : o;
 
     /// <summary>Held this frame: the gun (its key and name), the hand it's in, where it is and where its line goes (world).</summary>
     public static void Holding(string key, string name, XRNode hand, Vector3 gunAt, Vector3 labelAt)
@@ -111,7 +121,7 @@ internal static class GripAdjust
         }
 
         VrControls.StickTaken = _hand;
-        var o = Get(_key);
+        var o = ForHand(Get(_key), _hand); // (as it is in this hand: a left hand's is the right's mirrored)
         var before = o;
         var dt = Mathf.Min(Time.unscaledDeltaTime, 0.05f);
 
@@ -141,7 +151,7 @@ internal static class GripAdjust
             if (_clickDown < 0f) _clickDown = Time.unscaledTime;
             if (Time.unscaledTime - _clickDown > 1f && _clickDown > 0f)
             {
-                o = Defaults.TryGetValue(_key, out var d) ? d : default;
+                o = ForHand(Defaults.TryGetValue(_key, out var d) ? d : default, _hand);
                 _clickDown = 0f; // (done: no page change on letting go)
                 VrControls.Rumble(_hand, 0.6f, 0.15f);
                 Plugin.L.LogInfo($"Grip: {_key} put back as it was");
@@ -189,7 +199,7 @@ internal static class GripAdjust
         o.Turn = new Vector3(Mathf.Clamp(Wrap(o.Turn.x), -MaxTurn, MaxTurn), Mathf.Clamp(Wrap(o.Turn.y), -MaxTurn, MaxTurn), Mathf.Clamp(Wrap(o.Turn.z), -90f, 90f));
         if ((o.Move - before.Move).sqrMagnitude > 1e-10f || (o.Turn - before.Turn).sqrMagnitude > 1e-6f)
         {
-            Chosen[_key] = o;
+            Chosen[_key] = ForHand(o, _hand); // (kept as a right hand's)
             _dirty = true;
             _saveAt = Time.unscaledTime + 1.5f;
         }

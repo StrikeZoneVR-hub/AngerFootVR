@@ -15,11 +15,14 @@ internal static class VrSettings
     public enum MonitorView { Steady, Eye, Behind }
     public enum GoreLevel { Off, Game, Extra }
     public enum BloodTint { Pink, Red }
+    public enum PlayStyle { Standing, Seated }
 
     public static ConfigEntry<TurnStyle> Turn;
     public static ConfigEntry<int> SnapAngle;
     public static ConfigEntry<int> SmoothSpeed;
     public static ConfigEntry<Hand> GunHand;
+    public static ConfigEntry<PlayStyle> PlayMode;
+    public static ConfigEntry<bool> ThrowHelp;
     public static ConfigEntry<bool> VrMap;
     public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
     public static ConfigEntry<OpeningMode> Opening;
@@ -34,7 +37,9 @@ internal static class VrSettings
         Turn = cfg.Bind("Comfort", "TurnStyle", TurnStyle.Snap, "Right stick turning: Snap (a jump at a time, the comfortable one) or Smooth.");
         SnapAngle = cfg.Bind("Comfort", "SnapAngle", 30, new ConfigDescription("Degrees a snap turns.", new AcceptableValueRange<int>(15, 90)));
         SmoothSpeed = cfg.Bind("Comfort", "SmoothTurnSpeed", 150, new ConfigDescription("Smooth turning speed at full stick (degrees a second).", new AcceptableValueRange<int>(60, 360)));
-        GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand that holds the guns (its trigger shoots, its grip throws). The other hand's grip interacts.");
+        GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand your guns go in (its trigger shoots, its grip throws). The other hand's grip interacts. Toss or hand your gun to your other hand and it's there till the level ends or you pick up another.");
+        PlayMode = cfg.Bind("Controls", "PlayMode", PlayStyle.Standing, "Standing: your gun is in your hand for real: hold its grip and let go mid-swing to throw it (as hard as you throw it) or toss it to your other hand and catch it; grab guns within reach. Seated: press the gun hand's grip and your gun flies at the enemy you point it at; hand it over to your other hand instead of tossing it.");
+        ThrowHelp = cfg.Bind("Controls", "ThrowHelp", true, "Standing: a hard throw that's nearly on an enemy goes onto them (a gentle toss is never helped). Seated throws always go at the enemy you point at.");
         TwoHandAim = cfg.Bind("Controls", "TwoHandAim", true, "Two-handed guns: your other hand on the front (grip squeezed) holds the gun there and steers the barrel.");
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");

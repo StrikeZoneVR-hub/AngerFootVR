@@ -89,9 +89,22 @@ namespace AngerFootVR.Launcher
                     },
                     new Opt
                     {
-                        Label = "GUN HAND", Help = "The hand that holds your gun: its trigger shoots and its grip throws. The other grip interacts.",
+                        Label = "PLAY MODE", Help = "STANDING: let go mid-swing to throw your gun, or toss it hand to hand and squeeze to catch it. SEATED: press the gun hand's grip and it flies at the enemy you point at.",
+                        Value = () => Cfg("Controls", "PlayMode", "Standing").ToUpperInvariant(),
+                        Step = by => Set("Controls", "PlayMode", Cycle(Cfg("Controls", "PlayMode", "Standing"), new[] { "Standing", "Seated" }, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
+                        Label = "GUN HAND", Help = "The hand your guns go in: its trigger shoots, its grip throws; the other grip interacts. A gun you toss or hand over stays in the hand that has it till the next level.",
                         Value = () => Cfg("Controls", "GunHand", "Right").ToUpperInvariant(),
                         Step = by => Set("Controls", "GunHand", Cycle(Cfg("Controls", "GunHand", "Right"), new[] { "Right", "Left" }, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
+                        Label = "THROW HELP", Help = "STANDING: a hard throw that's nearly on an enemy goes onto them. A gentle toss is never helped.",
+                        Value = () => Cfg("Controls", "ThrowHelp", "true").ToLowerInvariant() == "false" ? "OFF" : "ON",
+                        Step = by => Set("Controls", "ThrowHelp", Cfg("Controls", "ThrowHelp", "true").ToLowerInvariant() == "false" ? "true" : "false"),
+                        Enabled = () => Mod() && Cfg("Controls", "PlayMode", "Standing") != "Seated",
                     },
                     new Opt
                     {
@@ -346,14 +359,16 @@ namespace AngerFootVR.Launcher
         private void DrawControls(DrawingContext dc, Rect r)
         {
             var left = _cfg?.Get("Controls", "GunHand") == "Left";
+            var seated = _cfg?.Get("Controls", "PlayMode") == "Seated";
             var gunSide = left ? "LEFT" : "RIGHT";
+            var throwDo = seated ? "press: throw at them" : "let go mid-swing: throw";
             var rows = new (string L, string LDo, string R, string RDo)[]
             {
                 ("STICK", "move (walk the movie house)", "STICK", "turn (snap or smooth)"),
                 ("X", "KICK", "B", "KICK"),
                 ("Y", "shoe power", "A", "jump"),
-                (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact (doors, pick-ups)", left ? "GRIP" : "TRIGGER", left ? "interact (doors, pick-ups)" : "SHOOT"),
-                (left ? "GRIP" : "", left ? "hold + let go: throw" : "", left ? "" : "GRIP", left ? "" : "hold + let go: throw"),
+                (left ? "TRIGGER" : "GRIP", left ? "SHOOT" : "interact, catch", left ? "GRIP" : "TRIGGER", left ? "interact, catch" : "SHOOT"),
+                (left ? "GRIP" : "", left ? throwDo : "", left ? "" : "GRIP", left ? "" : throwDo),
                 ("MENU", "pause", "CLICK STICK", "the middle finger"),
                 ("HOLD STICK", "recenter", "", ""),
             };
@@ -386,8 +401,10 @@ namespace AngerFootVR.Launcher
             Text(dc, "Full body: look down and it's you, in the shoes you've picked. Your hand aims your gun.", Body, 15, Dim, colL, y + 22, 0, r.Width - 72);
             y += 74;
             Text(dc, "MENUS AND THE MOVIE HOUSE", BodyBold, 13, new SolidColorBrush(A(Cyan, 0.85)), colL, y);
-            Text(dc, "Point at the big screen with either hand and pull the trigger (or look at it and press A/X). The sticks and A work too; B goes back. Walk around the movie house with the left stick.", Body, 15, Dim, colL, y + 22, 0, r.Width - 72);
-            Text(dc, $"Your gun is in your {gunSide.ToLowerInvariant()} hand: OPTIONS > GUN HAND swaps it.", Body, 13.5, Faint, colL, r.Bottom - 42);
+            Text(dc, "Point at the big screen with either hand and pull the trigger (or look at it and press A/X); B goes back. The left stick walks you round the movie house.", Body, 15, Dim, colL, y + 22, 0, r.Width - 72);
+            Text(dc, seated
+                ? $"Swap hands: hold your gun with both and press its grip. It starts in your {gunSide.ToLowerInvariant()} hand."
+                : $"Toss your gun hand to hand and squeeze to catch it. It starts in your {gunSide.ToLowerInvariant()} hand.", Body, 13.5, Faint, colL, r.Bottom - 42);
         }
 
         // ---------------------------------------------------------------- VR CHECK

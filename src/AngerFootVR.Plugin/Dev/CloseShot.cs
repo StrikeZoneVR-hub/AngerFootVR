@@ -60,6 +60,15 @@ internal static class CloseShot
             at = root.position + Vector3.up * 0.35f * root.lossyScale.y;
             frame = Quaternion.Euler(0f, root.eulerAngles.y, 0f);
         }
+        else if (what == "hands")
+        {
+            // between your two hands, turned with your head (yaw 180 pitch 30: over your shoulder, as you see them)
+            var l = Body.HeroBody.HandBone(0);
+            var r = Body.HeroBody.HandBone(1);
+            if (l == null || r == null) yield break;
+            at = (l.position + r.position) * 0.5f + Vector3.up * 0.08f;
+            frame = Quaternion.Euler(0f, Core.VrRig.HeadRotation.eulerAngles.y, 0f);
+        }
         else if (what == "point" && Target.HasValue)
         {
             at = Target.Value;

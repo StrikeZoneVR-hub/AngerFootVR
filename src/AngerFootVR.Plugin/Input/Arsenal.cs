@@ -444,6 +444,17 @@ internal static class Arsenal
         }
     }
 
+    /// <summary>The gun's gone to your other hand (caught, handed over): both hands start afresh.</summary>
+    public static void HandChanged()
+    {
+        TwoHands = false;
+        Supported = false;
+        _supportWas = false;
+        _steadyHas = false;
+        _leftGun = null;
+        Dual = false;
+    }
+
     /// <summary>Nothing in your hand: the count and the scope go, your hands are your own.</summary>
     public static void Nothing()
     {
@@ -524,13 +535,6 @@ internal static class Arsenal
     private static void Threw()
     {
         if (InPlay) VrControls.Rumble(GunHand, 0.55f, 0.06f);
-    }
-
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(HandRig), nameof(HandRig.PickUpWeapon))]
-    private static void Caught()
-    {
-        if (InPlay) VrControls.Rumble(GunHand, 0.45f, 0.05f);
     }
 
     [HarmonyPostfix]

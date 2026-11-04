@@ -27,8 +27,9 @@ internal static class VrSettingsTab
     public static SnapStep SnapAngle;
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
+    public static VrSettings.PlayStyle PlayMode;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -76,9 +77,21 @@ internal static class VrSettingsTab
         new Row { Header = "CONTROLS" },
         new Row
         {
+            Label = "PLAY MODE", Field = nameof(PlayMode), Options = new[] { "STANDING", "SEATED" },
+            Help = "STANDING: hold your gun's grip and let go mid-swing to throw it as hard as you throw, or toss it to your other hand and squeeze to catch it. SEATED: press the gun hand's grip and it flies at the enemy you point at; with both hands on it, the press swaps hands.",
+            Load = () => PlayMode = VrSettings.PlayMode.Value, Save = () => VrSettings.PlayMode.Value = PlayMode,
+        },
+        new Row
+        {
             Label = "GUN HAND", Field = nameof(GunHand), Options = new[] { "RIGHT", "LEFT" },
-            Help = "The hand that holds your gun: its trigger shoots and its grip throws. The other hand's grip interacts.",
+            Help = "The hand your guns go in: its trigger shoots and its grip throws. The other hand's grip interacts and catches. A gun you toss or hand over stays in the hand that has it till the next level.",
             Load = () => GunHand = VrSettings.GunHand.Value, Save = () => VrSettings.GunHand.Value = GunHand,
+        },
+        new Row
+        {
+            Label = "THROW HELP", Field = nameof(ThrowHelp), Help = "STANDING: a hard throw that's nearly on an enemy goes onto them. A gentle toss is never helped.",
+            Enabled = () => PlayMode == VrSettings.PlayStyle.Standing,
+            Load = () => ThrowHelp = VrSettings.ThrowHelp.Value, Save = () => VrSettings.ThrowHelp.Value = ThrowHelp,
         },
         Toggle("TWO-HAND GUNS", nameof(TwoHandGuns), VrSettings.TwoHandAim,
             "Your other hand on the gun (grip squeezed): the front of a rifle or shotgun holds and steers it; round your gun hand on a pistol or the Uzi it steadies your aim and takes some of the kick."),
@@ -463,7 +476,8 @@ internal static class VrSettingsTab
             if (!SingletonBehaviour<SettingsMenu>.HasInstance || SingletonBehaviour<SettingsMenu>.Instance.TabbedMenu.CurrentTab is not SettingsMenuTab t || t.SettingsCategory != Category) return true;
             foreach (var e in new ConfigEntryBase[]
                      {
-                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
+                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
+                         VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                          VrSettings.Gore, VrSettings.BloodColour,
                      })

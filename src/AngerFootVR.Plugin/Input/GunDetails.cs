@@ -141,6 +141,9 @@ internal static class GunDetails
         t == HoldableObjectType.SniperRifle || t == HoldableObjectType.Minigun || t == HoldableObjectType.CatBossMinigun || t == HoldableObjectType.GrenadeLauncher ||
         t == HoldableObjectType.FlameThrower || t == HoldableObjectType.Crossbow;
 
+    /// <summary>The gun's in your other hand now: its weight starts from there.</summary>
+    public static void HandChanged() => _heavyHas = false;
+
     /// <summary>The aim of a heavy gun in one hand: it follows the hand a little behind (two hands: as the hand is).</summary>
     public static Quaternion Weight(Quaternion aim, HoldableObjectType type)
     {

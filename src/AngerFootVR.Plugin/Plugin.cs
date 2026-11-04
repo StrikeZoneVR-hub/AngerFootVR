@@ -299,6 +299,20 @@ public class Plugin : BaseUnityPlugin
         _worst = 0;
     }
 
+    private System.Collections.IEnumerator Later(float seconds, string line)
+    {
+        yield return new WaitForSecondsRealtime(seconds);
+        try
+        {
+            File.AppendAllText(_cmdFile, line + Environment.NewLine);
+            _nextCmd = 0f; // (read the next frame, not at the next quarter second)
+        }
+        catch (Exception e)
+        {
+            L.LogWarning("after: " + e.Message);
+        }
+    }
+
     private void Commands()
     {
         string[] lines;
@@ -1070,8 +1084,46 @@ public class Plugin : BaseUnityPlugin
                         Dev.LegRecorder.Start(arg.Length > 0 ? int.Parse(arg) : 60);
                         break;
                     case "throw":
-                        // throw [m/s]: a throw from the gun hand (along its aim; with a speed, as hard as that)
-                        Input.MotionThrow.DevThrow(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0f);
+                        // throw [m/s]: a seated throw from the gun hand (where it points); with a speed: a standing throw that fast along your view
+                        L.LogInfo("THROW " + (arg.Length > 0 ? Input.MotionThrow.DevToss(new Vector3(0f, 0f, Dev.MockControllers.F(arg)), false) : Input.MotionThrow.DevToss(Vector3.zero, true)));
+                        break;
+                    case "toss":
+                    {
+                        // toss x y z: the gun hand lets go of the gun moving this fast (m/s, your view's frame: x right, y up, z on)
+                        var a = arg.Split(' ');
+                        // toss x y z l|r s: and that hand squeezes its grip s seconds later (held: devbtn <hand> Grip off to let go)
+                        Input.MotionThrow.DevTrace = 120;
+                        if (a.Length >= 5)
+                        {
+                            Input.MotionThrow.DevSqueezeHand = a[3] == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand;
+                            Input.MotionThrow.DevSqueezeAt = Time.unscaledTime + Dev.MockControllers.F(a[4]);
+                        }
+                        L.LogInfo("TOSS " + Input.MotionThrow.DevToss(new Vector3(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2])), false));
+                        break;
+                    }
+                    case "seated":
+                        // seated on|off|clear: PLAY MODE for now (the settings file untouched)
+                        Input.MotionThrow.DevSeated = arg == "on" ? true : arg == "off" ? false : (bool?)null;
+                        L.LogInfo(Input.MotionThrow.Describe());
+                        break;
+                    case "gunhand":
+                        // gunhand l|r: the gun to that hand for now (as a hand-over)
+                        Input.MotionThrow.SwitchTo(arg == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand);
+                        L.LogInfo(Input.MotionThrow.Describe());
+                        break;
+                    case "throws":
+                        L.LogInfo(Input.MotionThrow.Describe());
+                        break;
+                    case "after":
+                    {
+                        // after <s> <command>: the command, that many seconds from now
+                        var sp2 = arg.IndexOf(' ');
+                        if (sp2 > 0) StartCoroutine(Later(Dev.MockControllers.F(arg.Substring(0, sp2)), arg.Substring(sp2 + 1)));
+                        break;
+                    }
+                    case "gripzero":
+                        Input.GripAdjust.DevZero = arg != "off";
+                        L.LogInfo("grip offsets " + (Input.GripAdjust.DevZero ? "off" : "on"));
                         break;
                     case "spawnblood":
                     {

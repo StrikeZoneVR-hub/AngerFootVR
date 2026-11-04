@@ -54,7 +54,7 @@ internal static class GunHold
     /// <summary>Whether the game's first-person hand is in its idle pose: each held thing has its own idle (the rifle's
     /// Hands_AK_Idle, the dual pistols' A_DualPistol_Idle_02, the minigun's Hands_GattlingGun_Idle), a clip named so
     /// (worked out once a state; not all of them are set to loop).</summary>
-    private static bool InIdle(Animator a)
+    public static bool InIdle(Animator a)
     {
         if (a == null || !a.isActiveAndEnabled || a.IsInTransition(0)) return false;
         var state = a.GetCurrentAnimatorStateInfo(0);
@@ -378,7 +378,9 @@ internal static class GunHold
                         }
                     }
                 }
-                else anchorInRig = _palmRest;
+                // (a gun just caught or handed over: the game's hand comes up into its pose quick, and your palm stays
+                // in it on the way, so the gun's in your hand from the moment you have it)
+                else anchorInRig = Time.unscaledTime < SettleUntil ? _palmNow : _palmRest;
                 // (two hands on it: the game's own kick in the hand, a little over half of it soaked up)
                 if (IsGun && (Arsenal.Supported || Arsenal.TwoHands) && DevMode != 1) anchorInRig = Vector3.Lerp(_palmRest, _palmNow, 0.55f);
                 anchor = handPos + handRot * new Vector3(0f, 0f, PalmAlong);
@@ -395,7 +397,7 @@ internal static class GunHold
         var gripKey = IsGun && type != null ? "level/" + type.name : null;
         if (gripKey != null && DevMode != 1)
         {
-            var off = GripAdjust.PoseOf(gripKey);
+            var off = GripAdjust.PoseOf(gripKey, Hand);
             if (off.position != Vector3.zero || off.rotation != Quaternion.identity)
             {
                 anchor += aim * off.position;
@@ -436,6 +438,39 @@ internal static class GunHold
             if (!_gripFailed) Plugin.L.LogWarning("Grip fingers: " + e);
             _gripFailed = true;
         }
+    }
+
+    /// <summary>Until then, the gun sits by the game's hand as it is (not its rest): a gun just caught.</summary>
+    public static float SettleUntil;
+
+    /// <summary>The held thing as it's drawn in your hand this frame: its middle, and its way (z along the barrel, y its
+    /// top), for a thrown gun to leave your hand just as it was in it.</summary>
+    public static bool HeldPose(out Vector3 centre, out Quaternion rot)
+    {
+        centre = default;
+        rot = Quaternion.identity;
+        if (!Holding || _rig == null) return false;
+        var rigT = _rig.transform;
+        var have = false;
+        var b = new Bounds();
+        foreach (var obj in _rig.GetComponentsInChildren<HandRigObject>(false))
+        {
+            if (!obj.isActiveAndEnabled) continue;
+            foreach (var r in obj.GetComponentsInChildren<Renderer>(false))
+            {
+                if (!r.enabled || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
+                if (!have) b = r.bounds;
+                else b.Encapsulate(r.bounds);
+                have = true;
+            }
+        }
+
+        if (!have) return false;
+        centre = b.center;
+        var fwd = rigT.forward;
+        if (IsGun) Barrel(VrHands.GetRaw(Hand), out _, out fwd);
+        rot = Quaternion.LookRotation(fwd, rigT.up);
+        return true;
     }
 
     private static Vector3? _foreInRig;
