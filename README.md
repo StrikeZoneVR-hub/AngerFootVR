@@ -71,6 +71,9 @@
   game's own pick-up). A toss you catch was never a throw, so a level's "no throwing" star still stands.
 - **Hand it over** (new in 1.2): with your other hand on the gun too (TWO-HAND GUNS), let go with the gun hand and the
   other hand has it.
+- **Gun spin** (new in 1.2): loosen your grip on a pistol, the Glock or the Uzi (each of the dual pistols too) and flick
+  your wrist. It spins round your trigger finger, cowboy style, as fast as you flicked it; another flick keeps it going
+  and a squeeze catches it. No shots while it spins (GUN SPIN in the settings).
 - **Seated play** (new in 1.2, PLAY MODE SEATED): press the gun hand's grip and your gun flies at the enemy you point it
   at. To swap hands, hold the gun with both and press the grip. GUN HAND picks the hand your guns start in.
 - **Set the grip yourself** (new in 1.2): turn on **GUN GRIP ADJUST** (VR tab or the launcher),
