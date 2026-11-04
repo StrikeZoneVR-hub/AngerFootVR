@@ -60,6 +60,13 @@ internal static class CloseShot
             at = root.position + Vector3.up * 0.35f * root.lossyScale.y;
             frame = Quaternion.Euler(0f, root.eulerAngles.y, 0f);
         }
+        else if (what == "ctl")
+        {
+            // the gun hand's controller, turned with your head (not with the gun: for a spinning gun)
+            var pose = Core.VrHands.GetRaw(Input.GunHold.Hand);
+            at = pose.Position + pose.Rotation * new Vector3(0f, 0.02f, 0.06f);
+            frame = Quaternion.Euler(0f, Core.VrRig.HeadRotation.eulerAngles.y, 0f);
+        }
         else if (what == "hands")
         {
             // between your two hands, turned with your head (yaw 180 pitch 30: over your shoulder, as you see them)

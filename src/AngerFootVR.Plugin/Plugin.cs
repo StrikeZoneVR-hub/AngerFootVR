@@ -187,6 +187,7 @@ public class Plugin : BaseUnityPlugin
         Rendering.SpectatorView.Update();
         Rendering.BehindView.Update();
         Recentering();
+        Input.GunSpin.Update();
         Input.MotionThrow.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
@@ -1121,6 +1122,16 @@ public class Plugin : BaseUnityPlugin
                         if (sp2 > 0) StartCoroutine(Later(Dev.MockControllers.F(arg.Substring(0, sp2)), arg.Substring(sp2 + 1)));
                         break;
                     }
+                    case "flick":
+                    {
+                        // flick l|r <rad/s>: a wrist flick on that hand (the test runtime's hands don't turn)
+                        var a = arg.Split(' ');
+                        L.LogInfo("SPIN " + Input.GunSpin.DevFlick(a[0] == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand, Dev.MockControllers.F(a[1])));
+                        break;
+                    }
+                    case "spins":
+                        L.LogInfo(Input.GunSpin.Describe());
+                        break;
                     case "gripzero":
                         Input.GripAdjust.DevZero = arg != "off";
                         L.LogInfo("grip offsets " + (Input.GripAdjust.DevZero ? "off" : "on"));

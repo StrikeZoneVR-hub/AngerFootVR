@@ -145,6 +145,13 @@ internal static class HeroBody
             index = 0.75f;
             thumb = 0.65f;
         }
+        else if (Input.GunSpin.Spinning(node))
+        {
+            // a gun spinning round the index: the index hooked through its trigger guard, the rest open
+            fist = 0.2f;
+            index = 0.72f;
+            thumb = 0.3f;
+        }
         else if (node != Input.GunHold.Hand && Input.Arsenal.Dual)
         {
             fist = 1f;

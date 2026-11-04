@@ -29,7 +29,7 @@ internal static class VrSettingsTab
     public static VrSettings.Hand GunHand;
     public static VrSettings.PlayStyle PlayMode;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, GunSpin;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -99,6 +99,8 @@ internal static class VrSettingsTab
             "Your gun stops at walls instead of going into them (your hand stays with it)."),
         Toggle("GUN WEIGHT", nameof(GunWeight), VrSettings.GunWeight,
             "The heavy guns swing a touch heavier in one hand; your other hand on them steadies them."),
+        Toggle("GUN SPIN", nameof(GunSpin), VrSettings.GunSpin,
+            "A pistol, the Glock or the Uzi: loosen your grip and flick your wrist and it spins round your trigger finger, cowboy style. Squeeze to catch it. No shots while it spins."),
         Toggle("GUN GRIP ADJUST", nameof(GripAdjust), VrSettings.GripAdjust,
             "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Turn it off when you're done (it borrows that stick)."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
@@ -477,7 +479,7 @@ internal static class VrSettingsTab
             foreach (var e in new ConfigEntryBase[]
                      {
                          VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
-                         VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou,
+                         VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou, VrSettings.GunSpin,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                          VrSettings.Gore, VrSettings.BloodColour,
                      })

@@ -134,6 +134,7 @@ namespace AngerFootVR.Launcher
                     Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Your other hand on the gun (grip squeezed): the front of a rifle or shotgun holds and steers it; round your gun hand on a pistol or the Uzi it steadies your aim and takes some of the kick."),
                     Toggle("Controls", "SolidGuns", "SOLID GUNS", "Your gun stops at walls instead of going into them (your hand stays with it)."),
                     Toggle("Controls", "GunWeight", "GUN WEIGHT", "The heavy guns swing a touch heavier in one hand; your other hand on them steadies them."),
+                    Toggle("Controls", "GunSpin", "GUN SPIN", "A pistol, the Glock or the Uzi: loosen your grip and flick your wrist and it spins round your trigger finger. Squeeze to catch it."),
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
                     Toggle("Controls", "GunGripAdjust", "GUN GRIP ADJUST", "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Off when you're done (it borrows that stick).", false),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),

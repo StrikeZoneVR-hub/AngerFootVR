@@ -149,6 +149,12 @@ internal static class MotionThrow
         var hand = GunHold.Hand;
         var pose = VrHands.GetRaw(hand);
         var other = (Arsenal.Supported || Arsenal.TwoHands) && !Arsenal.Dual && !GripAdjust.Placing; // (your other hand's on it too)
+        // (a squeeze that catches a spinning gun is a catch, not a throw; nothing's thrown mid-spin)
+        if (GunSpin.Spinning(hand) || GunSpin.CaughtFrame == Time.frameCount)
+        {
+            _gripping = false;
+            return;
+        }
 
         if (Seated)
         {

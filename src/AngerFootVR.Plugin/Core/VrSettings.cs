@@ -24,7 +24,7 @@ internal static class VrSettings
     public static ConfigEntry<PlayStyle> PlayMode;
     public static ConfigEntry<bool> ThrowHelp;
     public static ConfigEntry<bool> VrMap;
-    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
+    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, GunSpin;
     public static ConfigEntry<OpeningMode> Opening;
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
@@ -44,6 +44,7 @@ internal static class VrSettings
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");
         GripAdjust = cfg.Bind("Controls", "GunGripAdjust", false, "Hold a gun and set how it sits in your hand: the gun hand's stick moves it (a click: the next way), or your other hand's grip places it. Each gun keeps its own (BepInEx/AngerFootVR/gun-grips.txt). Off when you're done.");
+        GunSpin = cfg.Bind("Controls", "GunSpin", true, "A pistol, the Glock or the Uzi: loosen your grip (not squeezed) and flick your wrist and it spins round your trigger finger; squeeze to catch it. No shots while it spins.");
         SolidGuns = cfg.Bind("Controls", "SolidGuns", true, "Your gun stops at walls instead of going into them (your hand stays with it), so no shot starts inside a wall.");
         GunWeight = cfg.Bind("Controls", "GunWeight", true, "The heavy guns (sniper, minigun, launchers, the flamethrower) swing a touch heavier in one hand; your other hand on them steadies them.");
         WoundsOnYou = cfg.Bind("Gore", "WoundsOnYou", true, "Where you're hit, your VR body is wounded and bleeds as the enemies do, until you heal (EXTRA gore). Your health is the game's own.");
