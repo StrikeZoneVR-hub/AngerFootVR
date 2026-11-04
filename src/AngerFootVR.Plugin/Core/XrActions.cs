@@ -23,7 +23,7 @@ internal static unsafe class XrActions
         public Quaternion GripRotation = Quaternion.identity, AimRotation = Quaternion.identity;
         public Vector2 Stick;
         public float Trigger, Grip;
-        public bool StickClick, Primary, Secondary, Menu, ThumbTouch;
+        public bool StickClick, Primary, Secondary, Menu, ThumbTouch, TriggerTouch;
     }
 
     public static readonly Hand Left = new Hand(), Right = new Hand();
@@ -242,7 +242,7 @@ internal static unsafe class XrActions
     // ---------------------------------------------------------------- state
 
     private static ulong _instance, _session, _set, _left, _right;
-    private static ulong _gripPose, _aimPose, _stickA, _stickClickA, _triggerA, _gripA, _primaryA, _secondaryA, _menuA, _hapticA, _thumbA;
+    private static ulong _gripPose, _aimPose, _stickA, _stickClickA, _triggerA, _gripA, _primaryA, _secondaryA, _menuA, _hapticA, _thumbA, _triggerTouchA;
     private static ulong _gripSpaceL, _gripSpaceR, _aimSpaceL, _aimSpaceR;
     private static bool _created, _attached, _failed;
     private static float _profileCheckAt;
@@ -348,6 +348,7 @@ internal static unsafe class XrActions
         _menuA = Action("menu", "Menu", Boolean);
         _hapticA = Action("haptic", "Haptics", Vibration);
         _thumbA = Action("thumb_touch", "Thumb rest touch", Boolean);
+        _triggerTouchA = Action("trigger_touch", "Trigger touch", Boolean);
         SuggestTouch();
         SuggestIndex();
         SuggestVive();
@@ -389,6 +390,7 @@ internal static unsafe class XrActions
             b.Add((_stickA, p + "input/thumbstick"));
             b.Add((_stickClickA, p + "input/thumbstick/click"));
             b.Add((_thumbA, p + "input/thumbstick/touch"));
+            b.Add((_triggerTouchA, p + "input/trigger/touch"));
         }
 
         foreach (var t in new[] { "left/input/x", "left/input/y", "right/input/a", "right/input/b" }) b.Add((_thumbA, "/user/hand/" + t + "/touch"));
@@ -418,6 +420,7 @@ internal static unsafe class XrActions
             b.Add((_thumbA, p + "input/thumbstick/touch"));
             b.Add((_thumbA, p + "input/a/touch"));
             b.Add((_thumbA, p + "input/b/touch"));
+            b.Add((_triggerTouchA, p + "input/trigger/touch"));
         }
 
         Suggest("/interaction_profiles/valve/index_controller", b);
@@ -523,6 +526,7 @@ internal static unsafe class XrActions
         h.Secondary = Bool(_secondaryA, hand);
         h.Menu = Bool(_menuA, hand);
         h.ThumbTouch = Bool(_thumbA, hand);
+        h.TriggerTouch = _triggerTouchA != 0 && Bool(_triggerTouchA, hand);
         var get = new GetInfo { type = TypeGetInfo, action = _gripPose, subactionPath = hand };
         var pose = new StatePose { type = TypeStatePose };
         _getPose(_session, &get, &pose);

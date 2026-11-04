@@ -184,6 +184,7 @@ public class Plugin : BaseUnityPlugin
         VrSettings.Poll();
         Rendering.VrQuality.Update();
         Rendering.Gore.Update();
+        Input.GunDetails.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -440,6 +441,55 @@ public class Plugin : BaseUnityPlugin
                     case "hands":
                         Dev.DevPlay.Hands(arg);
                         break;
+                    case "handpose":
+                    {
+                        // handpose l|r x y z pitch yaw roll: a dev hand (head-yaw metres, degrees); handpose l|r off
+                        var a2 = arg.Split(' ');
+                        (Vector3, Vector3)? devHp = a2.Length >= 7 ? (new Vector3(float.Parse(a2[1]), float.Parse(a2[2]), float.Parse(a2[3])), new Vector3(float.Parse(a2[4]), float.Parse(a2[5]), float.Parse(a2[6]))) : ((Vector3, Vector3)?)null;
+                        if (a2[0] == "l") Core.VrHands.DevLeft = devHp;
+                        else Core.VrHands.DevRight = devHp;
+                        L.LogInfo($"dev hand {a2[0]} {(devHp.HasValue ? devHp.Value.ToString() : "off")}");
+                        break;
+                    }
+                    case "devbtn":
+                    {
+                        // devbtn l|r <button> on|off: a dev controller button held (the test runtime's buttons don't come through)
+                        var a2 = arg.Split(' ');
+                        var node = a2[0] == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand;
+                        var b = (Core.VrButton)Enum.Parse(typeof(Core.VrButton), a2[1], true);
+                        Core.VrControls.DevHold(node, b, a2.Length < 3 || a2[2] != "off");
+                        L.LogInfo($"dev button {a2[0]} {b} {(a2.Length < 3 || a2[2] != "off" ? "held" : "let go")}");
+                        break;
+                    }
+                    case "gundetails":
+                        L.LogInfo(Input.GunDetails.Describe());
+                        break;
+                    case "gripinfo":
+                        L.LogInfo(Body.GripFingers.Describe() + " | " + Body.HeroSkin.GripReport + $" | supported {Input.Arsenal.Supported} two hands {Input.Arsenal.TwoHands} fore {Input.GunHold.ForeInRig}");
+                        break;
+                    case "contact":
+                        Input.GunHold.DevNoContact = arg == "off";
+                        L.LogInfo("grip contact " + (Input.GunHold.DevNoContact ? "off" : "on"));
+                        break;
+                    case "fingerr":
+                    {
+                        var a2 = arg.Split(' ');
+                        Body.GripFingers.RadiusBase = float.Parse(a2[0]);
+                        Body.GripFingers.RadiusMid = float.Parse(a2[1]);
+                        Body.GripFingers.RadiusTip = float.Parse(a2[2]);
+                        L.LogInfo(Body.GripFingers.Describe());
+                        break;
+                    }
+                    case "support":
+                    {
+                        // support dx dy dz pitch yaw roll: the support hand against the gun hand (metres, degrees)
+                        var a2 = arg.Split(' ');
+                        Input.Arsenal.SupportMove = new Vector3(float.Parse(a2[0]), float.Parse(a2[1]), float.Parse(a2[2]));
+                        if (a2.Length >= 6) Input.Arsenal.SupportTurn = new Vector3(float.Parse(a2[3]), float.Parse(a2[4]), float.Parse(a2[5]));
+                        if (a2.Length >= 9) Input.Arsenal.SupportAlong = new Vector3(float.Parse(a2[6]), float.Parse(a2[7]), float.Parse(a2[8]));
+                        L.LogInfo($"support {Input.Arsenal.SupportMove} {Input.Arsenal.SupportTurn}");
+                        break;
+                    }
                     case "shoe":
                     {
                         // shoe <name part>: wear these shoes (dev runs keep their own save, so the player's is untouched)
@@ -469,6 +519,9 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "bodyshot":
                         StartCoroutine(Dev.DevPlay.BodyShot(arg));
+                        break;
+                    case "closeshot":
+                        StartCoroutine(Dev.CloseShot.Take(arg));
                         break;
                     case "gun":
                         L.LogInfo(Input.GunHold.Describe());
@@ -799,7 +852,29 @@ public class Plugin : BaseUnityPlugin
                                 L.LogInfo($"HOLEINFO '{mr.name}' active={mr.gameObject.activeInHierarchy} enabled={mr.enabled} visible={mr.isVisible} layer={mr.gameObject.layer} at {mr.transform.position:F2} scale {mr.transform.lossyScale:F3} bounds {mr.bounds.size:F2} shader '{mr.sharedMaterial?.shader.name}' queue {mr.sharedMaterial?.renderQueue} parent '{mr.transform.parent?.name}' camMask {(Camera.main != null ? Camera.main.cullingMask.ToString("X") : "-")}");
                         break;
                     case "holetest":
-                        L.LogInfo(Dev.MeshProbe.HoleTest(arg.Length > 0 ? Dev.MockControllers.F(arg) : 0.06f));
+                    {
+                        // hole [kind] [up] [side]: a wound (glock, uzzi, rifle, sniper, shotgun, blast, bite, bruise) on the goon in view
+                        var a2 = arg.Split(' ');
+                        L.LogInfo(Dev.MeshProbe.HoleTest(a2.Length > 0 && a2[0].Length > 0 ? a2[0] : "glock", a2.Length > 1 ? Dev.MockControllers.F(a2[1]) : 0.15f, a2.Length > 2 ? Dev.MockControllers.F(a2[2]) : 0f));
+                        break;
+                    }
+                    case "wounds":
+                        if (arg == "hits") Rendering.Wounds.DevHits = !Rendering.Wounds.DevHits;
+                        L.LogInfo(Rendering.Wounds.Describe());
+                        break;
+                    case "woundme":
+                    {
+                        // woundme [bullet|explosion|melee] [x y z]: you're hit from in front (head-yaw space aim point), as the game hits you
+                        var a2 = arg.Split(' ');
+                        var type = a2.Length > 0 && a2[0] == "explosion" ? DamageType.Explosion : a2.Length > 0 && a2[0] == "melee" ? DamageType.MeleeWeapon : DamageType.Bullet;
+                        var yawQ = Quaternion.Euler(0f, Core.VrRig.HeadRotation.eulerAngles.y, 0f);
+                        var aim = a2.Length >= 4 ? new Vector3(Dev.MockControllers.F(a2[1]), Dev.MockControllers.F(a2[2]), Dev.MockControllers.F(a2[3])) : new Vector3(0f, -0.45f, 0.1f);
+                        var at = Core.VrRig.HeadPosition + yawQ * aim;
+                        var dir = yawQ * Vector3.back;
+                        Rendering.Wounds.OnPlayer(new Damage(1f, type), at, dir);
+                        L.LogInfo(Rendering.Wounds.Describe());
+                        break;
+                    }
                         break;
                     case "grip":
                         // grip on|off: GUN GRIP ADJUST for now (dev: the cfg untouched); grip: how it stands
@@ -1055,6 +1130,10 @@ public class Plugin : BaseUnityPlugin
                     case "probe":
                         // probe: the facts the grip, wound and bleeding plans need (dev)
                         L.LogInfo(Dev.ImmersionProbe.Run());
+                        break;
+                    case "probe2":
+                        // probe2 skin|fp: goons' and your skins (sub-meshes, shader, UV overlap); the first-person fingers on the gun
+                        L.LogInfo(Dev.ImmersionProbe2.Run(arg));
                         break;
                     case "soundcheck":
                     {

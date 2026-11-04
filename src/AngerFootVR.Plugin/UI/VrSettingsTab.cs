@@ -28,7 +28,7 @@ internal static class VrSettingsTab
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -81,7 +81,11 @@ internal static class VrSettingsTab
             Load = () => GunHand = VrSettings.GunHand.Value, Save = () => VrSettings.GunHand.Value = GunHand,
         },
         Toggle("TWO-HAND GUNS", nameof(TwoHandGuns), VrSettings.TwoHandAim,
-            "Rifles, shotguns, the sniper and friends: your other hand on the front (grip squeezed) holds the gun there and steers it."),
+            "Your other hand on the gun (grip squeezed): the front of a rifle or shotgun holds and steers it; round your gun hand on a pistol or the Uzi it steadies your aim and takes some of the kick."),
+        Toggle("SOLID GUNS", nameof(SolidGuns), VrSettings.SolidGuns,
+            "Your gun stops at walls instead of going into them (your hand stays with it)."),
+        Toggle("GUN WEIGHT", nameof(GunWeight), VrSettings.GunWeight,
+            "The heavy guns swing a touch heavier in one hand; your other hand on them steadies them."),
         Toggle("GUN GRIP ADJUST", nameof(GripAdjust), VrSettings.GripAdjust,
             "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Turn it off when you're done (it borrows that stick)."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
@@ -116,6 +120,8 @@ internal static class VrSettingsTab
             Help = "PINK is the game's own; RED for the classic look.", Enabled = () => Gore != VrSettings.GoreLevel.Off,
             Load = () => BloodColour = VrSettings.BloodColour.Value, Save = () => VrSettings.BloodColour.Value = BloodColour,
         },
+        Toggle("WOUNDS ON YOU", nameof(WoundsOnYou), VrSettings.WoundsOnYou,
+            "Where you're hit, your body is wounded and bleeds as the enemies do, until you heal (EXTRA gore). Your health is the game's own."),
         new Row { Header = "FUN" },
         Toggle("FLIP THEM OFF", nameof(FlipOff), VrSettings.FlipOff, "Enemies who see your middle finger (right stick click) come for you."),
         new Row { Header = "OPENING" },

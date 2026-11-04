@@ -39,6 +39,26 @@ public static class BuildBundles
         foreach (var kind in new[] { "t:Shader", "t:ComputeShader" })
             foreach (var g in AssetDatabase.FindAssets(kind, new[] { "Assets/Shaders" }))
                 list.Add(AssetDatabase.GUIDToAssetPath(g));
+        // the gore textures (Blender-made: tools/blender/build_gore.py): colour ones sRGB, the noise ones plain data
+        if (AssetDatabase.IsValidFolder("Assets/Textures"))
+            foreach (var g in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/Textures" }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(g);
+                var ti = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (ti != null)
+                {
+                    var data = path.Contains("noise") || path.Contains("skin");
+                    ti.sRGBTexture = !data;
+                    ti.wrapMode = TextureWrapMode.Repeat;
+                    ti.mipmapEnabled = true;
+                    ti.filterMode = FilterMode.Trilinear;
+                    ti.anisoLevel = 4;
+                    ti.textureCompression = data ? TextureImporterCompression.Uncompressed : TextureImporterCompression.CompressedHQ;
+                    ti.SaveAndReimport();
+                }
+
+                list.Add(path);
+            }
         var names = list.ToArray();
         var build = new AssetBundleBuild { assetBundleName = "angerfootvr_shaders", assetNames = names };
         BuildPipeline.BuildAssetBundles(outDir, new[] { build },

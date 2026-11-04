@@ -21,7 +21,7 @@ internal static class VrSettings
     public static ConfigEntry<int> SmoothSpeed;
     public static ConfigEntry<Hand> GunHand;
     public static ConfigEntry<bool> VrMap;
-    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust;
+    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
     public static ConfigEntry<OpeningMode> Opening;
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
@@ -39,6 +39,9 @@ internal static class VrSettings
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");
         GripAdjust = cfg.Bind("Controls", "GunGripAdjust", false, "Hold a gun and set how it sits in your hand: the gun hand's stick moves it (a click: the next way), or your other hand's grip places it. Each gun keeps its own (BepInEx/AngerFootVR/gun-grips.txt). Off when you're done.");
+        SolidGuns = cfg.Bind("Controls", "SolidGuns", true, "Your gun stops at walls instead of going into them (your hand stays with it), so no shot starts inside a wall.");
+        GunWeight = cfg.Bind("Controls", "GunWeight", true, "The heavy guns (sniper, minigun, launchers, the flamethrower) swing a touch heavier in one hand; your other hand on them steadies them.");
+        WoundsOnYou = cfg.Bind("Gore", "WoundsOnYou", true, "Where you're hit, your VR body is wounded and bleeds as the enemies do, until you heal (EXTRA gore). Your health is the game's own.");
         SniperScope = cfg.Bind("Display", "SniperScope", true, "The sniper rifle's scope magnifies when you put your eye to it.");
         FlipOff = cfg.Bind("Fun", "FlipOff", true, "Enemies who see your middle finger come for you.");
         VrMap = cfg.Bind("Controls", "LevelSelectInVR", true, "The level select in VR: sit in the car with the map book and point at the levels. Off: it plays on the movie screen.");

@@ -77,7 +77,8 @@ internal static class Gore
 
         // bullet wounds spurt (the game's own spurt, on every enemy it hits): on with EXTRA, the game's way otherwise
         Spurts(Extra);
-        Holes.Update();
+        Wounds.Update();
+        Bleeding.Update();
 
         // the extras due, a few a frame
         for (var i = 0; i < PerFrame && Pending.Count > 0; i++)
@@ -168,6 +169,30 @@ internal static class Gore
         Track(go);
     });
 
+    /// <summary>A splat stuck to a surface, made now (not queued): the bleeding's drops and pools, which grow it.</summary>
+    public static GameObject SplatNow(Vector3 at, Vector3 dir, float scale, Transform onto)
+    {
+        if (!SingletonBehaviour<BloodCamera>.HasInstance) return null;
+        var bc = SingletonBehaviour<BloodCamera>.Instance;
+        if (bc.BloodAttach == null) return null;
+        var go = Object.Instantiate(bc.BloodAttach);
+        var t = go.transform;
+        t.position = at;
+        t.localScale = Vector3.one * (Random.Range(0.85f, 1.15f) * 3f * scale);
+        t.rotation = Quaternion.LookRotation(dir == Vector3.zero ? Vector3.down : dir) * Quaternion.Euler(90f, 0f, 0f);
+        if (onto != null) t.SetParent(onto, true);
+        var p = go.GetComponentInChildren<BFX_ShaderProperies>();
+        if (p != null)
+        {
+            p.ForceTime = true;
+            p.ForcedTime = Random.Range(0.05f, 0.2f);
+            p.SetColour(Colour);
+            p.transform.localRotation = Quaternion.Euler(0f, Random.value * 360f, 0f);
+        }
+
+        return go;
+    }
+
     /// <summary>The wall (or floor) behind a hit, along the way the blood flies, gets a splat.</summary>
     public static void WallBehind(Vector3 from, Vector3 dir, float scale = 1f)
     {
@@ -213,6 +238,7 @@ internal static class Gore
             WallBehind(position, direction, 1.15f);
             Burst(position, direction);
             Wound(__instance, collider, position, direction);
+            Wounds.Bruise(__instance.gameObject, collider, position);
             if (__instance.Health.IsDead) Body.BloodOnYou.Splash(position, 0.6f); // (a kick that killed: a little on your legs and front)
         }
         else Burst(position, direction); // a body bleeds when you kick it
@@ -281,7 +307,7 @@ internal static class Gore
         var m = __instance.Rig.GetWorldMaterial();
         if (m != null && !m.SpawnsBlood) return;
         Spray(__instance.transform.position + Vector3.up * 1.1f, 3);
-        Holes.Bite(__instance.gameObject, position);
+        Wounds.Bite(__instance.gameObject, position);
         Body.BloodOnYou.Splash(__instance.transform.position + Vector3.up * 1.1f, 1.5f);
     }
 
@@ -305,15 +331,15 @@ internal static class Gore
 
     // ------------------------------------------------------------------ wounds
 
-    private static readonly Dictionary<Enemy, int> Wounds = new Dictionary<Enemy, int>();
+    private static readonly Dictionary<Enemy, int> WoundCount = new Dictionary<Enemy, int>();
 
     /// <summary>A wound on the part hit, going with it (at most 3 an enemy).</summary>
     private static void Wound(Enemy enemy, Collider part, Vector3 at, Vector3 dir)
     {
         if (enemy == null || part == null) return;
-        Wounds.TryGetValue(enemy, out var n);
+        WoundCount.TryGetValue(enemy, out var n);
         if (n >= 3) return;
-        Wounds[enemy] = n + 1;
+        WoundCount[enemy] = n + 1;
         Splat(at, dir, 0.3f, part.transform);
     }
 
@@ -328,16 +354,32 @@ internal static class Gore
         var m = enemy.Health != null && enemy.Health.IsDead ? enemy.Rig.GetCorpseWorldMaterial() : enemy.Rig.GetWorldMaterial();
         if (m == null || !m.SpawnsBlood) return;
         Wound(enemy, impactCollider, impactPosition, impactDirection);
-        Holes.Queue(enemy.gameObject, impactCollider, impactPosition, impactDirection);
+        Wounds.Queue(enemy.gameObject, impactCollider, impactPosition, impactDirection);
         if ((impactPosition - VrRig.HeadPosition).sqrMagnitude < 2.2f * 2.2f) Body.BloodOnYou.Close(impactPosition);
+    }
+
+    /// <summary>You're hit: a wound on your VR body where it hit (your health is the game's, untouched).</summary>
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(Health), nameof(Health.OnDamageTaken))]
+    private static void Hurt(Health __instance, Damage damage, Vector3 position, Vector3 direction)
+    {
+        if (!Extra || __instance == null || !__instance.IsPlayerHealth || (VrSettings.WoundsOnYou != null && !VrSettings.WoundsOnYou.Value)) return;
+        try
+        {
+            Wounds.OnPlayer(damage, position, direction);
+        }
+        catch (System.Exception e)
+        {
+            Plugin.L.LogWarning("Wounds on you: " + e.Message);
+        }
     }
 
     /// <summary>A level's start: forget the last one's bodies.</summary>
     public static void NewLevel()
     {
-        Holes.NewLevel();
+        Wounds.NewLevel();
         Smears.Clear();
-        Wounds.Clear();
+        WoundCount.Clear();
         Alive.Clear();
         Pending.Clear();
         Body.BloodOnYou.Clear();
@@ -411,5 +453,5 @@ internal static class Gore
 
     /// <summary>Dev: how it stands.</summary>
     public static string Describe() =>
-        $"GORE {(VrSettings.Gore != null ? VrSettings.Gore.Value.ToString() : "?")} extra {Extra} colour {(IsRed ? "red" : "pink")} (show blood {GameSettings.ShowBlood}) | extras alive {Alive.Count}/{Budget} pending {Pending.Count} | head pops {_pops}{(_lastHead != null ? $" (last head {_lastHead.lossyScale.x:F3} at {_lastHead.position})" : "")} wounds {Wounds.Count} smeared {Smears.Count} (body hits {_slams}, fastest on walls/floors {_slamTop:F1} m/s, layers {_slamLayers:X}) spurts {_spurting} | {Body.BloodOnYou.Describe()}";
+        $"GORE {(VrSettings.Gore != null ? VrSettings.Gore.Value.ToString() : "?")} extra {Extra} colour {(IsRed ? "red" : "pink")} (show blood {GameSettings.ShowBlood}) | extras alive {Alive.Count}/{Budget} pending {Pending.Count} | head pops {_pops}{(_lastHead != null ? $" (last head {_lastHead.lossyScale.x:F3} at {_lastHead.position})" : "")} wounds {WoundCount.Count} smeared {Smears.Count} (body hits {_slams}, fastest on walls/floors {_slamTop:F1} m/s, layers {_slamLayers:X}) spurts {_spurting} | {Body.BloodOnYou.Describe()}";
 }

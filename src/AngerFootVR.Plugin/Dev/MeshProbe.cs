@@ -82,7 +82,7 @@ internal static class MeshProbe
 
     /// <summary>A hole through the goon nearest the middle of your view, from your head (radius in metres): through the
     /// first of its body parts on the way.</summary>
-    public static string HoleTest(float radius)
+    public static string HoleTest(string kind, float up = 0.15f, float side = 0f)
     {
         var head = Core.VrRig.HeadPosition;
         var fwd = Core.VrRig.HeadRotation * Vector3.forward;
@@ -100,20 +100,23 @@ internal static class MeshProbe
         }
 
         if (best == null) return "no goon within 25 degrees of the view";
-        var target = best.Rig.GetCenterPosition() + Vector3.up * 0.15f;
+        var right = Vector3.Cross(Vector3.up, fwd).normalized;
+        var target = best.Rig.GetCenterPosition() + Vector3.up * up + right * side;
         var dir = (target - head).normalized;
         Collider part = null;
         var point = target;
         var nearest = float.MaxValue;
         foreach (var h in Physics.RaycastAll(head, dir, 30f, ~0, QueryTriggerInteraction.Ignore))
-            if (h.collider != null && h.collider.transform.IsChildOf(best.transform) && Rendering.Holes.IsPart(h.collider) && h.distance < nearest)
+            if (h.collider != null && h.collider.transform.IsChildOf(best.transform) && Rendering.Wounds.IsPart(h.collider) && h.distance < nearest)
             {
                 nearest = h.distance;
                 part = h.collider;
                 point = h.point;
             }
 
-        var made = radius < 0f ? Rendering.Holes.Test(best.gameObject, part, point, dir, -radius, true) : Rendering.Holes.Test(best.gameObject, part, point, dir, radius);
-        return $"hole test on {best.name} {bestA:F0} deg off the view at {(point - head).magnitude:F1} m (part {(part != null ? part.name + " layer " + part.gameObject.layer : "none")}): {made} | {Rendering.Holes.Describe()}";
+        var made = Rendering.Wounds.Test(best.gameObject, part, point, dir, kind);
+        Dev.CloseShot.Target = point;
+        Dev.CloseShot.Frame = Quaternion.LookRotation(-dir, Vector3.up);
+        return $"wound test ({kind}) on {best.name} {bestA:F0} deg off the view at {(point - head).magnitude:F1} m (part {(part != null ? part.name + " layer " + part.gameObject.layer : "none")}): {made} | {Rendering.Wounds.Describe()}";
     }
 }

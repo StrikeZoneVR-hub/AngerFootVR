@@ -689,7 +689,8 @@ internal sealed class HeroSkin
         return Quaternion.LookRotation(along, back);
     }
 
-    /// <summary>The fingers curl with the trigger (index), the grip (the rest) and the thumb's rest.</summary>
+    /// <summary>The fingers curl with the trigger (index), the grip (the rest) and the thumb's rest; a hand holding
+    /// something takes its grip (GripFingers: the game's own pose round it, closed onto its real surface).</summary>
     private void Fingers(int side, in HandPose h)
     {
         var curlIndex = h.Valid ? h.Index : 0.25f;
@@ -700,6 +701,7 @@ internal sealed class HeroSkin
         var canonBack = canon * Vector3.up;
         var canonAlong = canon * Vector3.forward;
         var across = (side == 1 ? 1f : -1f) * ThumbSign;
+        var grip = GripFingers.Active(side) && h.Valid && flip <= 0.01f ? GripFingers.Hands[side] : null;
         for (var f = 0; f < 5; f++)
         {
             var chain = _fingers[side * 5 + f];
@@ -710,24 +712,189 @@ internal sealed class HeroSkin
             for (var j = 0; j < chain.Length; j++)
             {
                 var i = chain[j];
-                var next = j + 1 < chain.Length ? chain[j + 1] : -1;
-                var dir = next >= 0 ? _rp[next] - _rp[i] : (j > 0 ? _rp[i] - _rp[chain[j - 1]] : Vector3.forward);
-                var axisWorld = Vector3.Cross(canonBack, dir.normalized);
-                if (axisWorld.sqrMagnitude < 1e-6f) continue;
-                var axis = Quaternion.Inverse(_rr[i]) * axisWorld.normalized;
-                Quaternion bend;
-                if (f == 4)
+                _all[i].localRotation = _rl[i] * Bend(side, f, j, i, curl, canonBack, canonAlong, across);
+                if (grip != null && j < 3)
                 {
-                    // the thumb: across the palm at its base (round the hand's long axis), then bending in
-                    bend = Quaternion.AngleAxis(curl * (j == 0 ? ThumbBase : j == 1 ? ThumbMid : ThumbTip), axis);
-                    if (j == 0) bend = Quaternion.AngleAxis(curl * ThumbAcross * across, Quaternion.Inverse(_rr[i]) * canonAlong) * bend;
+                    _open[j] = _rl[i] * Bend(side, f, j, i, f == 4 ? 0.15f : 0.05f, canonBack, canonAlong, across);
+                    _closed[j] = _rl[i] * Bend(side, f, j, i, f == 4 ? 1f : 1.15f, canonBack, canonAlong, across);
                 }
-                else bend = Quaternion.AngleAxis(6f + curl * (j == 0 ? 84f : j == 1 ? 100f : 72f), axis);
-                var q = _rl[i] * bend;
-                _all[i].localRotation = q;
-                if (_twin != null) _twin[i].localRotation = q;
+            }
+
+            if (grip != null) GripFinger(side, f, chain, grip);
+            if (_twin != null)
+                foreach (var i in chain)
+                    _twin[i].localRotation = _all[i].localRotation;
+        }
+
+        // the fingers as drawn, for the other hand to wrap round
+        if (!_tipsMade) MakeTips();
+        var drawn = GripFingers.Drawn[side];
+        for (var f = 0; f < 5; f++)
+        {
+            var chain = _fingers[side * 5 + f];
+            if (chain == null) continue;
+            for (var j = 0; j < 3 && j < chain.Length; j++) drawn[f * 4 + j] = _all[chain[j]].position;
+            var last = _all[chain[Mathf.Min(2, chain.Length - 1)]];
+            drawn[f * 4 + 3] = last.TransformPoint(_tipLocal[side * 5 + f]);
+        }
+
+        GripFingers.DrawnFrame[side] = Time.frameCount;
+    }
+
+    private Quaternion Bend(int side, int f, int j, int i, float curl, Vector3 canonBack, Vector3 canonAlong, float across)
+    {
+        var chain = _fingers[side * 5 + f];
+        var next = j + 1 < chain.Length ? chain[j + 1] : -1;
+        var dir = next >= 0 ? _rp[next] - _rp[i] : (j > 0 ? _rp[i] - _rp[chain[j - 1]] : Vector3.forward);
+        var axisWorld = Vector3.Cross(canonBack, dir.normalized);
+        if (axisWorld.sqrMagnitude < 1e-6f) return Quaternion.identity;
+        var axis = Quaternion.Inverse(_rr[i]) * axisWorld.normalized;
+        if (f == 4)
+        {
+            // the thumb: across the palm at its base (round the hand's long axis), then bending in
+            var bend = Quaternion.AngleAxis(curl * (j == 0 ? ThumbBase : j == 1 ? ThumbMid : ThumbTip), axis);
+            if (j == 0) bend = Quaternion.AngleAxis(curl * ThumbAcross * across, Quaternion.Inverse(_rr[i]) * canonAlong) * bend;
+            return bend;
+        }
+
+        return Quaternion.AngleAxis(6f + curl * (j == 0 ? 84f : j == 1 ? 100f : 72f), axis);
+    }
+
+    // ---- holding: the source's pose on these bones, then closed onto the held thing's surface ----
+    private readonly Quaternion[] _open = new Quaternion[3], _closed = new Quaternion[3], _q1 = new Quaternion[3];
+    private readonly Vector3[] _fk = new Vector3[4];
+    private readonly float[] _gripU = new float[10];
+    private readonly int[] _gripGen = new int[10];
+    private readonly Vector3[] _tipLocal = new Vector3[10];
+    private bool _tipsMade;
+
+    /// <summary>Dev: the last grip solve.</summary>
+    public static string GripReport = "";
+
+    private void MakeTips()
+    {
+        _tipsMade = true;
+        for (var k = 0; k < 10; k++)
+        {
+            var chain = _fingers[k];
+            if (chain == null) continue;
+            var last = chain[chain.Length - 1];
+            var t = _all[last];
+            // its own end bone if it has one, else on along the bone before it, a little shorter (in its own space)
+            if (t.childCount > 0) _tipLocal[k] = t.GetChild(0).localPosition;
+            else if (chain.Length > 1)
+            {
+                var prev = chain[chain.Length - 2];
+                _tipLocal[k] = Quaternion.Inverse(_rr[last]) * (_rp[last] - _rp[prev]) * 0.85f;
+            }
+            else _tipLocal[k] = Vector3.forward * 0.02f;
+        }
+    }
+
+    private void GripFinger(int side, int f, int[] chain, GripFingers.Grip g)
+    {
+        if (!_tipsMade) MakeTips();
+        var n = Mathf.Min(3, chain.Length);
+        var k = side * 5 + f;
+
+        // the pose to take: the source hand's (each bone pointed as its bone points, in the hand's frame), else a fist
+        if (g.FromSource)
+        {
+            var hi = _role[side == 0 ? (int)R.LHand : (int)R.RHand];
+            var heroFrame = _all[hi].rotation * Quaternion.Inverse(_rr[hi]) * Canonical(side, out _);
+            var map = heroFrame * Quaternion.Inverse(g.SourceFrame);
+            for (var j = 0; j < n; j++)
+            {
+                var bone = _all[chain[j]];
+                bone.localRotation = _open[j];
+                var src = g.Joints[f * 4 + j + 1] - g.Joints[f * 4 + j];
+                if (src.sqrMagnitude > 1e-10f)
+                {
+                    var want = map * src.normalized;
+                    var child = j + 1 < chain.Length ? _all[chain[j + 1]].localPosition : _tipLocal[k];
+                    var cur = bone.rotation * child;
+                    if (cur.sqrMagnitude > 1e-12f) bone.rotation = Quaternion.FromToRotation(cur, want) * bone.rotation;
+                }
+
+                _q1[j] = bone.localRotation;
             }
         }
+        else
+            for (var j = 0; j < n; j++)
+                _q1[j] = _closed[j];
+
+        // closed until it touches (no further), from open; a finger that meets nothing keeps the pose
+        var target = 1f;
+        if (g.Contact)
+        {
+            var parent = _all[chain[0]].parent;
+            var parentRot = parent != null ? parent.rotation : Quaternion.identity;
+            var basePos = _all[chain[0]].position;
+            var scale = parent != null ? parent.lossyScale.x : 1f;
+            var lo = f == 4 ? 0.2f : 0.1f;
+            var hiU = g.FromSource ? 1.55f : 1f;
+            var mask = Hits(chain, n, k, lo, parentRot, basePos, scale, g, 0);
+            bool At(float u) => Hits(chain, n, k, u, parentRot, basePos, scale, g, mask) != 0;
+            float a, b;
+            if (At(1f))
+            {
+                a = lo;
+                b = 1f;
+            }
+            else if (At(hiU))
+            {
+                a = 1f;
+                b = hiU;
+            }
+            else a = b = g.FromSource ? 1f : hiU;
+
+            if (a != b)
+                for (var it = 0; it < 6; it++)
+                {
+                    var m = (a + b) * 0.5f;
+                    if (At(m)) b = m;
+                    else a = m;
+                }
+
+            target = a;
+        }
+
+        // the index: along the frame until the trigger's touched; on it, it squeezes as it's pulled
+        if (f == 0 && g.FromSource) target = Mathf.Lerp(0.12f, target + 0.22f * Mathf.Clamp01(g.Squeeze), Mathf.Clamp01(g.IndexOn));
+
+        if (_gripGen[k] != g.Generation)
+        {
+            _gripGen[k] = g.Generation;
+            _gripU[k] = target;
+        }
+        else _gripU[k] = Mathf.MoveTowards(_gripU[k], target, Time.unscaledDeltaTime * 7f);
+
+        var uu = _gripU[k];
+        for (var j = 0; j < n; j++) _all[chain[j]].localRotation = Quaternion.SlerpUnclamped(_open[j], _q1[j], uu);
+        if (k == 1 || k == 6) GripReport = $"{(side == 0 ? "L" : "R")} middle u {uu:F2} (target {target:F2}) source {g.FromSource}";
+    }
+
+    /// <summary>Which of a finger's bones (bits) touch what's held, posed u of the way from open to the pose.</summary>
+    private int Hits(int[] chain, int n, int k, float u, Quaternion parentRot, Vector3 basePos, float scale, GripFingers.Grip g, int ignore)
+    {
+        var rot = parentRot;
+        _fk[0] = basePos;
+        for (var j = 0; j < n; j++)
+        {
+            rot = rot * Quaternion.SlerpUnclamped(_open[j], _q1[j], u);
+            var child = j + 1 < chain.Length ? _all[chain[j + 1]].localPosition : _tipLocal[k];
+            _fk[j + 1] = _fk[j] + rot * (child * scale);
+        }
+
+        var bits = 0;
+        for (var j = 0; j < n; j++)
+        {
+            if ((ignore & (1 << j)) != 0) continue;
+            var r = (j == 0 ? GripFingers.RadiusBase : j == 1 ? GripFingers.RadiusMid : GripFingers.RadiusTip) * Scale;
+            if (GripFingers.Touches(g, _fk[j], _fk[j + 1], r)) bits |= 1 << j;
+        }
+
+        return bits;
     }
 
     /// <summary>Two-bone IK: the middle joint, bent towards the pole; the end clamped to what the bones can reach.</summary>

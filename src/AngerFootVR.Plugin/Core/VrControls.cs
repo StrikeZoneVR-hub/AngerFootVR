@@ -142,6 +142,13 @@ internal static class VrControls
     /// <summary>Dev: holds a button down for some frames.</summary>
     public static void DevPress(XRNode hand, VrButton b, int frames) => DevHeld[(hand, b)] = frames;
 
+    /// <summary>Dev: a button held down until let go.</summary>
+    public static void DevHold(XRNode hand, VrButton b, bool on)
+    {
+        if (on) DevHeld[(hand, b)] = int.MaxValue;
+        else DevHeld.Remove((hand, b));
+    }
+
     /// <summary>Rumble on one controller (amount 0..1, seconds).</summary>
     public static void Rumble(XRNode hand, float amount, float seconds)
     {

@@ -13,6 +13,14 @@ namespace AngerFootVR.Rendering;
 internal static class Shaders
 {
     private static readonly Dictionary<string, Shader> Loaded = new Dictionary<string, Shader>();
+    private static readonly Dictionary<string, Texture2D> Textures = new Dictionary<string, Texture2D>();
+
+    /// <summary>One of the mod's own textures (the Blender-made gore ones), or null.</summary>
+    public static Texture2D Tex(string name)
+    {
+        Load();
+        return Textures.TryGetValue(name, out var t) ? t : null;
+    }
     private static bool _tried;
 
     public static string File => Path.Combine(Path.Combine(Paths.PluginPath, "AngerFootVR"), "angerfootvr_shaders");
@@ -55,7 +63,14 @@ internal static class Shaders
                 Loaded[s.name] = s;
             }
 
-            Plugin.L.LogInfo($"Shaders: {Loaded.Count} loaded ({string.Join(", ", new List<string>(Loaded.Keys).ToArray())})");
+            foreach (var t in bundle.LoadAllAssets<Texture2D>())
+            {
+                if (t == null) continue;
+                Object.DontDestroyOnLoad(t);
+                Textures[t.name] = t;
+            }
+
+            Plugin.L.LogInfo($"Shaders: {Loaded.Count} loaded ({string.Join(", ", new List<string>(Loaded.Keys).ToArray())}), {Textures.Count} textures");
         }
         catch (System.Exception e)
         {

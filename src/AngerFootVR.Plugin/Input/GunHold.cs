@@ -23,7 +23,11 @@ internal static class GunHold
     public static XRNode Hand => VrInputProvider.GunHand;
 
     private const string WristName = "FPSHands_03_Rig:Wrist_R", MiddleName = "FPSHands_03_Rig:MiddleFinger1_R", ThumbName = "FPSHands_03_Rig:ThumbFinger1_R";
-    private static Transform _wrist, _middle, _thumb, _wristL, _middleL, _plungerRoot, _plungerEnd;
+    private static Transform _wrist, _middle, _thumb, _wristL, _middleL, _thumbL, _plungerRoot, _plungerEnd;
+    private static readonly string[] FingerNames = { "Index", "Middle", "Ring", "Pinky", "Thumb" };
+
+    /// <summary>The game's first-person fingers (index, middle, ring, little, thumb; Finger1..4 each), right and left.</summary>
+    private static readonly Transform[] FpR = new Transform[20], FpL = new Transform[20];
     private static HandRig _rig;
 
     /// <summary>Whether a gun (or anything the game holds on its rig) is in your hand this frame.</summary>
@@ -170,7 +174,9 @@ internal static class GunHold
         if (_rig != __instance || _wrist == null)
         {
             _rig = __instance;
-            _wrist = _middle = _thumb = _wristL = _middleL = _plungerRoot = _plungerEnd = null;
+            _wrist = _middle = _thumb = _wristL = _middleL = _thumbL = _plungerRoot = _plungerEnd = null;
+            System.Array.Clear(FpR, 0, 20);
+            System.Array.Clear(FpL, 0, 20);
             foreach (var t in __instance.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == WristName) _wrist = t;
@@ -178,15 +184,22 @@ internal static class GunHold
                 else if (t.name == ThumbName) _thumb = t;
                 else if (t.name == "FPSHands_03_Rig:Wrist_L") _wristL = t;
                 else if (t.name == "FPSHands_03_Rig:MiddleFinger1_L") _middleL = t;
+                else if (t.name == "FPSHands_03_Rig:ThumbFinger1_L") _thumbL = t;
                 else if (t.name == "FPSHands_03_Rig:Plunger_Root") _plungerRoot = t;
                 else if (t.name == "FPSHands_03_Rig:Plunger") _plungerEnd = t;
+                for (var f = 0; f < 5; f++)
+                for (var j = 1; j <= 4; j++)
+                {
+                    if (t.name == $"FPSHands_03_Rig:{FingerNames[f]}Finger{j}_R") FpR[f * 4 + j - 1] = t;
+                    else if (t.name == $"FPSHands_03_Rig:{FingerNames[f]}Finger{j}_L") FpL[f * 4 + j - 1] = t;
+                }
             }
 
             if (_wrist == null) return;
         }
 
         var rig = __instance.transform;
-        var aim = Aim(pose);
+        var aim = GunDetails.Weight(Arsenal.Steady(Aim(pose)), player.Weapon != null ? player.Weapon.HoldableObjectType : null);
         // your hand (the body's): InkVR's grip-to-hand frame, z along the fingers, y out of the back of the hand
         var s = Hand == XRNode.LeftHand ? -1f : 1f;
         var local = Quaternion.LookRotation(Vector3.down, new Vector3(s, 0, 0));
@@ -199,6 +212,11 @@ internal static class GunHold
         {
             if (type != _held)
             {
+                _shapesUntil = Time.unscaledTime + 1.6f;
+                _nextShapes = 0f;
+                Shapes.Clear();
+                ShapeNames.Clear();
+                _foreInRig = null;
                 _palmRest = Vector3.zero;
                 _idleSeen = false;
                 _strayFor = 0f;
@@ -273,6 +291,17 @@ internal static class GunHold
 
                     _palmRest = anchorInRig;
                     _muzzleRest = _muzzle != null ? rig.InverseTransformPoint(_muzzle.position) : Vector3.zero;
+                    _foreInRig = null;
+                    if (_muzzle != null && Arsenal.IsTwoHanded(type) && Source(FpL, _wristL, rig.lossyScale.x < 0f ? 1 : 0, out var fl))
+                    {
+                        var foreW = Palm(_wristL, FpL[4], fl);
+                        var fore = rig.InverseTransformPoint(foreW);
+                        // (on the gun: near the line from the grip to the muzzle, out in front of the grip)
+                        var axis = _muzzleRest - _palmRest;
+                        var t = Vector3.Dot(fore - _palmRest, axis) / Mathf.Max(axis.sqrMagnitude, 1e-6f);
+                        var off = (rig.TransformPoint(_palmRest + axis * Mathf.Clamp01(t)) - foreW).magnitude;
+                        if (t > 0.15f && off < 0.2f) _foreInRig = fore;
+                    }
                     // no muzzle (the plunger): its length, from your palm to its middle, is what points
                     _axisRest = Vector3.zero;
                     if (_muzzle == null && type == HoldableObjectType.Plunger && _plungerRoot != null && _plungerEnd != null)
@@ -350,6 +379,8 @@ internal static class GunHold
                     }
                 }
                 else anchorInRig = _palmRest;
+                // (two hands on it: the game's own kick in the hand, a little over half of it soaked up)
+                if (IsGun && (Arsenal.Supported || Arsenal.TwoHands) && DevMode != 1) anchorInRig = Vector3.Lerp(_palmRest, _palmNow, 0.55f);
                 anchor = handPos + handRot * new Vector3(0f, 0f, PalmAlong);
             }
         }
@@ -377,6 +408,8 @@ internal static class GunHold
         // (two hands on it steer it, except while grips are being set: then the other hand places it)
         if (IsGun && DevMode != 1 && !GripAdjust.On) rigRot = Arsenal.TwoHand(rig, rigRot, anchor, anchorInRig, _muzzleRest, type);
         rig.SetPositionAndRotation(anchor - rigRot * Vector3.Scale(anchorInRig, rig.lossyScale), rigRot);
+        // (a gun never goes into a wall: held back out of it, the hand with it)
+        if (IsGun && DevMode != 1) GunDetails.StopAtWalls(rig, rig.TransformPoint(anchorInRig), _muzzle != null ? _muzzle.position : rig.TransformPoint(anchorInRig) + rig.forward * 0.25f);
         _barrelOff = Vector3.Angle(rig.forward, aim * Vector3.forward);
         Holding = true;
         WithTheBody(__instance, type);
@@ -394,7 +427,145 @@ internal static class GunHold
             HoldHand(wristAt - poseRot * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f)), poseRot);
         }
         Arsenal.AfterPlace(__instance, rig, anchorInRig, _muzzleRest, player.Weapon, type, IsGun);
+        try
+        {
+            Grips(__instance, type);
+        }
+        catch (System.Exception e)
+        {
+            if (!_gripFailed) Plugin.L.LogWarning("Grip fingers: " + e);
+            _gripFailed = true;
+        }
     }
+
+    private static Vector3? _foreInRig;
+
+    /// <summary>Where the game's other hand holds this long gun (its pump, its foregrip), in the rig, or null.</summary>
+    public static Vector3? ForeInRig => _foreInRig;
+    private static bool _gripFailed;
+    private static float _shapesUntil, _nextShapes;
+    private static readonly System.Collections.Generic.List<Body.ShapeField> Shapes = new System.Collections.Generic.List<Body.ShapeField>();
+    private static readonly System.Collections.Generic.HashSet<string> ShapeNames = new System.Collections.Generic.HashSet<string>();
+    private static float _indexOn = 1f;
+
+    /// <summary>Dev: grips as the game's hand has them, without closing onto the gun (contact off).</summary>
+    public static bool DevNoContact;
+
+    /// <summary>The fingers on what's held: the gun hand's take the game's first-person hand's pose round it, and stop on
+    /// its real surface; a long gun's front hand takes the game's other hand's (it holds the pump, the foregrip).</summary>
+    private static void Grips(HandRig handRig, HoldableObjectType type)
+    {
+        var gs = Hand == XRNode.LeftHand ? 0 : 1;
+        var mirrored = handRig.transform.lossyScale.x < 0f;
+
+        // the held thing's parts (its own meshes, not the hands'): gathered again over its first moments in your hand
+        if (Time.unscaledTime < _shapesUntil && Time.unscaledTime >= _nextShapes)
+        {
+            _nextShapes = Time.unscaledTime + 0.4f;
+            if (ShapeNames.Count > 0 && Shapes.Count > 0 && Shapes[0].Bone != null && !Shapes[0].Bone.IsChildOf(handRig.transform))
+            {
+                Shapes.Clear();
+                ShapeNames.Clear();
+            }
+
+            var kind = type != null ? type.name : "none";
+            foreach (var smr in handRig.GetComponentsInChildren<SkinnedMeshRenderer>(false))
+            {
+                if (smr == null || !smr.enabled || smr.sharedMaterial == null || smr.sharedMaterial.shader.name.Contains("CHARACTERS")) continue;
+                if (smr.sharedMesh == null || ShapeNames.Contains(smr.name)) continue;
+                var f = Body.ShapeField.For(smr, kind);
+                if (f == null) continue;
+                ShapeNames.Add(smr.name);
+                Shapes.Add(f);
+            }
+        }
+
+        // the gun hand: the game's right hand (mirrored for a left gun hand)
+        if (Source(FpR, _wrist, mirrored ? 0 : 1, out var frame))
+        {
+            var g = Body.GripFingers.Begin(gs, true);
+            Fill(g, FpR, frame);
+            var c = gs == 0 ? XrActions.Left : XrActions.Right;
+            var touching = XrActions.Ready ? c.TriggerTouch || c.Trigger > 0.04f : VrControls.Held(Hand, VrButton.Trigger);
+            _indexOn = Mathf.MoveTowards(_indexOn, touching || !IsGun ? 1f : 0f, Time.unscaledDeltaTime * 9f);
+            g.IndexOn = IsGun ? _indexOn : 1f;
+            g.Squeeze = XrActions.Ready ? c.Trigger : VrControls.Held(Hand, VrButton.Trigger) ? 1f : 0f;
+        }
+
+        // a long gun's front hand: the game's left hand, where it holds the gun
+        if (Arsenal.TwoHands && Source(FpL, _wristL, mirrored ? 1 : 0, out var frameL))
+        {
+            var os = 1 - gs;
+            var g = Body.GripFingers.Begin(os, true);
+            Fill(g, FpL, frameL);
+            g.IndexOn = 1f;
+            // its hand where the game's is, turned as it is
+            HoldPalm(os, Palm(_wristL, FpL[4], frameL), frameL);
+        }
+    }
+
+    private static void Fill(Body.GripFingers.Grip g, Transform[] fp, Quaternion frame)
+    {
+        for (var i = 0; i < 20; i++) g.Joints[i] = fp[i] != null ? fp[i].position : Vector3.zero;
+        g.SourceFrame = frame;
+        g.Shapes.Clear();
+        g.Shapes.AddRange(Shapes);
+        g.Contact = !DevNoContact;
+    }
+
+    /// <summary>A first-person hand as a frame (z along its fingers, y out of its back), drawn as a left (0) or right (1).</summary>
+    private static bool Source(Transform[] fp, Transform wrist, int drawnAs, out Quaternion frame)
+    {
+        frame = Quaternion.identity;
+        var middle = fp[4];
+        var thumb = fp[16];
+        if (wrist == null || middle == null || thumb == null) return false;
+        for (var i = 0; i < 20; i++)
+            if (fp[i] == null)
+                return false;
+        var along = middle.position - wrist.position;
+        var t = Vector3.ProjectOnPlane(thumb.position - wrist.position, along.normalized);
+        var back = drawnAs == 1 ? Vector3.Cross(t, along) : Vector3.Cross(along, t);
+        if (along.sqrMagnitude < 1e-8f || back.sqrMagnitude < 1e-10f) return false;
+        frame = Quaternion.LookRotation(along, back);
+        return true;
+    }
+
+    /// <summary>A first-person hand's palm (as GunHold has always taken it: half way to the knuckles, in from the back).</summary>
+    private static Vector3 Palm(Transform wrist, Transform middle, Quaternion frame)
+    {
+        var along = middle.position - wrist.position;
+        return wrist.position + along * 0.5f - frame * Vector3.up * (along.magnitude * 0.12f);
+    }
+
+    /// <summary>A hand (0 left, 1 right) held with its palm here and its frame turned so (z along the fingers, y out of
+    /// the back): the inverse of where the body puts a hand from its controller.</summary>
+    public static void HoldPalm(int side, Vector3 palm, Quaternion frame)
+    {
+        var s = side == 0 ? -1f : 1f;
+        var local = Quaternion.LookRotation(Vector3.down, new Vector3(s, 0, 0));
+        var poseRot = frame * Quaternion.Inverse(local);
+        var wristAt = palm - frame * new Vector3(0f, 0f, PalmAlong);
+        VrHands.Hold(side, wristAt - poseRot * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f)), poseRot);
+    }
+
+    /// <summary>The gun hand's palm and frame as drawn this frame (for the support hand), or false.</summary>
+    public static bool GunPalm(out Vector3 palm, out Quaternion frame, out Transform rig)
+    {
+        palm = default;
+        frame = Quaternion.identity;
+        rig = _rig != null ? _rig.transform : null;
+        if (!Holding || _rig == null || _wrist == null || _middle == null) return false;
+        if (!Source(FpR, _wrist, _rig.transform.lossyScale.x < 0f ? 0 : 1, out frame)) return false;
+        palm = Palm(_wrist, _middle, frame);
+        return true;
+    }
+
+    /// <summary>The held gun's muzzle (or null).</summary>
+    public static Transform Muzzle => _muzzle;
+
+    /// <summary>The held thing's parts (for the support hand's fingers to meet).</summary>
+    public static System.Collections.Generic.List<Body.ShapeField> HeldShapes => Shapes;
 
     /// <summary>Where the held gun points from (its muzzle) and the way (its barrel).</summary>
     public static void BarrelRay(VrHands.Pose pose, out Vector3 position, out Vector3 direction) => Barrel(pose, out position, out direction);

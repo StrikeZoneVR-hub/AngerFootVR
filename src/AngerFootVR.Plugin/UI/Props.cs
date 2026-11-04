@@ -31,6 +31,9 @@ internal static class Props
 
     public static string File => Path.Combine(Path.Combine(Paths.PluginPath, "AngerFootVR"), "props.afvp");
 
+    /// <summary>The wound and gore models (tools/blender/build_gore.py).</summary>
+    public static string GoreFile => Path.Combine(Path.Combine(Paths.PluginPath, "AngerFootVR"), "gore.afvp");
+
     public static bool Load()
     {
         if (_loaded) return Models.Count > 0;
@@ -43,7 +46,10 @@ internal static class Props
                 return false;
             }
 
-            using (var r = new BinaryReader(System.IO.File.OpenRead(File)))
+            foreach (var path in new[] { File, GoreFile })
+            {
+            if (!System.IO.File.Exists(path)) continue;
+            using (var r = new BinaryReader(System.IO.File.OpenRead(path)))
             {
                 if (Encoding.ASCII.GetString(r.ReadBytes(4)) != "AFVP" || r.ReadUInt32() != 1) throw new InvalidDataException("not a props file (version 1)");
                 var count = (int)r.ReadUInt32();
@@ -92,6 +98,8 @@ internal static class Props
                         list.Add(model);
                     }
                 }
+            }
+
             }
 
             Plugin.L.LogInfo($"Models: {Models.Count} read ({Pieces.Count} breakables)");

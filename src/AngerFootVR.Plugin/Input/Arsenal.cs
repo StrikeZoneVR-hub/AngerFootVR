@@ -56,8 +56,9 @@ internal static class Arsenal
         var off = VrHands.GetRaw(OffHand);
         if (!off.Tracked || !VrControls.Held(OffHand, VrButton.Grip)) return rigRot;
 
-        // the front grip: a little over half way from the grip to the muzzle, under the barrel
-        _foreRest = anchorInRig + (muzzleInRig - anchorInRig) * 0.55f + Vector3.down * 0.04f;
+        // the front grip: where the game's own other hand holds it (the pump, the foregrip), else a little over half
+        // way from the grip to the muzzle, under the barrel
+        _foreRest = GunHold.ForeInRig ?? anchorInRig + (muzzleInRig - anchorInRig) * 0.55f + Vector3.down * 0.04f;
         var scale = rig.lossyScale;
         var have = rigRot * Vector3.Scale(_foreRest - anchorInRig, scale);
         var fore = anchor + have;
@@ -71,6 +72,98 @@ internal static class Arsenal
         VrHands.Hold(OffHand == XRNode.LeftHand ? 0 : 1, anchor + rigRot * Vector3.Scale(_foreRest - anchorInRig, scale), null);
         if (!was) VrControls.Rumble(OffHand, 0.35f, 0.04f);
         return rigRot;
+    }
+
+    // ------------------------------------------------------------------ two hands on a one-handed gun
+
+    /// <summary>Your other hand cupped round the gun hand on a pistol, the Glock, the Uzi this frame.</summary>
+    public static bool Supported { get; private set; }
+
+    /// <summary>The support hand's place against the gun hand (dev "support": metres in the gun's frame, x towards the
+    /// support side, and degrees): tuned by eye.</summary>
+    public static Vector3 SupportMove = new Vector3(0.026f, 0.004f, 0.004f), SupportTurn = Vector3.zero, SupportAlong = new Vector3(0.15f, -0.55f, 0.82f);
+
+    private static bool _supportWas;
+
+    private static void Support(Transform rig, HoldableObjectType type)
+    {
+        _supportWas = Supported;
+        Supported = false;
+        if (type == null || IsTwoHanded(type) || type == HoldableObjectType.DualPistols || type == HoldableObjectType.Plunger || Dual) return;
+        if (VrSettings.TwoHandAim != null && !VrSettings.TwoHandAim.Value) return;
+        var off = VrHands.GetRaw(OffHand);
+        if (!off.Tracked || !VrControls.Held(OffHand, VrButton.Grip)) return;
+        if (!GunHold.GunPalm(out var palm, out var frame, out _)) return;
+
+        // the support hand cupped round the gun hand: its palm in the gap on the grip's other side, a little forward
+        // and down, its fingers reaching forward round the front of the grip (over the gun hand's fingers, where they
+        // close till they meet them), its thumb forward along the frame; in the gun's frame with x towards the gun hand
+        var rr = Quaternion.LookRotation(rig.forward, rig.up);
+        var right = rr * Vector3.right;
+        var muzzle = GunHold.Muzzle;
+        var across = muzzle != null ? Vector3.Dot(muzzle.position - palm, right) : 0f;
+        var toGunHand = across >= 0f ? -1f : 1f; // (the gun hand's side of the grip, in the gun's x)
+        Vector3 Rig(Vector3 v) => rr * new Vector3(v.x * toGunHand, v.y, v.z);
+        var gripCentre = palm + right * across;
+        var supportPalm = gripCentre + Rig(new Vector3(-SupportMove.x, SupportMove.y, SupportMove.z));
+        var alongS = Rig(SupportAlong).normalized;
+        var backS = Vector3.ProjectOnPlane(Rig(new Vector3(-1f, 0f, 0f)), alongS).normalized;
+        var supportFrame = Quaternion.LookRotation(alongS, backS) * Quaternion.Euler(SupportTurn.x, SupportTurn.y * toGunHand, SupportTurn.z * toGunHand);
+
+        // the hand comes to it when it's near (and stays on, a little further)
+        var os = OffHand == XRNode.LeftHand ? 0 : 1;
+        var sOff = os == 0 ? -1f : 1f;
+        var local = Quaternion.LookRotation(Vector3.down, new Vector3(sOff, 0, 0));
+        var handPalm = off.Position + off.Rotation * (new Vector3(0.032f * sOff, 0, 0) - local * new Vector3(0, 0, 0.05f)) + off.Rotation * local * new Vector3(0, 0, 0.045f);
+        if ((handPalm - supportPalm).magnitude > (_supportWas ? 0.2f : 0.12f)) return;
+
+        Supported = true;
+        GunHold.HoldPalm(os, supportPalm, supportFrame);
+        var g = Body.GripFingers.Begin(os, false);
+        g.Shapes.Clear();
+        g.Shapes.AddRange(GunHold.HeldShapes);
+        // (and the gun hand's fingers, as they were drawn: the support fingers lie over them)
+        var gs = 1 - os;
+        if (Time.frameCount - Body.GripFingers.DrawnFrame[gs] <= 2)
+        {
+            var d = Body.GripFingers.Drawn[gs];
+            for (var f = 0; f < 5; f++)
+            for (var j = 0; j < 3; j++)
+            {
+                g.CapA[g.Capsules] = d[f * 4 + j];
+                g.CapB[g.Capsules] = d[f * 4 + j + 1];
+                g.CapR[g.Capsules] = 0.0085f;
+                g.Capsules++;
+            }
+        }
+
+        if (!_supportWas) VrControls.Rumble(OffHand, 0.3f, 0.04f);
+    }
+
+    private static Quaternion _steady;
+    private static bool _steadyHas;
+
+    /// <summary>The aim, steadied while two hands are on the gun: the small shakes smoothed out, quick turns as quick.</summary>
+    public static Quaternion Steady(Quaternion aim)
+    {
+        if (!Supported && !TwoHands)
+        {
+            _steadyHas = false;
+            return aim;
+        }
+
+        var dt = Mathf.Clamp(Time.unscaledDeltaTime, 1e-4f, 0.05f);
+        if (!_steadyHas)
+        {
+            _steady = aim;
+            _steadyHas = true;
+            return aim;
+        }
+
+        var speed = Quaternion.Angle(_steady, aim) / dt;
+        var k = Mathf.Lerp(16f, 90f, Mathf.InverseLerp(15f, 180f, speed));
+        _steady = Quaternion.Slerp(_steady, aim, 1f - Mathf.Exp(-k * dt));
+        return _steady;
     }
 
     // ------------------------------------------------------------------ dual pistols
@@ -322,6 +415,11 @@ internal static class Arsenal
     {
         // (each on its own: one going wrong never takes the others, or the gun in your hand, with it)
         Guard("left pistol", () => PlaceLeftPistol(handRig, rig));
+        Guard("support hand", () =>
+        {
+            if (gun) Support(rig, type);
+            else Supported = false;
+        });
         Guard("ammo count", () => AmmoCount(rig, anchorInRig, weapon, gun));
         Guard("scope", () => Scope(rig, anchorInRig, muzzleInRig, type));
     }
@@ -347,6 +445,7 @@ internal static class Arsenal
     {
         Dual = false;
         TwoHands = false;
+        Supported = false;
         VrHands.LetGo();
         if (_ammo != null) _ammo.gameObject.SetActive(false);
         if (_scope != null) _scope.SetActive(false);
@@ -385,7 +484,7 @@ internal static class Arsenal
         var hand = GunHand;
         if (Dual && weapon is DualPistolsWeapon d) hand = d.FireLeftHandNext ? XRNode.LeftHand : XRNode.RightHand;
         VrControls.Rumble(hand, heavy ? 0.95f : 0.6f, heavy ? 0.1f : 0.05f);
-        if (TwoHands) VrControls.Rumble(OffHand, heavy ? 0.6f : 0.35f, heavy ? 0.08f : 0.04f);
+        if (TwoHands || Supported) VrControls.Rumble(OffHand, heavy ? 0.6f : 0.35f, heavy ? 0.08f : 0.04f);
     }
 
     [HarmonyPostfix]
