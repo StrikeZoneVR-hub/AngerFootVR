@@ -1052,6 +1052,10 @@ public class Plugin : BaseUnityPlugin
                         // stall <ms>: the game stops for that long, as a slow PC's hitch would (tests the timing of things)
                         System.Threading.Thread.Sleep(Mathf.Clamp(arg.Length > 0 ? int.Parse(arg) : 500, 0, 3000));
                         break;
+                    case "probe":
+                        // probe: the facts the grip, wound and bleeding plans need (dev)
+                        L.LogInfo(Dev.ImmersionProbe.Run());
+                        break;
                     case "soundcheck":
                     {
                         // soundcheck [stop]: the level's looping props and Shepard tone doors whose sound has gone back to the
