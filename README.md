@@ -155,6 +155,11 @@
 - **A VR tab in the game's own SETTINGS** (the headset icon) with every VR option and what it does, and every option
   in the launcher too.
 - Snap or smooth turning, recenter any time (hold the left stick), gun hand right or left, standing or seated play.
+- **VIEW HEIGHT** (new in 1.2): the game sees from 1.5 m up, which can make a grown-up feel small; +10 or +20 cm makes
+  you that much taller, your body with you.
+- **The game's screen effects over your eyes** (new in 1.2): a level's fade from black, a blast's white-out, the death
+  tint and the flash when you're hit now cover your view the way they cover a flat screen (they used to hang on the
+  menu panel in front of you), and a hit buzzes both hands.
 - A steady spectator view on your monitor for streaming and recording, with its own field of view. New in 1.2:
   **BEHIND YOU** shows you from over your shoulder, your whole body and all, for anyone watching (off by default; it
   costs a few frames).

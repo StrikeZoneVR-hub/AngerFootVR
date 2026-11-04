@@ -71,7 +71,7 @@ internal static class HeroBody
         Input.GunHold.EnsurePlaced();
         var player = SingletonBehaviour<Player>.Instance;
         var feet = player.transform.position;
-        var gameEye = player.GetEyePosition(alive: true).y - feet.y;
+        var gameEye = player.GetEyePosition(alive: true).y - feet.y + VrRig.Lift; // (VIEW HEIGHT: a taller you)
         var k = Mathf.Clamp(gameEye / Skeleton.EyeHeight, 0.5f, 2f);
         var airborne = player.Movement != null && !player.Movement.IsGrounded;
         Solve(VrRig.HeadPosition, VrRig.HeadRotation, k, p => Ground(p, feet.y), airborne);

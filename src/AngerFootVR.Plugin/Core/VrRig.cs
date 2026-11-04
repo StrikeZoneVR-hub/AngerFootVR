@@ -51,6 +51,13 @@ internal static class VrRig
     /// <summary>Recentres the play space on your head and takes your standing eye height (next frame).</summary>
     public static void Recenter() => _calibrated = false;
 
+    /// <summary>Dev: VIEW HEIGHT for now (metres; the settings file untouched).</summary>
+    public static float? DevLift;
+
+    /// <summary>VIEW HEIGHT: how far above the character's own eyes you see from (the game's are 1.5 m up: a grown-up
+    /// in VR feels small, a player's video said). Your hands and body come up with you.</summary>
+    public static float Lift => DevLift ?? (VrSettings.ViewHeight == null ? 0f : (int)VrSettings.ViewHeight.Value * 0.1f);
+
     public static bool TryGetTrackedHead(out Vector3 position, out Quaternion rotation)
     {
         var head = InputDevices.GetDeviceAtXRNode(XRNode.CenterEye);
@@ -108,7 +115,7 @@ internal static class VrRig
         var holder = pc.transform;
         var yaw = Quaternion.Euler(0f, PlayYaw, 0f);
         var offset = pos - _center;
-        offset.y = Mathf.Clamp(pos.y - _standingEyeHeight, -0.9f, 0.25f);
+        offset.y = Mathf.Clamp(pos.y - _standingEyeHeight, -0.9f, 0.25f) + Lift;
         var lean = new Vector2(offset.x, offset.z);
         if (lean.magnitude > MaxLean) lean = lean.normalized * MaxLean;
         offset.x = lean.x;

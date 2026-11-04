@@ -28,6 +28,7 @@ internal static class VrSettingsTab
     public static int SmoothSpeed;
     public static VrSettings.Hand GunHand;
     public static VrSettings.PlayStyle PlayMode;
+    public static VrSettings.Lift ViewHeight;
 #pragma warning disable CS0649 // (set through their FieldInfo)
     public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, GunSpin;
 #pragma warning restore CS0649
@@ -67,6 +68,12 @@ internal static class VrSettingsTab
             Label = "SNAP ANGLE", Field = nameof(SnapAngle), Options = new[] { "15°", "30°", "45°", "60°", "90°" },
             Help = "How far one snap turns.", Enabled = () => Turning == VrSettings.TurnStyle.Snap,
             Load = () => SnapAngle = Nearest(VrSettings.SnapAngle.Value), Save = () => VrSettings.SnapAngle.Value = SnapDegrees[(int)SnapAngle],
+        },
+        new Row
+        {
+            Label = "VIEW HEIGHT", Field = nameof(ViewHeight), Options = new[] { "GAME", "+10 CM", "+20 CM" },
+            Help = "How high you see from. GAME is the character's own eyes (1.5 m up: a grown-up can feel small); +10 or +20 CM makes you that much taller, your body with you.",
+            Load = () => ViewHeight = VrSettings.ViewHeight.Value, Save = () => VrSettings.ViewHeight.Value = ViewHeight,
         },
         new Row
         {
@@ -478,7 +485,7 @@ internal static class VrSettingsTab
             if (!SingletonBehaviour<SettingsMenu>.HasInstance || SingletonBehaviour<SettingsMenu>.Instance.TabbedMenu.CurrentTab is not SettingsMenuTab t || t.SettingsCategory != Category) return true;
             foreach (var e in new ConfigEntryBase[]
                      {
-                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
+                         VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.ViewHeight, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
                          VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou, VrSettings.GunSpin,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                          VrSettings.Gore, VrSettings.BloodColour,

@@ -150,8 +150,20 @@ internal static class VrControls
     }
 
     /// <summary>Rumble on one controller (amount 0..1, seconds).</summary>
+    private static readonly int[] RumbleFrame = { -1, -1 };
+    private static readonly float[] RumbleAmount = new float[2];
+
     public static void Rumble(XRNode hand, float amount, float seconds)
     {
+        // (one buzz a hand a frame, the strongest asked for; a sane length: an explosion has the game and the mod both
+        // buzzing hard in the same frame, and the runtime gets one call, never a flood or a length it can't take)
+        if (float.IsNaN(amount) || float.IsNaN(seconds) || float.IsInfinity(seconds)) return;
+        amount = Mathf.Clamp01(amount);
+        seconds = Mathf.Clamp(seconds, 0.01f, 1f);
+        var i = hand == XRNode.LeftHand ? 0 : 1;
+        if (RumbleFrame[i] == Time.frameCount && amount <= RumbleAmount[i]) return;
+        RumbleFrame[i] = Time.frameCount;
+        RumbleAmount[i] = amount;
         if (XrActions.Ready)
         {
             XrActions.Haptic(hand == XRNode.LeftHand, amount, seconds);

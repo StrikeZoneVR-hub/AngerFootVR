@@ -82,6 +82,12 @@ namespace AngerFootVR.Launcher
                     },
                     new Opt
                     {
+                        Label = "VIEW HEIGHT", Help = "How high you see from. GAME is the character's own eyes (1.5 m up: a grown-up can feel small); +10 or +20 CM makes you that much taller.",
+                        Value = () => Cfg("Comfort", "ViewHeight", "Game") == "Plus10" ? "+10 CM" : Cfg("Comfort", "ViewHeight", "Game") == "Plus20" ? "+20 CM" : "GAME",
+                        Step = by => Set("Comfort", "ViewHeight", Cycle(Cfg("Comfort", "ViewHeight", "Game"), new[] { "Game", "Plus10", "Plus20" }, by)), Enabled = Mod,
+                    },
+                    new Opt
+                    {
                         Label = "SMOOTH TURN SPEED", Help = "Degrees a second at full stick.",
                         Value = () => Int("Comfort", "SmoothTurnSpeed", 150) + "°/S",
                         Step = by => Set("Comfort", "SmoothTurnSpeed", Math.Max(60, Math.Min(360, Int("Comfort", "SmoothTurnSpeed", 150) + by * 30)).ToString(CultureInfo.InvariantCulture)),

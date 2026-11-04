@@ -1132,6 +1132,34 @@ public class Plugin : BaseUnityPlugin
                     case "spins":
                         L.LogInfo(Input.GunSpin.Describe());
                         break;
+                    case "homecoming":
+                    {
+                        // homecoming: walk into the apartment's shoe-room trigger (Homecoming Story: the shoe wall explodes)
+                        var hc = UnityEngine.Object.FindObjectOfType<HomecomingStoryController>();
+                        var pl = Framework.SingletonBehaviour<Player>.HasInstance ? Framework.SingletonBehaviour<Player>.Instance : null;
+                        if (hc == null || pl == null)
+                        {
+                            L.LogInfo("homecoming: not in the Homecoming Story scene");
+                            break;
+                        }
+
+                        var b = (Bounds)HarmonyLib.AccessTools.Field(typeof(HomecomingStoryController), "_triggerBounds").GetValue(hc);
+                        var at = b.center + Vector3.down * (b.extents.y * 0.5f);
+                        pl.Rigidbody.position = at;
+                        pl.transform.position = at;
+                        L.LogInfo($"homecoming: at the trigger {at:F2}");
+                        break;
+                    }
+                    case "lift":
+                        // lift <metres>|off: VIEW HEIGHT for now (the settings file untouched)
+                        Core.VrRig.DevLift = arg == "off" ? (float?)null : Dev.MockControllers.F(arg);
+                        L.LogInfo($"view lift {Core.VrRig.Lift:F2} m");
+                        break;
+                    case "viewfx":
+                        // viewfx [hit|fade]: the hit's flash or a story level's fade from black, over your view
+                        L.LogInfo(arg.Length > 0 ? Rendering.ViewFx.DevFlash(arg) : Rendering.ViewFx.Describe());
+                        for (var qi = 0; qi < 4; qi++) L.LogInfo("VIEW FX " + Rendering.ViewFx.Quad(qi));
+                        break;
                     case "gripzero":
                         Input.GripAdjust.DevZero = arg != "off";
                         L.LogInfo("grip offsets " + (Input.GripAdjust.DevZero ? "off" : "on"));
