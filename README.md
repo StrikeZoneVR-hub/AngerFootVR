@@ -59,6 +59,9 @@
 - **Dual pistols:** one in each hand, each trigger fires its own.
 - **The sniper rifle has a working scope:** put your eye to it.
 - An **ammo count** on the back of every gun, flashing EMPTY when it's time to throw it.
+- **LASER SIGHT** (new in 1.2, off by default) for getting used to aiming with your hand: DOT puts a red dot where
+  your shots land (the same line the bullets take), BEAM adds a thin beam from the barrel to it. Dual pistols get one
+  each.
 - **Throw for real** (new in 1.2, PLAY MODE STANDING): hold the gun hand's grip, swing and let go. The gun leaves your
   hand right then, from where it was in your hand and turned as it was. It goes the way your hand went (running, it
   carries your speed too) and spins the way your wrist turned. A gentle toss goes exactly as gently as you tossed it.
@@ -159,7 +162,8 @@
   you that much taller, your body with you.
 - **The game's screen effects over your eyes** (new in 1.2): a level's fade from black, a blast's white-out, the death
   tint and the flash when you're hit now cover your view the way they cover a flat screen (they used to hang on the
-  menu panel in front of you), and a hit buzzes both hands.
+  menu panel in front of you), and a hit buzzes both hands. Don't want the red-pink flash when you're hit? Turn
+  **HIT FLASH** off (the buzz stays).
 - A steady spectator view on your monitor for streaming and recording, with its own field of view. New in 1.2:
   **BEHIND YOU** shows you from over your shoulder, your whole body and all, for anyone watching (off by default; it
   costs a few frames).

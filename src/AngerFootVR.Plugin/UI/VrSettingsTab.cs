@@ -29,8 +29,9 @@ internal static class VrSettingsTab
     public static VrSettings.Hand GunHand;
     public static VrSettings.PlayStyle PlayMode;
     public static VrSettings.Lift ViewHeight;
+    public static VrSettings.SightStyle LaserSight;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, GunSpin;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, GunSpin, HitFlash;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -117,6 +118,13 @@ internal static class VrSettingsTab
         new Row { Header = "DISPLAY" },
         Toggle("AMMO COUNT", nameof(AmmoCount), VrSettings.AmmoCounter, "An ammo count on the back of your gun (EMPTY: time to throw it)."),
         Toggle("SNIPER SCOPE", nameof(SniperScope), VrSettings.SniperScope, "A scope on the sniper rifle that magnifies when you put your eye to it."),
+        new Row
+        {
+            Label = "LASER SIGHT", Field = nameof(LaserSight), Options = new[] { "OFF", "DOT", "BEAM" },
+            Help = "For getting used to aiming: DOT puts a red dot where your shots land, BEAM adds a beam from the barrel to it. Dual pistols get one each.",
+            Load = () => LaserSight = VrSettings.LaserSight.Value, Save = () => VrSettings.LaserSight.Value = LaserSight,
+        },
+        Toggle("HIT FLASH", nameof(HitFlash), VrSettings.HitFlash, "When you're hurt, the game's red-pink flash rings your view. Off: no flash (a hit still buzzes both hands)."),
         new Row
         {
             Label = "MONITOR VIEW", Field = nameof(Monitor), Options = new[] { "STEADY", "EYE", "BEHIND YOU" },
@@ -487,7 +495,7 @@ internal static class VrSettingsTab
                      {
                          VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.ViewHeight, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
                          VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou, VrSettings.GunSpin,
-                         VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
+                         VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.LaserSight, VrSettings.HitFlash, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                          VrSettings.Gore, VrSettings.BloodColour,
                      })
                 e.BoxedValue = e.DefaultValue;

@@ -232,6 +232,18 @@ internal static class Arsenal
         else if (r && !l) FireLeftNext.SetValue(weapon, false);
     }
 
+    /// <summary>Where the left pistol's shots go from and the way (dual pistols in both hands), or false.</summary>
+    public static bool LeftBarrel(out Vector3 position, out Vector3 direction)
+    {
+        position = direction = default;
+        if (!Dual || _leftGun == null || !_leftGun.gameObject.activeInHierarchy) return false;
+        var left = VrHands.Get(XRNode.LeftHand);
+        if (!left.Tracked) return false;
+        direction = left.Aim * Vector3.forward;
+        position = _leftMuzzle != null ? _leftMuzzle.position : left.Position + direction * 0.2f;
+        return true;
+    }
+
     /// <summary>A dual pistol shot: from the pistol that fires, along its hand's aim.</summary>
     public static bool DualShot(ProjectileWeapon weapon, out Vector3 position, out Vector3 direction)
     {

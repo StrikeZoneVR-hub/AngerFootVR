@@ -196,6 +196,7 @@ public class Plugin : BaseUnityPlugin
         Rendering.VrQuality.Update();
         Rendering.Gore.Update();
         Input.GunDetails.Update();
+        Rendering.LaserSight.Update();
         var dt = Time.unscaledDeltaTime;
         _frames++;
         _frameTime += dt;
@@ -1154,6 +1155,17 @@ public class Plugin : BaseUnityPlugin
                         // lift <metres>|off: VIEW HEIGHT for now (the settings file untouched)
                         Core.VrRig.DevLift = arg == "off" ? (float?)null : Dev.MockControllers.F(arg);
                         L.LogInfo($"view lift {Core.VrRig.Lift:F2} m");
+                        break;
+                    case "sight":
+                        // sight [off|dot|beam|cfg]: the LASER SIGHT for now (the settings file untouched)
+                        if (arg == "cfg") Rendering.LaserSight.DevStyle = null;
+                        else if (arg.Length > 0 && Enum.TryParse<VrSettings.SightStyle>(arg, true, out var ls)) Rendering.LaserSight.DevStyle = ls;
+                        L.LogInfo(Rendering.LaserSight.Describe());
+                        break;
+                    case "hitflash":
+                        // hitflash on|off|cfg: HIT FLASH for now (the settings file untouched)
+                        Rendering.ViewFx.DevHitFlash = arg == "cfg" ? (bool?)null : arg != "off";
+                        L.LogInfo(Rendering.ViewFx.Describe());
                         break;
                     case "viewfx":
                         // viewfx [hit|fade]: the hit's flash or a story level's fade from black, over your view

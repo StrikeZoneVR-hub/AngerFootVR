@@ -30,6 +30,11 @@ internal static class ViewFx
     private static readonly float[] Alpha = new float[4];
     private static int _lastFrame = -10;
 
+    /// <summary>Dev: HIT FLASH for now (the settings file untouched).</summary>
+    public static bool? DevHitFlash;
+
+    private static bool HitFlashOn => DevHitFlash ?? (VrSettings.HitFlash == null || VrSettings.HitFlash.Value);
+
     /// <summary>Dev: every camera draws them (to test the eyes-only switch).</summary>
     public static bool DevAllCameras;
 
@@ -84,6 +89,7 @@ internal static class ViewFx
             var c = img.color;
             var shown = img.isActiveAndEnabled ? c.a : 0f;
             img.canvasRenderer.SetAlpha(0f); // (not on the panel out in the world)
+            if (i == 0 && !HitFlashOn) shown = 0f; // (HIT FLASH off: none at all)
             Alpha[i] = shown;
             if (Textures[i] == null)
             {
@@ -229,5 +235,5 @@ internal static class ViewFx
     }
 
     public static string Describe() =>
-        $"VIEW FX damage {Alpha[0]:F2} death {Alpha[1]:F2} white {Alpha[2]:F2} fade {Alpha[3]:F2} | on the eye camera {(_root != null && _root.parent != null ? _root.parent.name : "none")} | damage texture {(Textures[0] != null ? Textures[0].name + " " + Textures[0].width + "x" + Textures[0].height : "none")}";
+        $"VIEW FX hit flash {(HitFlashOn ? "on" : "OFF")} damage {Alpha[0]:F2} death {Alpha[1]:F2} white {Alpha[2]:F2} fade {Alpha[3]:F2} | on the eye camera {(_root != null && _root.parent != null ? _root.parent.name : "none")} | damage texture {(Textures[0] != null ? Textures[0].name + " " + Textures[0].width + "x" + Textures[0].height : "none")}";
 }

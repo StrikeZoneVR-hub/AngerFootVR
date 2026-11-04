@@ -17,6 +17,7 @@ internal static class VrSettings
     public enum BloodTint { Pink, Red }
     public enum PlayStyle { Standing, Seated }
     public enum Lift { Game, Plus10, Plus20 }
+    public enum SightStyle { Off, Dot, Beam }
 
     public static ConfigEntry<TurnStyle> Turn;
     public static ConfigEntry<int> SnapAngle;
@@ -25,6 +26,8 @@ internal static class VrSettings
     public static ConfigEntry<PlayStyle> PlayMode;
     public static ConfigEntry<Lift> ViewHeight;
     public static ConfigEntry<bool> ThrowHelp;
+    public static ConfigEntry<SightStyle> LaserSight;
+    public static ConfigEntry<bool> HitFlash;
     public static ConfigEntry<bool> VrMap;
     public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, GunSpin;
     public static ConfigEntry<OpeningMode> Opening;
@@ -51,6 +54,8 @@ internal static class VrSettings
         SolidGuns = cfg.Bind("Controls", "SolidGuns", true, "Your gun stops at walls instead of going into them (your hand stays with it), so no shot starts inside a wall.");
         GunWeight = cfg.Bind("Controls", "GunWeight", true, "The heavy guns (sniper, minigun, launchers, the flamethrower) swing a touch heavier in one hand; your other hand on them steadies them.");
         WoundsOnYou = cfg.Bind("Gore", "WoundsOnYou", true, "Where you're hit, your VR body is wounded and bleeds as the enemies do, until you heal (EXTRA gore). Your health is the game's own.");
+        LaserSight = cfg.Bind("Display", "LaserSight", SightStyle.Off, "A laser sight on your gun, for getting used to aiming: Off, Dot (a red dot where your shots land) or Beam (a beam from the barrel to the dot). Dual pistols get one each.");
+        HitFlash = cfg.Bind("Display", "HitFlash", true, "When you're hurt, the game's red-pink flash rings your view. Off: no flash (a hit still buzzes both hands).");
         SniperScope = cfg.Bind("Display", "SniperScope", true, "The sniper rifle's scope magnifies when you put your eye to it.");
         FlipOff = cfg.Bind("Fun", "FlipOff", true, "Enemies who see your middle finger come for you.");
         VrMap = cfg.Bind("Controls", "LevelSelectInVR", true, "The level select in VR: sit in the car with the map book and point at the levels. Off: it plays on the movie screen.");

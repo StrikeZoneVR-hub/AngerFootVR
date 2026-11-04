@@ -145,6 +145,13 @@ namespace AngerFootVR.Launcher
                     Toggle("Controls", "GunGripAdjust", "GUN GRIP ADJUST", "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Off when you're done (it borrows that stick).", false),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),
                     Toggle("Display", "SniperScope", "SNIPER SCOPE", "A scope on the sniper rifle that magnifies when you put your eye to it."),
+                    new Opt
+                    {
+                        Label = "LASER SIGHT", Help = "For getting used to aiming: DOT puts a red dot where your shots land, BEAM adds a beam from the barrel to it.",
+                        Value = () => Cfg("Display", "LaserSight", "Off").ToUpperInvariant(),
+                        Step = by => Set("Display", "LaserSight", Cycle(Cfg("Display", "LaserSight", "Off"), new[] { "Off", "Dot", "Beam" }, by)), Enabled = Mod,
+                    },
+                    Toggle("Display", "HitFlash", "HIT FLASH", "When you're hurt, the game's red-pink flash rings your view. Off: no flash (a hit still buzzes both hands)."),
                     new Opt { Header = true, Label = "GORE" },
                     new Opt
                     {
