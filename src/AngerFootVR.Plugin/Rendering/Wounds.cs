@@ -189,6 +189,7 @@ internal static class Wounds
     /// drips given to its shaders.</summary>
     public static void Update()
     {
+        if (_warm > 0) Warm();
         if (Queued.Count > 0) TakeShots();
         var dt = Time.deltaTime;
         var now = Time.time;
@@ -905,9 +906,45 @@ internal static class Wounds
         }
     }
 
+    private static int _warm;
+    private static Mesh _warmMesh;
+    private static Material _warmCarve, _warmOver, _warmGib;
+
+    /// <summary>The wound shaders drawn once (nothing shows: no wounds) the first frames of a level, so the first shot
+    /// doesn't wait on them.</summary>
+    private static void Warm()
+    {
+        _warm--;
+        if (!Ready || !SingletonBehaviour<PlayerCamera>.HasInstance) return;
+        var cam = SingletonBehaviour<PlayerCamera>.Instance.MainCamera;
+        if (cam == null) return;
+        if (_warmMesh == null)
+        {
+            var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            _warmMesh = q.GetComponent<MeshFilter>().sharedMesh;
+            Object.Destroy(q);
+            _warmCarve = new Material(Shaders.Get("AngerFootVR/WoundCarve")) { renderQueue = CarveQueue };
+            _warmOver = new Material(Shaders.Get("AngerFootVR/WoundSkin")) { renderQueue = SkinQueue };
+            var gib = Shaders.Get("AngerFootVR/Gib");
+            if (gib != null) _warmGib = new Material(gib);
+            foreach (var m in new[] { _warmCarve, _warmOver })
+            {
+                m.SetFloat(IdWCount, 0f);
+                m.SetFloat(IdDCount, 0f);
+            }
+        }
+
+        var t = cam.transform;
+        var at = Matrix4x4.TRS(t.position + t.forward * 3f, t.rotation, Vector3.one * 0.001f);
+        Graphics.DrawMesh(_warmMesh, at, _warmCarve, UI.VrUi.Layer, cam);
+        Graphics.DrawMesh(_warmMesh, at, _warmOver, UI.VrUi.Layer, cam);
+        if (_warmGib != null) Graphics.DrawMesh(_warmMesh, at, _warmGib, UI.VrUi.Layer, cam);
+    }
+
     /// <summary>A level's start: the last one's bodies are gone.</summary>
     public static void NewLevel()
     {
+        _warm = 4;
         foreach (var b in Order)
             if (b.Player)
                 Strip(b);

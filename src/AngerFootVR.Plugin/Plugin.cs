@@ -98,6 +98,16 @@ public class Plugin : BaseUnityPlugin
         };
         VrSettings.Init(Config);
         Rendering.BloodDecals.Init();
+        // (the mod's shaders, gore textures and models read now: never mid-level, on the first shot)
+        try
+        {
+            Rendering.Shaders.Get("AngerFootVR/WoundCarve");
+            UI.Props.Load();
+        }
+        catch (Exception e)
+        {
+            L.LogWarning("Preload: " + e.Message);
+        }
         new HarmonyLib.Harmony("com.strikezonevr.angerfootvr").PatchAll(typeof(Plugin).Assembly);
         Body.HeroModel.Init();
         L.LogInfo($"ANGER FOOT VR 1.2.0 loading. Unity {Application.unityVersion}, game {Application.version}, graphics {SystemInfo.graphicsDeviceType} ({SystemInfo.graphicsDeviceName}, {SystemInfo.graphicsMemorySize} MB)");
@@ -465,7 +475,7 @@ public class Plugin : BaseUnityPlugin
                         L.LogInfo(Input.GunDetails.Describe());
                         break;
                     case "gripinfo":
-                        L.LogInfo(Body.GripFingers.Describe() + " | " + Body.HeroSkin.GripReport + $" | supported {Input.Arsenal.Supported} two hands {Input.Arsenal.TwoHands} fore {Input.GunHold.ForeInRig}");
+                        L.LogInfo(Body.GripFingers.Describe() + " | " + Body.HeroSkin.GripReport + $" | supported {Input.Arsenal.Supported} two hands {Input.Arsenal.TwoHands} fore {Input.GunHold.ForeInRig} | {Input.Arsenal.DevFore}");
                         break;
                     case "contact":
                         Input.GunHold.DevNoContact = arg == "off";

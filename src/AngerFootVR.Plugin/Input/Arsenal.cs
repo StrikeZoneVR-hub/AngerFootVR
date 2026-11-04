@@ -45,6 +45,9 @@ internal static class Arsenal
 
     private static Vector3 _foreRest;
 
+    /// <summary>Dev: where the front grip was last looked for.</summary>
+    public static string DevFore = "";
+
     /// <summary>From GunHold, before the gun is placed: with your other hand on its front, the barrel swings onto that
     /// hand (round your gun hand's palm).</summary>
     public static Quaternion TwoHand(Transform rig, Quaternion rigRot, Vector3 anchor, Vector3 anchorInRig, Vector3 muzzleInRig, HoldableObjectType type)
@@ -62,6 +65,7 @@ internal static class Arsenal
         var scale = rig.lossyScale;
         var have = rigRot * Vector3.Scale(_foreRest - anchorInRig, scale);
         var fore = anchor + have;
+        DevFore = $"fore at {fore:F2} (head {Quaternion.Inverse(VrRig.HeadRotation) * (fore - VrRig.HeadPosition):F2}) off hand {(off.Position - fore).magnitude:F2} m away";
         if ((off.Position - fore).magnitude > (was ? 0.3f : 0.17f)) return rigRot;
 
         var want = off.Position - anchor;

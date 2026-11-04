@@ -156,7 +156,7 @@ Shader "AngerFootVR/WoundCarve"
                     float end = through > 0.5 ? L : C.y;
                     if (along < -rOut * 2.0 || along > end + rOut * 2.0) continue;
                     float atExit = through > 0.5 ? saturate((along / max(L, 1e-4) - 0.35) * 3.0) : 0.0;
-                    float rMouth = lerp(rIn, rOut, atExit) * Torn(ang, seed + atExit * 0.5, atExit > 0.5 ? 0.42 : 0.22);
+                    float rMouth = lerp(rIn, rOut, atExit) * Torn(ang, seed + atExit * 0.5, atExit > 0.5 ? 0.38 : 0.16);
                     if (d > rMouth) continue;
 
                     // the tunnel (a little narrower than the torn mouth: the skin hangs over its edge)

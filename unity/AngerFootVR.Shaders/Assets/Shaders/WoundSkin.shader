@@ -126,19 +126,19 @@ Shader "AngerFootVR/WoundSkin"
                         // (only the skin at this mouth, facing out of it: not the far side of the body)
                         float facing = dot(n, m == 0 ? -u : u);
                         if (abs(along - at) > r * 3.5 + 0.03 || facing < -0.15) continue;
-                        float torn = Torn(ang, seed + m * 0.5, m == 0 ? 0.22 : 0.42);
+                        float torn = Torn(ang, seed + m * 0.5, m == 0 ? 0.16 : 0.38);
                         float rr = r * torn;
                         float far = r * (m == 0 ? 3.6 : 4.2);
                         if (d > far + r * 2.5 * soakGrow) continue;
                         float2 suv = flat * 14.0 + seed;
                         float4 sn = tex2Dlod(_SkinNoise, float4(suv, 0, 0));
                         // the bruise round it (darker close in, mottled)
-                        float bt = saturate((d - rr) / max(far - rr, 1e-4));
+                        float bt = saturate((d - r) / max(far - r, 1e-4));
                         Over(col, a, wet, float3(0.16, 0.05, 0.12), pow(1.0 - bt, 2.2) * (0.18 + 0.3 * sn.g) * saturate(age * 1.5 + 0.2), 0.0);
                         // blood soaking out from it, wider as it bleeds (patchy at its edge)
                         // (ragged at its edge, the cloth or skin taking it unevenly)
                         float edgeN = tex2Dlod(_NoiseTex, float4(flat * 9.0 + seed * 1.7, 0, 0)).g;
-                        float soak = rr * (1.25 + 2.2 * soakGrow) * (0.75 + 0.5 * edgeN);
+                        float soak = r * (1.3 + 2.2 * soakGrow) * (0.8 + 0.4 * edgeN);
                         float st = saturate((d - rr) / max(soak - rr, 1e-4));
                         float patchy = smoothstep(0.3, 0.7, sn.a * 0.7 + edgeN * 0.5 + (1.0 - st) * 0.45);
                         Over(col, a, wet, blood * (0.42 + 0.2 * sn.r), smoothstep(1.0, 0.7, st) * patchy * 0.9, 1.0 - soakGrow * 0.4);

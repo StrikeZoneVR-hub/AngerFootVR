@@ -29,8 +29,12 @@ internal static class GripAdjust
         public bool IsZero => Move.sqrMagnitude < 1e-8f && Turn.sqrMagnitude < 1e-4f;
     }
 
-    /// <summary>Where each gun sits by default (empty: as the mod first placed them). Your adjustments override it.</summary>
-    private static readonly Dictionary<string, Offset> Defaults = new Dictionary<string, Offset>();
+    /// <summary>Where each gun sits by default (else as the mod first placed them). Your adjustments override it. The
+    /// Glock's is the tester's own, set with GUN GRIP ADJUST on 11-03 ("whatever I feel is best will be the new default").</summary>
+    private static readonly Dictionary<string, Offset> Defaults = new Dictionary<string, Offset>
+    {
+        ["level/Glock"] = new Offset { Move = new Vector3(-0.0215f, -0.1046f, 0.0217f), Turn = new Vector3(8.9978f, 5.3195f, -30.5825f) },
+    };
 
     private static readonly Dictionary<string, Offset> Chosen = new Dictionary<string, Offset>();
     private static string File => Path.Combine(BepInEx.Paths.BepInExRootPath, "AngerFootVR", "gun-grips.txt");

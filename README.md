@@ -44,8 +44,18 @@
 ### Guns
 - Every gun sits in your hand, **gripped the way the game's own hand holds it** (recoil and reloads too), aimed with
   your controller and fired from the muzzle.
+- **Fingers that really hold** (new in 1.2): each finger takes the pose the game's own hand has round that gun, then
+  closes until it meets the gun's real surface and no further, so nothing sinks into the grip or hangs off it. Your
+  index lies along the frame until you touch the trigger, then sits on it and squeezes as you pull.
 - **Two-handed guns** (rifles, shotgun, sniper, crossbow, launcher, flamethrower, minigun): put your other hand on the
-  front and squeeze to hold it with both.
+  front and squeeze to hold it with both. New in 1.2: that hand takes the game's own front-hand pose (it rides the
+  shotgun's pump).
+- **Two hands on a pistol** (new in 1.2): squeeze your other hand's grip near your gun hand on the pistol, the Glock or
+  the Uzi and it cups round it, thumb forward along the frame. It steadies your aim and takes some of the kick.
+- **Solid guns** (new in 1.2): your gun stops at walls instead of going into them, so a shot never starts inside one.
+  **Gun weight:** the heavy guns swing a touch heavier in one hand; two hands steady them.
+- **Muzzle flashes in VR** (new in 1.2), with a flash of light round you, and the casings fly out of the gun's own
+  ejection port.
 - **Dual pistols:** one in each hand, each trigger fires its own.
 - **The sniper rifle has a working scope:** put your eye to it.
 - An **ammo count** on the back of every gun, flashing EMPTY when it's time to throw it.
@@ -79,10 +89,20 @@
   - **headshot kills pop heads**, with a fountain from the neck (not bosses, and not the goons whose heads are
     special);
   - bullet wounds spurt and stay on the goon, going down with them;
+  - **real wounds** (new in 1.2, made with Blender): every shot leaves a wound on the goon's own body, so it bends and
+    ragdolls with them, nothing floating. Small ones are dark holes with a torn rim, a graze and a bruise round them.
+    The way out is bigger and more ragged. Big ones (a sniper's, a shotgun blast up close, an explosion's bite, or
+    several shots landing together) go right through and you see in: the cut skin, the fat under it, wet muscle, a rib
+    across a chest wound, and out the far side;
+  - **bleeding** (new in 1.2): blood soaks out from a wound and runs down the way gravity pulls, and stays where it ran
+    (a body that falls over bleeds new runs the new way down). Drops fall off it and splat, pools spread under bodies,
+    arteries pump, and big wounds throw out chunks of flesh and bits of bone;
+  - **wounds on you** (new in 1.2): where you're hit, your body is wounded the same way (a shot to your hand leaves a
+    hole in your hand), in first person, in the mirror and in BEHIND YOU, and bleeds until you heal. Your health is
+    the game's own (WOUNDS ON YOU in the settings);
+  - kicks leave bruises;
   - bodies leave smears where they slam into walls and floors, and pools of blood stain the bodies lying in them;
   - explosions spray blood all round;
-  - **holes** (new in 1.2): shoot a goon and the bullet goes right through, a cartoon hole you can see through, bigger
-    for bigger guns (a shotgun up close blows a big one). Explosions take a bite out of them;
   - **blood on you** (more of it in 1.2): kills close by spatter your chest, arms, hands and legs (a bloody kick your
     shoe), drying off and gone after 15 seconds.
 - **BLOOD COLOUR:** the game's own pink, or red.
