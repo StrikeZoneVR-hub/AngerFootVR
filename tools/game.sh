@@ -49,6 +49,10 @@ case "$1" in
     powershell.exe -NoProfile -Command "(Start-Process -FilePath '$GAME/$EXE' -WorkingDirectory '$GAME' $args -PassThru).Id" | tr -d '\r' > "$PIDFILE"
     # the background guard stops the game at the first memory warning, for the whole run
     nohup "$TOOLS/guard.sh" >/dev/null 2>&1 &
+    # off the user's screens for the whole run (the user's wish: tests out of sight), unless AFVR_ONSCREEN=1
+    if [ "$AFVR_ONSCREEN" != 1 ]; then
+      nohup powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$TOOLS/offscreen.ps1")" -ProcId "$(cat "$PIDFILE")" >/dev/null 2>&1 &
+    fi
     ;;
   stop)
     pids="$(running_pids)"

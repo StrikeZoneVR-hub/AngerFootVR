@@ -89,6 +89,7 @@ public class Plugin : BaseUnityPlugin
     {
         L = Logger;
         Instance = this;
+        if (DevRun) Application.runInBackground = true; // (a dev run's window is off screen, without the focus)
         Application.onBeforeRender += () =>
         {
             CinemaRig.BeforeRender();
@@ -187,7 +188,6 @@ public class Plugin : BaseUnityPlugin
         Rendering.SpectatorView.Update();
         Rendering.BehindView.Update();
         Recentering();
-        Input.GunSpin.Update();
         Input.MotionThrow.Update();
         Input.MotionDrink.Update();
         UI.Surprises.Update();
@@ -1087,20 +1087,13 @@ public class Plugin : BaseUnityPlugin
                         break;
                     case "throw":
                         // throw [m/s]: a seated throw from the gun hand (where it points); with a speed: a standing throw that fast along your view
-                        L.LogInfo("THROW " + (arg.Length > 0 ? Input.MotionThrow.DevToss(new Vector3(0f, 0f, Dev.MockControllers.F(arg)), false) : Input.MotionThrow.DevToss(Vector3.zero, true)));
+                        L.LogInfo("THROW " + (arg.Length > 0 ? Input.MotionThrow.DevThrow(new Vector3(0f, 0f, Dev.MockControllers.F(arg)), false) : Input.MotionThrow.DevThrow(Vector3.zero, true)));
                         break;
                     case "toss":
                     {
-                        // toss x y z: the gun hand lets go of the gun moving this fast (m/s, your view's frame: x right, y up, z on)
+                        // toss x y z: the gun hand lets go of its grip mid-swing, this fast (m/s, your view's frame: x right, y up, z on)
                         var a = arg.Split(' ');
-                        // toss x y z l|r s: and that hand squeezes its grip s seconds later (held: devbtn <hand> Grip off to let go)
-                        Input.MotionThrow.DevTrace = 120;
-                        if (a.Length >= 5)
-                        {
-                            Input.MotionThrow.DevSqueezeHand = a[3] == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand;
-                            Input.MotionThrow.DevSqueezeAt = Time.unscaledTime + Dev.MockControllers.F(a[4]);
-                        }
-                        L.LogInfo("TOSS " + Input.MotionThrow.DevToss(new Vector3(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2])), false));
+                        L.LogInfo("TOSS " + Input.MotionThrow.DevThrow(new Vector3(Dev.MockControllers.F(a[0]), Dev.MockControllers.F(a[1]), Dev.MockControllers.F(a[2])), false));
                         break;
                     }
                     case "seated":
@@ -1116,6 +1109,10 @@ public class Plugin : BaseUnityPlugin
                     case "throws":
                         L.LogInfo(Input.MotionThrow.Describe());
                         break;
+                    case "pickupcheck":
+                        // pickupcheck [try]: what the game's walk-over pick-up needs, now (try: the game picks up the nearest gun)
+                        L.LogInfo(Input.MotionThrow.PickupCheck(arg == "try"));
+                        break;
                     case "after":
                     {
                         // after <s> <command>: the command, that many seconds from now
@@ -1123,16 +1120,6 @@ public class Plugin : BaseUnityPlugin
                         if (sp2 > 0) StartCoroutine(Later(Dev.MockControllers.F(arg.Substring(0, sp2)), arg.Substring(sp2 + 1)));
                         break;
                     }
-                    case "flick":
-                    {
-                        // flick l|r <rad/s>: a wrist flick on that hand (the test runtime's hands don't turn)
-                        var a = arg.Split(' ');
-                        L.LogInfo("SPIN " + Input.GunSpin.DevFlick(a[0] == "l" ? UnityEngine.XR.XRNode.LeftHand : UnityEngine.XR.XRNode.RightHand, Dev.MockControllers.F(a[1])));
-                        break;
-                    }
-                    case "spins":
-                        L.LogInfo(Input.GunSpin.Describe());
-                        break;
                     case "homecoming":
                     {
                         // homecoming: walk into the apartment's shoe-room trigger (Homecoming Story: the shoe wall explodes)

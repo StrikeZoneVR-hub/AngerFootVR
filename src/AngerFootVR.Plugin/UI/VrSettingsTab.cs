@@ -31,7 +31,7 @@ internal static class VrSettingsTab
     public static VrSettings.Lift ViewHeight;
     public static VrSettings.SightStyle LaserSight;
 #pragma warning disable CS0649 // (set through their FieldInfo)
-    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, GunSpin, HitFlash;
+    public static bool LevelSelectInCar, TwoHandGuns, DrinkForReal, AmmoCount, SniperScope, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, ThrowHelp, HitFlash;
 #pragma warning restore CS0649
     public static VrSettings.OpeningMode Opening;
     public static VrSettings.MonitorView Monitor;
@@ -86,18 +86,18 @@ internal static class VrSettingsTab
         new Row
         {
             Label = "PLAY MODE", Field = nameof(PlayMode), Options = new[] { "STANDING", "SEATED" },
-            Help = "STANDING: hold your gun's grip and let go mid-swing to throw it as hard as you throw, or toss it to your other hand and squeeze to catch it. SEATED: press the gun hand's grip and it flies at the enemy you point at; with both hands on it, the press swaps hands.",
+            Help = "STANDING: hold your gun's grip, swing and let go to throw it (as hard as you swing; let go without a swing and it goes where it points). SEATED: press the gun hand's grip and it flies at the enemy you point at. Either way, with your other hand on the gun too, let go (seated: press) to hand it over.",
             Load = () => PlayMode = VrSettings.PlayMode.Value, Save = () => VrSettings.PlayMode.Value = PlayMode,
         },
         new Row
         {
             Label = "GUN HAND", Field = nameof(GunHand), Options = new[] { "RIGHT", "LEFT" },
-            Help = "The hand your guns go in: its trigger shoots and its grip throws. The other hand's grip interacts and catches. A gun you toss or hand over stays in the hand that has it till the next level.",
+            Help = "The hand your guns go in: its trigger shoots and its grip throws. The other hand's grip interacts and grabs a gun within reach. A gun you hand over stays in the hand that has it till the next level.",
             Load = () => GunHand = VrSettings.GunHand.Value, Save = () => VrSettings.GunHand.Value = GunHand,
         },
         new Row
         {
-            Label = "THROW HELP", Field = nameof(ThrowHelp), Help = "STANDING: a hard throw that's nearly on an enemy goes onto them. A gentle toss is never helped.",
+            Label = "THROW HELP", Field = nameof(ThrowHelp), Help = "STANDING: a throw that's nearly on an enemy goes onto them.",
             Enabled = () => PlayMode == VrSettings.PlayStyle.Standing,
             Load = () => ThrowHelp = VrSettings.ThrowHelp.Value, Save = () => VrSettings.ThrowHelp.Value = ThrowHelp,
         },
@@ -107,8 +107,6 @@ internal static class VrSettingsTab
             "Your gun stops at walls instead of going into them (your hand stays with it)."),
         Toggle("GUN WEIGHT", nameof(GunWeight), VrSettings.GunWeight,
             "The heavy guns swing a touch heavier in one hand; your other hand on them steadies them."),
-        Toggle("GUN SPIN", nameof(GunSpin), VrSettings.GunSpin,
-            "A pistol, the Glock or the Uzi: loosen your grip and flick your wrist and it spins round your trigger finger, cowboy style. Squeeze to catch it. No shots while it spins."),
         Toggle("GUN GRIP ADJUST", nameof(GripAdjust), VrSettings.GripAdjust,
             "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Turn it off when you're done (it borrows that stick)."),
         Toggle("DRINK FOR REAL", nameof(DrinkForReal), VrSettings.MotionDrink,
@@ -494,7 +492,7 @@ internal static class VrSettingsTab
             foreach (var e in new ConfigEntryBase[]
                      {
                          VrSettings.Turn, VrSettings.SnapAngle, VrSettings.SmoothSpeed, VrSettings.ViewHeight, VrSettings.GunHand, VrSettings.PlayMode, VrSettings.ThrowHelp, VrSettings.TwoHandAim, VrSettings.MotionDrink, VrSettings.VrMap,
-                         VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou, VrSettings.GunSpin,
+                         VrSettings.SolidGuns, VrSettings.GunWeight, VrSettings.GripAdjust, VrSettings.WoundsOnYou,
                          VrSettings.AmmoCounter, VrSettings.SniperScope, VrSettings.LaserSight, VrSettings.HitFlash, VrSettings.Monitor, VrSettings.MonitorFov, VrSettings.FlipOff, VrSettings.Opening,
                          VrSettings.Gore, VrSettings.BloodColour,
                      })

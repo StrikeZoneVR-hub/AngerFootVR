@@ -218,7 +218,6 @@ internal static class Arsenal
         var rot = left.Aim * _leftGunInRig;
         var scale = rig.lossyScale;
         _leftGun.SetPositionAndRotation(palm + left.Aim * Vector3.Scale(_leftGunPosInRig - _leftGripInRig, scale), rot);
-        GunSpin.ApplyLeft(_leftGun, VrHands.GetRaw(XRNode.LeftHand));
         Dual = true;
     }
 

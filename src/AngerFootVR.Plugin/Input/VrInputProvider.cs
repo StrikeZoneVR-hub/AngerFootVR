@@ -8,7 +8,7 @@ namespace AngerFootVR.Input;
 /// The VR controllers as the game's own kind of input (IInputProvider, beside its keyboard and gamepad ones).
 ///
 /// Play: trigger (gun hand) shoots, B or X kicks, A jumps, Y uses your shoes' power, the gun hand's grip throws your
-/// gun (MotionThrow: standing, let go of it mid-swing; seated, press it), the other grip interacts (and catches); left stick moves, right stick turns, the menu button pauses. Your head does the
+/// gun (MotionThrow: standing, let go of it mid-swing; seated, press it), the other grip interacts (and grabs a gun within reach); left stick moves, right stick turns, the menu button pauses. Your head does the
 /// looking. Menus: either stick moves, A accepts, B goes back, the grips change tabs.
 /// </summary>
 internal class VrInputProvider : IInputProvider
@@ -28,9 +28,9 @@ internal class VrInputProvider : IInputProvider
 
     // play
     // (dual pistols: either trigger, each fires its own pistol: Arsenal)
-    public bool IsShootPressed() => !GunSpin.Any && (VrControls.Held(GunHand, VrButton.Trigger) || Arsenal.Dual && VrControls.HeldEither(VrButton.Trigger)); // (never mid-spin)
+    public bool IsShootPressed() => VrControls.Held(GunHand, VrButton.Trigger) || Arsenal.Dual && VrControls.HeldEither(VrButton.Trigger);
     public bool WasShootReleased() => Arsenal.Dual ? VrControls.UpEither(VrButton.Trigger) && !VrControls.HeldEither(VrButton.Trigger) : VrControls.Up(GunHand, VrButton.Trigger);
-    public bool IsThrowPressed() => MotionThrow.Held; // (never: MotionThrow throws, the moment you let go)
+    public bool IsThrowPressed() => MotionThrow.Held; // (on letting go of the gun hand's grip, or seated pressing it: the game's own throw)
     // (the player's choice: B kicks and A jumps; X kicks too, so either hand can)
     public bool IsKickPressed() => KickHeld;
     public bool WasKickPressed() => KickDown;

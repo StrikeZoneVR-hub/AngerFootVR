@@ -10,8 +10,8 @@ namespace AngerFootVR.Rendering;
 /// LASER SIGHT (1.2, off by default), for anyone still getting used to aiming with their hand ("I'm still getting used
 /// to the aim", a player's video): a red dot where your shots go, and with BEAM a thin beam from the barrel to it that
 /// fades as it goes. It's the ray the game's bullets take (from the muzzle along the barrel, the same one the shots are
-/// fired along, stopped by what stops them), so the dot is where the shot lands. Dual pistols get one each. Never while
-/// a gun spins, in the movie house, while the game's paused, or on the flamethrower.
+/// fired along, stopped by what stops them), so the dot is where the shot lands. Dual pistols get one each. Never in the
+/// movie house, while the game's paused, or on the flamethrower.
 /// The dot is drawn over the surface it's on (never cut into by it, however flat the angle), at its real distance, and
 /// only when your eyes can see that spot; the beam goes behind things as it should.
 /// </summary>
@@ -77,14 +77,14 @@ internal static class LaserSight
             var style = Style;
             var hand = Input.GunHold.Hand;
             var muzzle = Input.GunHold.Muzzle;
-            if (!Input.GunSpin.Spinning(hand) && muzzle != null && muzzle.gameObject.activeInHierarchy)
+            if (muzzle != null && muzzle.gameObject.activeInHierarchy)
             {
                 Input.GunHold.BarrelRay(VrHands.GetRaw(hand), out var p, out var d);
                 Place(0, p, d, eye, style);
             }
             else Off(0);
 
-            if (Input.Arsenal.Dual && !Input.GunSpin.Spinning(XRNode.LeftHand) && Input.Arsenal.LeftBarrel(out var lp, out var ld)) Place(1, lp, ld, eye, style);
+            if (Input.Arsenal.Dual && Input.Arsenal.LeftBarrel(out var lp, out var ld)) Place(1, lp, ld, eye, style);
             else Off(1);
         }
         catch (System.Exception e)

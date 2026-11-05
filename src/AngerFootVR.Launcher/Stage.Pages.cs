@@ -95,19 +95,19 @@ namespace AngerFootVR.Launcher
                     },
                     new Opt
                     {
-                        Label = "PLAY MODE", Help = "STANDING: let go mid-swing to throw your gun, or toss it hand to hand and squeeze to catch it. SEATED: press the gun hand's grip and it flies at the enemy you point at.",
+                        Label = "PLAY MODE", Help = "STANDING: hold the grip, swing and let go to throw your gun. SEATED: press the gun hand's grip and it flies at the enemy you point at.",
                         Value = () => Cfg("Controls", "PlayMode", "Standing").ToUpperInvariant(),
                         Step = by => Set("Controls", "PlayMode", Cycle(Cfg("Controls", "PlayMode", "Standing"), new[] { "Standing", "Seated" }, by)), Enabled = Mod,
                     },
                     new Opt
                     {
-                        Label = "GUN HAND", Help = "The hand your guns go in: its trigger shoots, its grip throws; the other grip interacts. A gun you toss or hand over stays in the hand that has it till the next level.",
+                        Label = "GUN HAND", Help = "The hand your guns go in: its trigger shoots, its grip throws; the other grip interacts. A gun you hand over stays in the hand that has it till the next level.",
                         Value = () => Cfg("Controls", "GunHand", "Right").ToUpperInvariant(),
                         Step = by => Set("Controls", "GunHand", Cycle(Cfg("Controls", "GunHand", "Right"), new[] { "Right", "Left" }, by)), Enabled = Mod,
                     },
                     new Opt
                     {
-                        Label = "THROW HELP", Help = "STANDING: a hard throw that's nearly on an enemy goes onto them. A gentle toss is never helped.",
+                        Label = "THROW HELP", Help = "STANDING: a throw that's nearly on an enemy goes onto them.",
                         Value = () => Cfg("Controls", "ThrowHelp", "true").ToLowerInvariant() == "false" ? "OFF" : "ON",
                         Step = by => Set("Controls", "ThrowHelp", Cfg("Controls", "ThrowHelp", "true").ToLowerInvariant() == "false" ? "true" : "false"),
                         Enabled = () => Mod() && Cfg("Controls", "PlayMode", "Standing") != "Seated",
@@ -140,7 +140,6 @@ namespace AngerFootVR.Launcher
                     Toggle("Controls", "TwoHandAim", "TWO-HAND GUNS", "Your other hand on the gun (grip squeezed): the front of a rifle or shotgun holds and steers it; round your gun hand on a pistol or the Uzi it steadies your aim and takes some of the kick."),
                     Toggle("Controls", "SolidGuns", "SOLID GUNS", "Your gun stops at walls instead of going into them (your hand stays with it)."),
                     Toggle("Controls", "GunWeight", "GUN WEIGHT", "The heavy guns swing a touch heavier in one hand; your other hand on them steadies them."),
-                    Toggle("Controls", "GunSpin", "GUN SPIN", "A pistol, the Glock or the Uzi: loosen your grip and flick your wrist and it spins round your trigger finger. Squeeze to catch it."),
                     Toggle("Controls", "MotionDrink", "DRINK FOR REAL", "Grab a beer, an energy drink or the lizard, and bring it to your mouth. Off: grabbing it drinks it, as in the game."),
                     Toggle("Controls", "GunGripAdjust", "GUN GRIP ADJUST", "Hold a gun and set how it sits in your hand, live: the gun hand's stick moves it (a click: the next way, held in: back as it was), or grab it with your other hand and place it. Each gun keeps its own. Off when you're done (it borrows that stick).", false),
                     Toggle("Display", "AmmoCounter", "AMMO COUNT", "An ammo count on the back of your gun (EMPTY: time to throw it)."),

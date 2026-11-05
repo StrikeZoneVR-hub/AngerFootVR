@@ -429,8 +429,6 @@ internal static class GunHold
             HoldHand(wristAt - poseRot * (new Vector3(0.032f * s, 0, 0) - local * new Vector3(0, 0, 0.05f)), poseRot);
         }
 
-        // GUN SPIN: the gun turned round the trigger finger (your hand stays where it holds it)
-        if (IsGun && GunSpin.Spinning(Hand) && FpR[1] != null && FpR[2] != null) GunSpin.Apply(rig, (FpR[1].position + FpR[2].position) * 0.5f, Hand);
         Arsenal.AfterPlace(__instance, rig, anchorInRig, _muzzleRest, player.Weapon, type, IsGun);
         try
         {
@@ -519,7 +517,7 @@ internal static class GunHold
         }
 
         // the gun hand: the game's right hand (mirrored for a left gun hand)
-        if (!GunSpin.Spinning(Hand) && Source(FpR, _wrist, mirrored ? 0 : 1, out var frame))
+        if (Source(FpR, _wrist, mirrored ? 0 : 1, out var frame))
         {
             var g = Body.GripFingers.Begin(gs, true);
             Fill(g, FpR, frame);

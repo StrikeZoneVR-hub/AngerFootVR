@@ -29,7 +29,7 @@ internal static class VrSettings
     public static ConfigEntry<SightStyle> LaserSight;
     public static ConfigEntry<bool> HitFlash;
     public static ConfigEntry<bool> VrMap;
-    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou, GunSpin;
+    public static ConfigEntry<bool> TwoHandAim, AmmoCounter, SniperScope, MotionDrink, FlipOff, GripAdjust, SolidGuns, GunWeight, WoundsOnYou;
     public static ConfigEntry<OpeningMode> Opening;
     public static ConfigEntry<bool> OpeningSeen;
     public static ConfigEntry<MonitorView> Monitor;
@@ -43,14 +43,13 @@ internal static class VrSettings
         SnapAngle = cfg.Bind("Comfort", "SnapAngle", 30, new ConfigDescription("Degrees a snap turns.", new AcceptableValueRange<int>(15, 90)));
         ViewHeight = cfg.Bind("Comfort", "ViewHeight", Lift.Game, "How high you see from: Game (the character's own eyes, 1.5 m: a grown-up can feel small), Plus10 or Plus20 (that many cm taller; your body grows to match).");
         SmoothSpeed = cfg.Bind("Comfort", "SmoothTurnSpeed", 150, new ConfigDescription("Smooth turning speed at full stick (degrees a second).", new AcceptableValueRange<int>(60, 360)));
-        GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand your guns go in (its trigger shoots, its grip throws). The other hand's grip interacts. Toss or hand your gun to your other hand and it's there till the level ends or you pick up another.");
-        PlayMode = cfg.Bind("Controls", "PlayMode", PlayStyle.Standing, "Standing: your gun is in your hand for real: hold its grip and let go mid-swing to throw it (as hard as you throw it) or toss it to your other hand and catch it; grab guns within reach. Seated: press the gun hand's grip and your gun flies at the enemy you point it at; hand it over to your other hand instead of tossing it.");
-        ThrowHelp = cfg.Bind("Controls", "ThrowHelp", true, "Standing: a hard throw that's nearly on an enemy goes onto them (a gentle toss is never helped). Seated throws always go at the enemy you point at.");
+        GunHand = cfg.Bind("Controls", "GunHand", Hand.Right, "The hand your guns go in (its trigger shoots, its grip throws). The other hand's grip interacts. Hand your gun to your other hand and it's there till the level ends or you pick up another.");
+        PlayMode = cfg.Bind("Controls", "PlayMode", PlayStyle.Standing, "Standing: hold the gun hand's grip, swing and let go to throw your gun (as hard as you swing; let go without a swing and it goes where it points); grab a gun within reach with either grip. Seated: press the gun hand's grip and your gun flies at the enemy you point it at. Either way, with your other hand on the gun, let go (seated: press) to hand it over.");
+        ThrowHelp = cfg.Bind("Controls", "ThrowHelp", true, "Standing: a throw that's nearly on an enemy (within 12 degrees, in sight) goes onto them. Seated throws always go at the enemy you point at.");
         TwoHandAim = cfg.Bind("Controls", "TwoHandAim", true, "Two-handed guns: your other hand on the front (grip squeezed) holds the gun there and steers the barrel.");
         MotionDrink = cfg.Bind("Controls", "MotionDrink", true, "Drinks and the lizard: grab them and bring them to your mouth.");
         AmmoCounter = cfg.Bind("Display", "AmmoCounter", true, "An ammo count on the back of your gun.");
         GripAdjust = cfg.Bind("Controls", "GunGripAdjust", false, "Hold a gun and set how it sits in your hand: the gun hand's stick moves it (a click: the next way), or your other hand's grip places it. Each gun keeps its own (BepInEx/AngerFootVR/gun-grips.txt). Off when you're done.");
-        GunSpin = cfg.Bind("Controls", "GunSpin", true, "A pistol, the Glock or the Uzi: loosen your grip (not squeezed) and flick your wrist and it spins round your trigger finger; squeeze to catch it. No shots while it spins.");
         SolidGuns = cfg.Bind("Controls", "SolidGuns", true, "Your gun stops at walls instead of going into them (your hand stays with it), so no shot starts inside a wall.");
         GunWeight = cfg.Bind("Controls", "GunWeight", true, "The heavy guns (sniper, minigun, launchers, the flamethrower) swing a touch heavier in one hand; your other hand on them steadies them.");
         WoundsOnYou = cfg.Bind("Gore", "WoundsOnYou", true, "Where you're hit, your VR body is wounded and bleeds as the enemies do, until you heal (EXTRA gore). Your health is the game's own.");

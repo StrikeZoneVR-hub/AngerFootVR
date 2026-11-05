@@ -62,21 +62,15 @@
 - **LASER SIGHT** (new in 1.2, off by default) for getting used to aiming with your hand: DOT puts a red dot where
   your shots land (the same line the bullets take), BEAM adds a thin beam from the barrel to it. Dual pistols get one
   each.
-- **Throw for real** (new in 1.2, PLAY MODE STANDING): hold the gun hand's grip, swing and let go. The gun leaves your
-  hand right then, from where it was in your hand and turned as it was. It goes the way your hand went (running, it
-  carries your speed too) and spins the way your wrist turned. A gentle toss goes exactly as gently as you tossed it.
-  A real throw flies as hard as the game's own throw, harder if you put your arm into it. **THROW HELP** puts a hard
-  throw that's nearly on an enemy onto them; a toss is never helped. Let go with your hand still and the gun stays in
-  your hand. Waving your hands about never throws it.
-- **Toss it hand to hand** (new in 1.2): toss your gun to your other hand and squeeze that grip as it comes (or have it
-  squeezed as it gets there) and you've caught it. It's in that hand now: its trigger shoots and its grip throws.
-  Catch your own toss, catch a gun bouncing back off a goon, or reach down and grab a gun lying within reach (the
-  game's own pick-up). A toss you catch was never a throw, so a level's "no throwing" star still stands.
+- **Throw with your hand** (PLAY MODE STANDING): hold the gun hand's grip, swing and let go. The gun goes the way your
+  hand went (steadied by where you look), as hard as you threw it, from a lob to a fastball, and spins the way your
+  wrist turned. Let go without a swing and it goes where it points. **THROW HELP** puts a throw that's nearly on an
+  enemy onto them. Waving your hands about never throws it: only letting go of the grip does. It's the game's own throw
+  every time, so walking over a gun picks it up as the game does.
+- **Grab a gun within reach** (new in 1.2): hands empty, reach down to a gun lying close and squeeze a grip: it's in
+  that hand (the game's own pick-up).
 - **Hand it over** (new in 1.2): with your other hand on the gun too (TWO-HAND GUNS), let go with the gun hand and the
   other hand has it.
-- **Gun spin** (new in 1.2): loosen your grip on a pistol, the Glock or the Uzi (each of the dual pistols too) and flick
-  your wrist. It spins round your trigger finger, cowboy style, as fast as you flicked it; another flick keeps it going
-  and a squeeze catches it. No shots while it spins (GUN SPIN in the settings).
 - **Seated play** (new in 1.2, PLAY MODE SEATED): press the gun hand's grip and your gun flies at the enemy you point it
   at. To swap hands, hold the gun with both and press the grip. GUN HAND picks the hand your guns start in.
 - **Set the grip yourself** (new in 1.2): turn on **GUN GRIP ADJUST** (VR tab or the launcher),
@@ -208,14 +202,14 @@ Quest / Touch controllers; Index, Vive and Windows Mixed Reality controllers are
 | X / B | kick | kick |
 | Y / A | shoe power (in the car: shoes) | jump |
 | Trigger | second pistol | shoot |
-| Grip | grab or use what your hand is on; hold the front of a two-handed gun; catch | hold and let go mid-swing: throw or toss your gun (seated: press it) |
+| Grip | grab or use what your hand is on; hold the front of a two-handed gun; grab a gun within reach | hold, swing and let go: throw your gun (seated: press it) |
 | Menu | pause | |
 
 **Menus:** in the movie house, point at the screen and pull the trigger; lists scroll with the right stick while you
 point at them. In the car, point at the map. Elsewhere, the stick moves, A selects and B goes back; the grips change
 settings tabs.
 
-The gun hand can be switched to the left in the settings, and a gun you toss or hand over is in the other hand until
+The gun hand can be switched to the left in the settings, and a gun you hand over is in the other hand until
 the next level (the grips' roles swap with it).
 
 ## If something looks wrong
