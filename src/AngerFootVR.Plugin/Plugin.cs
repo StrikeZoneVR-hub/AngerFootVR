@@ -81,9 +81,12 @@ public class Plugin : BaseUnityPlugin
     private float _nextHitchLog;
     private string _cmdFile;
 
-    /// <summary>The game quits itself past this much private memory (MB): a dev-run safety net, after a test loop of
-    /// another mod once exhausted the laptop's memory.</summary>
+    /// <summary>Dev runs only: the game quits itself past this much private memory (MB), a safety net for unattended
+    /// test loops (one of another mod once exhausted the laptop's memory). Never for players: 1.1.0 had it on for
+    /// everyone, and on a 32 GB PC with a 16 GB card the game passes 9 GB while it changes levels, so it closed to the
+    /// desktop going into the next level (GitHub issue #1).</summary>
     private static readonly long MaxMemoryMb = long.TryParse(Environment.GetEnvironmentVariable("AFVR_MAX_MB"), out var mb) ? mb : 9000;
+    private static long _memoryLogged;
 
     private void Awake()
     {
@@ -281,6 +284,16 @@ public class Plugin : BaseUnityPlugin
     private static void Watchdog()
     {
         var mb = MemoryMb();
+        if (!DevRun)
+        {
+            // (players: only noted in the log, each new high from 8 GB up, for anyone reporting a problem)
+            if (mb >= 8000 && mb >= _memoryLogged + 1000)
+            {
+                _memoryLogged = mb;
+                L.LogInfo($"memory: the game is using {mb} MB (noted only: the mod never closes the game)");
+            }
+            return;
+        }
         if (mb <= MaxMemoryMb) return;
         L.LogError($"SAFETY: the game is using {mb} MB (limit {MaxMemoryMb} MB); quitting before it strains the PC.");
         Application.Quit();
